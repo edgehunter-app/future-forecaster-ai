@@ -1,14 +1,13 @@
 import { useState } from "react";
 import { Plus, Search, Zap, X } from "lucide-react";
-import { useAppStore } from "@/store/useAppStore";
 import { MOCK_WALLETS } from "@/data/mockData";
 import WalletCard from "@/components/wallets/WalletCard";
 import type { Wallet } from "@/types";
 import { scoreWallet, getTier } from "@/lib/walletScorer";
+import { useTrackedWallets } from "@/hooks/useTrackedWallets";
 
 export default function Wallets() {
-  const tracked = useAppStore((s) => s.trackedWallets);
-  const addWallet = useAppStore((s) => s.addWallet);
+  const { wallets: tracked, addWallet, removeWallet } = useTrackedWallets();
 
   const [open, setOpen] = useState(false);
   const [addr, setAddr] = useState("");
@@ -23,7 +22,7 @@ export default function Wallets() {
       recentTrades: 0, consistency: 0.5, tier: "C",
     };
     w.tier = getTier(scoreWallet(w));
-    addWallet(w);
+    void addWallet(w);
     setAddr(""); setLabel(""); setOpen(false);
   };
 
@@ -74,7 +73,20 @@ export default function Wallets() {
 
       {/* Tracked grid */}
       <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
-        {tracked.map((w) => <WalletCard key={w.address} wallet={w} />)}
+        {tracked.map((w) => (
+          <WalletCard
+            key={w.address}
+            wallet={w}
+            action={
+              <button
+                onClick={() => removeWallet(w.address)}
+                className="shrink-0 rounded-md border border-destructive/40 bg-destructive/10 px-2.5 py-1 text-[11px] font-semibold text-destructive hover:bg-destructive/20 transition-colors"
+              >
+                Remove
+              </button>
+            }
+          />
+        ))}
       </div>
 
       {/* Discovery */}
@@ -92,7 +104,7 @@ export default function Wallets() {
               className="opacity-75 hover:opacity-100"
               action={
                 <button
-                  onClick={() => addWallet(w)}
+                  onClick={() => void addWallet(w)}
                   className="shrink-0 rounded-md border border-info/40 bg-info/10 px-2.5 py-1 text-[11px] font-semibold text-info hover:bg-info/20 transition-colors"
                 >+ Watch</button>
               }

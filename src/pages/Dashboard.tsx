@@ -3,10 +3,12 @@ import { Lightbulb, Wallet as WalletIcon, BarChart2, TrendingUp, Zap, LineChart,
 import StatCard from "@/components/ui/StatCard";
 import SuggestionCard from "@/components/suggestions/SuggestionCard";
 import SafetyBanner from "@/components/ui/SafetyBanner";
-import { MOCK_SUGGESTIONS, MOCK_WALLETS, MOCK_MARKETS, MOCK_HISTORY } from "@/data/mockData";
+import { MOCK_MARKETS, MOCK_HISTORY } from "@/data/mockData";
 import { useAppStore } from "@/store/useAppStore";
 import { fmtUSD, cn } from "@/lib/utils";
 import { useCrossMarket } from "@/hooks/useCrossMarket";
+import { useSuggestionsDB } from "@/hooks/useSuggestionsDB";
+import { useTrackedWallets } from "@/hooks/useTrackedWallets";
 
 const TIER_COLORS: Record<string, string> = {
   S: "#f59e0b",
@@ -17,6 +19,8 @@ const TIER_COLORS: Record<string, string> = {
 
 export default function Dashboard() {
   const bankroll = useAppStore((s) => s.settings.bankroll);
+  const { suggestions, dismissSuggestion, markOutcome } = useSuggestionsDB();
+  const { wallets } = useTrackedWallets();
 
   const totalPnl = MOCK_HISTORY.reduce((acc, h) => acc + h.pnl, 0);
   const wins = MOCK_HISTORY.filter((h) => h.win).length;
@@ -30,8 +34,8 @@ export default function Dashboard() {
 
       {/* KPI Row */}
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
-        <StatCard label="Active Suggestions" value={MOCK_SUGGESTIONS.length} icon={Lightbulb} color="#8b5cf6" sub="Ready to review" />
-        <StatCard label="Tracked Wallets" value={MOCK_WALLETS.length} icon={WalletIcon} color="#3b82f6" sub="Smart money" />
+        <StatCard label="Active Suggestions" value={suggestions.length} icon={Lightbulb} color="#8b5cf6" sub="Ready to review" />
+        <StatCard label="Tracked Wallets" value={wallets.length} icon={WalletIcon} color="#3b82f6" sub="Smart money" />
         <StatCard label="Monitored Markets" value={MOCK_MARKETS.length} icon={BarChart2} color="#06b6d4" sub="Live polling" />
         <StatCard label="7-Day P&L" value={fmtUSD(totalPnl, { compact: true })} icon={TrendingUp} color="#10b981" trend="up" sub={`+${(totalPnl / bankroll * 100).toFixed(1)}% of bankroll`} />
       </div>
@@ -45,8 +49,14 @@ export default function Dashboard() {
             <h2 className="text-sm font-semibold uppercase tracking-wide text-foreground">Top Suggestions</h2>
           </div>
           <div className="space-y-4">
-            {MOCK_SUGGESTIONS.slice(0, 2).map((s) => (
-              <SuggestionCard key={s.id} suggestion={s} bankroll={bankroll} />
+            {suggestions.slice(0, 2).map((s) => (
+              <SuggestionCard
+                key={s.id}
+                suggestion={s}
+                bankroll={bankroll}
+                onDismiss={() => dismissSuggestion(s.id)}
+                onMarkOutcome={(o) => markOutcome(s.id, o)}
+              />
             ))}
           </div>
         </div>
@@ -103,7 +113,7 @@ export default function Dashboard() {
               <h2 className="text-sm font-semibold uppercase tracking-wide text-foreground">Top Wallets</h2>
             </div>
             <ul className="space-y-2">
-              {MOCK_WALLETS.slice(0, 3).map((w) => {
+              {wallets.slice(0, 3).map((w) => {
                 const c = TIER_COLORS[w.tier];
                 return (
                   <li key={w.address} className="flex items-center gap-3 rounded-md border border-border/60 bg-background/40 p-2.5">

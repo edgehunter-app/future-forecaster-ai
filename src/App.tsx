@@ -8,6 +8,8 @@ import Layout from "@/components/layout/Layout";
 import PageLoadingSkeleton from "@/components/ui/PageLoadingSkeleton";
 import KeyboardShortcuts from "@/components/ui/KeyboardShortcuts";
 import WelcomeModal from "@/components/onboarding/WelcomeModal";
+import { useAuth } from "@/hooks/useAuth";
+import { useAppStore } from "@/store/useAppStore";
 
 const Dashboard = lazy(() => import("./pages/Dashboard"));
 const Suggestions = lazy(() => import("./pages/Suggestions"));
@@ -17,6 +19,7 @@ const History = lazy(() => import("./pages/History"));
 const Settings = lazy(() => import("./pages/Settings"));
 const CrossMarket = lazy(() => import("./pages/CrossMarket"));
 const NotFound = lazy(() => import("./pages/NotFound"));
+const Auth = lazy(() => import("./pages/Auth"));
 
 const queryClient = new QueryClient();
 
@@ -26,24 +29,48 @@ const wrap = (node: React.ReactNode) => (
   </Layout>
 );
 
+function AppRoutes() {
+  const { user, loading } = useAuth();
+  const isDemoMode = useAppStore((s) => s.isDemoMode);
+
+  if (loading) return <PageLoadingSkeleton />;
+
+  if (!user && !isDemoMode) {
+    return (
+      <Suspense fallback={<PageLoadingSkeleton />}>
+        <Routes>
+          <Route path="*" element={<Auth />} />
+        </Routes>
+      </Suspense>
+    );
+  }
+
+  return (
+    <>
+      <KeyboardShortcuts />
+      <WelcomeModal />
+      <Routes>
+        <Route path="/auth" element={<Suspense fallback={<PageLoadingSkeleton />}><Auth /></Suspense>} />
+        <Route path="/" element={wrap(<Dashboard />)} />
+        <Route path="/suggestions" element={wrap(<Suggestions />)} />
+        <Route path="/wallets" element={wrap(<Wallets />)} />
+        <Route path="/markets" element={wrap(<Markets />)} />
+        <Route path="/cross-market" element={wrap(<CrossMarket />)} />
+        <Route path="/history" element={wrap(<History />)} />
+        <Route path="/settings" element={wrap(<Settings />)} />
+        <Route path="*" element={<Suspense fallback={<PageLoadingSkeleton />}><NotFound /></Suspense>} />
+      </Routes>
+    </>
+  );
+}
+
 const App = () => (
   <QueryClientProvider client={queryClient}>
     <TooltipProvider>
       <Toaster />
       <Sonner />
       <BrowserRouter>
-        <KeyboardShortcuts />
-        <WelcomeModal />
-        <Routes>
-          <Route path="/" element={wrap(<Dashboard />)} />
-          <Route path="/suggestions" element={wrap(<Suggestions />)} />
-          <Route path="/wallets" element={wrap(<Wallets />)} />
-          <Route path="/markets" element={wrap(<Markets />)} />
-          <Route path="/cross-market" element={wrap(<CrossMarket />)} />
-          <Route path="/history" element={wrap(<History />)} />
-          <Route path="/settings" element={wrap(<Settings />)} />
-          <Route path="*" element={<Suspense fallback={<PageLoadingSkeleton />}><NotFound /></Suspense>} />
-        </Routes>
+        <AppRoutes />
       </BrowserRouter>
     </TooltipProvider>
   </QueryClientProvider>

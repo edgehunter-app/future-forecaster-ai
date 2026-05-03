@@ -8,6 +8,7 @@ import { useToast } from "@/components/ui/AppToast";
 import { useAppStore } from "@/store/useAppStore";
 import { cn, fmtUSD } from "@/lib/utils";
 import { MOCK_SUGGESTIONS } from "@/data/mockData";
+import { useProfile } from "@/hooks/useProfile";
 
 const KELLY_PRESETS = [
   { label: "1/10 Kelly", value: 0.10, hint: "Safest" },
@@ -32,12 +33,10 @@ export default function Settings() {
   const darkMode = useAppStore((s) => s.ui.darkMode);
   const setDarkMode = useAppStore((s) => s.setDarkMode);
   const { showToast } = useToast();
+  const { saveProfile, saving, saved } = useProfile();
 
-  const [saved, setSaved] = useState(false);
-  useEffect(() => { if (saved) { const t = setTimeout(() => setSaved(false), 2000); return () => clearTimeout(t); } }, [saved]);
-
-  const onSave = () => {
-    setSaved(true);
+  const onSave = async () => {
+    await saveProfile();
     showToast("Settings saved", "success");
   };
 
@@ -69,13 +68,14 @@ export default function Settings() {
         </div>
         <button
           onClick={onSave}
+          disabled={saving}
           className={cn(
             "inline-flex items-center gap-2 rounded-md px-4 py-2 text-sm font-semibold text-white transition-colors",
             saved ? "bg-success" : "bg-info hover:bg-info/90 shadow-glow-blue",
           )}
         >
           {saved ? <Check className="h-4 w-4" /> : <Save className="h-4 w-4" />}
-          {saved ? "Saved!" : "Save Changes"}
+          {saved ? "Saved!" : saving ? "Saving..." : "Save Changes"}
         </button>
       </div>
 
