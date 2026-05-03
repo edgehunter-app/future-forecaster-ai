@@ -28,14 +28,6 @@ export interface Wallet {
   tier: Tier;
 }
 
-export interface WalletSignal {
-  walletAddress: string;
-  walletLabel: string;
-  direction: Direction;
-  size: number;
-  tier: Tier;
-}
-
 export interface Suggestion {
   id: string;
   marketId: string;
@@ -43,12 +35,14 @@ export interface Suggestion {
   direction: Direction;
   currentOdds: number;
   suggestedAmount: number;
+  /** 0-100 */
   confidence: number;
   edge: number;
   category: string;
   reasoning: string;
-  walletSignals: WalletSignal[];
-  status: SuggestionStatus;
+  /** wallet labels */
+  walletSignals: string[];
+  status: SuggestionStatus | "active";
   createdAt: string;
   expiresAt: string;
 }
@@ -61,4 +55,11 @@ export interface Settings {
   telegramId: string;
   discordWebhook: string;
   alertEmail: string;
+}
+
+export interface HistoryPoint {
+  date: string;
+  pnl: number;
+  cumulative: number;
+  win: boolean;
 }
