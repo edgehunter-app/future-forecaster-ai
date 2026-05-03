@@ -55,6 +55,8 @@ export interface AppState {
   suggestionFilters: SuggestionFilters;
   marketFilters: MarketFilters;
   crossMarketOpps: CrossMarketOpp[];
+  isDemoMode: boolean;
+  setDemoMode: (val: boolean) => void;
   setCrossMarketOpps: (opps: CrossMarketOpp[]) => void;
 
   updateSettings: (partial: Partial<SettingsState>) => void;
@@ -106,6 +108,8 @@ export const useAppStore = create<AppState>()(
       suggestionFilters: { category: "All", direction: "all", status: "active", sortBy: "confidence" },
       marketFilters: { searchQuery: "", category: "All" },
       crossMarketOpps: [],
+      isDemoMode: false,
+      setDemoMode: (val) => set({ isDemoMode: val }),
       setCrossMarketOpps: (opps) => set({ crossMarketOpps: opps }),
 
       updateSettings: (partial) => set((s) => ({ settings: { ...s.settings, ...partial } })),
@@ -145,7 +149,7 @@ export const useAppStore = create<AppState>()(
     {
       name: "polysignal-store",
       storage: createJSONStorage(() => localStorage),
-      partialize: (s) => ({ settings: s.settings, ui: { darkMode: s.ui.darkMode } }),
+      partialize: (s) => ({ settings: s.settings, ui: { darkMode: s.ui.darkMode }, isDemoMode: s.isDemoMode }),
     },
   ),
 );
