@@ -8,6 +8,7 @@ import Layout from "@/components/layout/Layout";
 import PageLoadingSkeleton from "@/components/ui/PageLoadingSkeleton";
 import KeyboardShortcuts from "@/components/ui/KeyboardShortcuts";
 import WelcomeModal from "@/components/onboarding/WelcomeModal";
+import InstallBanner from "@/components/pwa/InstallBanner";
 import { useAuth } from "@/hooks/useAuth";
 import { useAppStore } from "@/store/useAppStore";
 
@@ -49,6 +50,7 @@ function AppRoutes() {
     <>
       <KeyboardShortcuts />
       <WelcomeModal />
+      <InstallBanner />
       <Routes>
         <Route path="/auth" element={<Suspense fallback={<PageLoadingSkeleton />}><Auth /></Suspense>} />
         <Route path="/" element={wrap(<Dashboard />)} />
