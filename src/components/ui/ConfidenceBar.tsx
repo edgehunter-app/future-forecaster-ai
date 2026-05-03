@@ -1,32 +1,36 @@
 import { cn } from "@/lib/utils";
 
 interface Props {
-  value: number;
-  showLabel?: boolean;
+  value: number; // 0-100
+  size?: "sm" | "md";
   className?: string;
 }
 
 function colorFor(v: number) {
-  if (v >= 0.75) return "bg-success";
-  if (v >= 0.55) return "bg-info";
-  if (v >= 0.4) return "bg-warning";
-  return "bg-destructive";
+  if (v >= 75) return "hsl(var(--success))";
+  if (v >= 55) return "hsl(var(--warning))";
+  return "hsl(var(--destructive))";
 }
 
-export function ConfidenceBar({ value, showLabel = true, className }: Props) {
-  const pct = Math.max(0, Math.min(1, value)) * 100;
+export function ConfidenceBar({ value, size = "md", className }: Props) {
+  const v = Math.max(0, Math.min(100, value));
+  const color = colorFor(v);
+  const h = size === "sm" ? "h-1" : "h-2";
+
   return (
-    <div className={cn("w-full", className)}>
-      <div className="flex items-center justify-between mb-1">
-        {showLabel && <span className="text-xs text-muted-foreground">Confidence</span>}
-        {showLabel && <span className="text-xs font-mono font-medium text-foreground">{pct.toFixed(0)}%</span>}
-      </div>
-      <div className="h-1.5 w-full overflow-hidden rounded-full bg-muted">
+    <div className={cn("flex items-center gap-3", className)}>
+      <div className={cn("flex-1 overflow-hidden rounded-full bg-muted", h)}>
         <div
-          className={cn("h-full rounded-full transition-all duration-500 ease-out", colorFor(value))}
-          style={{ width: `${pct}%` }}
+          className={cn("h-full rounded-full transition-all duration-500 ease-out")}
+          style={{ width: `${v}%`, backgroundColor: color }}
         />
       </div>
+      <span
+        className={cn("font-mono font-semibold tabular-nums", size === "sm" ? "text-xs" : "text-sm")}
+        style={{ color }}
+      >
+        {v.toFixed(0)}%
+      </span>
     </div>
   );
 }
