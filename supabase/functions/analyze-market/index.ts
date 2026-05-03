@@ -3,6 +3,64 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
+interface MarketIn { question: string; category?: string; yesPrice: number; noPrice: number; volume24h?: number; change24h?: number; source?: string }
+interface WalletIn { label: string; winRate: number; sharpe: number; tier: string }
+interface CrossIn { kalshiYes: number; spread: number; favoredPlatform?: string }
+interface AnalyzeBody {
+  ping?: boolean;
+  market?: MarketIn;
+  wallets?: WalletIn[];
+  bankroll?: number;
+  kellyMultiplier?: number;
+  maxPositionPct?: number;
+  crossMarketData?: CrossIn | null;
+}
+
+function buildPrompt(b: AnalyzeBody): string {
+  const m = b.market!;
+  const wallets = b.wallets ?? [];
+  const bankroll = b.bankroll ?? 1000;
+  const kelly = b.kellyMultiplier ?? 0.25;
+  const maxPct = b.maxPositionPct ?? 5;
+  const xm = b.crossMarketData;
+  return `You are a quantitative prediction market analyst.
+
+MARKET: "${m.question}"
+Category: ${m.category ?? "Unknown"}
+Platform: ${m.source ?? "Polymarket"}
+
+CURRENT PRICING:
+- YES: ${(m.yesPrice * 100).toFixed(1)}%
+- NO: ${(m.noPrice * 100).toFixed(1)}%
+- 24h Volume: $${(m.volume24h ?? 0).toLocaleString()}
+- 24h Change: ${((m.change24h ?? 0) * 100).toFixed(1)}%
+
+SMART WALLET SIGNALS:
+${wallets.map((w) => `- ${w.label}: ${(w.winRate * 100).toFixed(0)}% win, Sharpe ${w.sharpe}, Tier ${w.tier}`).join("\n") || "- (none)"}
+${xm ? `
+CROSS-MARKET DATA:
+- Kalshi YES: ${(xm.kalshiYes * 100).toFixed(1)}%
+- Spread: ${(xm.spread * 100).toFixed(1)}%
+- Favored platform: ${xm.favoredPlatform ?? "n/a"}
+` : ""}
+USER RISK PROFILE:
+- Bankroll: $${bankroll}
+- Kelly multiplier: ${kelly}x
+- Max position: ${maxPct}% = $${((bankroll * maxPct) / 100).toFixed(0)}
+
+Respond with ONLY valid JSON, no markdown:
+{
+  "direction": "YES" | "NO",
+  "confidence": integer 0-100,
+  "edge": decimal 0-0.5,
+  "suggestedAmount": integer dollars,
+  "reasoning": "2-3 sentences",
+  "riskLevel": "low" | "medium" | "high",
+  "keySignals": ["s1","s2","s3"],
+  "crossMarketEdge": "one sentence or null"
+}`;
+}
+
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
@@ -10,6 +68,16 @@ Deno.serve(async (req) => {
 
   try {
     const apiKey = Deno.env.get('ANTHROPIC_API_KEY');
+    const body: AnalyzeBody = await req.json().catch(() => ({}));
+
+    // Ping/health check
+    if (body.ping) {
+      return new Response(JSON.stringify({ ok: !!apiKey, configured: !!apiKey }), {
+        status: apiKey ? 200 : 503,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+
     if (!apiKey) {
       return new Response(JSON.stringify({ error: 'ANTHROPIC_API_KEY not configured' }), {
         status: 500,
@@ -17,14 +85,14 @@ Deno.serve(async (req) => {
       });
     }
 
-    const { prompt, model = 'claude-sonnet-4-20250514', max_tokens = 1000 } = await req.json();
-
-    if (!prompt || typeof prompt !== 'string') {
-      return new Response(JSON.stringify({ error: 'prompt (string) is required' }), {
+    if (!body.market || typeof body.market.question !== 'string') {
+      return new Response(JSON.stringify({ error: 'market is required' }), {
         status: 400,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
     }
+
+    const prompt = buildPrompt(body);
 
     const resp = await fetch('https://api.anthropic.com/v1/messages', {
       method: 'POST',
@@ -34,8 +102,8 @@ Deno.serve(async (req) => {
         'content-type': 'application/json',
       },
       body: JSON.stringify({
-        model,
-        max_tokens,
+        model: 'claude-sonnet-4-20250514',
+        max_tokens: 1000,
         messages: [{ role: 'user', content: prompt }],
       }),
     });
@@ -51,7 +119,19 @@ Deno.serve(async (req) => {
     const data = await resp.json();
     const text = (data.content as { type: string; text?: string }[])?.find((b) => b.type === 'text')?.text ?? '';
 
-    return new Response(JSON.stringify({ text }), {
+    // Parse JSON from Claude response
+    const cleaned = text.replace(/```json|```/g, '').trim();
+    let parsed: Record<string, unknown> = {};
+    try {
+      parsed = JSON.parse(cleaned);
+    } catch {
+      return new Response(JSON.stringify({ error: 'Failed to parse model response', raw: text }), {
+        status: 502,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+
+    return new Response(JSON.stringify(parsed), {
       status: 200,
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     });
