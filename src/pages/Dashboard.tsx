@@ -1,14 +1,18 @@
+import { useState } from "react";
 import { Link } from "react-router-dom";
-import { Lightbulb, Wallet as WalletIcon, BarChart2, TrendingUp, Zap, LineChart, Star, GitCompare, ArrowRight } from "lucide-react";
+import { Lightbulb, Wallet as WalletIcon, BarChart2, TrendingUp, Zap, LineChart, Star, GitCompare, ArrowRight, Loader2, Brain, ShieldAlert } from "lucide-react";
 import StatCard from "@/components/ui/StatCard";
 import SuggestionCard from "@/components/suggestions/SuggestionCard";
 import SafetyBanner from "@/components/ui/SafetyBanner";
+import ConfidenceBar from "@/components/ui/ConfidenceBar";
 import { MOCK_MARKETS, MOCK_HISTORY } from "@/data/mockData";
 import { useAppStore } from "@/store/useAppStore";
 import { fmtUSD, cn } from "@/lib/utils";
 import { useCrossMarket } from "@/hooks/useCrossMarket";
 import { useSuggestionsDB } from "@/hooks/useSuggestionsDB";
 import { useTrackedWallets } from "@/hooks/useTrackedWallets";
+import { analyzeMarketWithClaude } from "@/lib/claude";
+import type { ClaudeAnalysis } from "@/types";
 
 const TIER_COLORS: Record<string, string> = {
   S: "#f59e0b",
@@ -19,8 +23,39 @@ const TIER_COLORS: Record<string, string> = {
 
 export default function Dashboard() {
   const bankroll = useAppStore((s) => s.settings.bankroll);
+  const settings = useAppStore((s) => s.settings);
   const { suggestions, dismissSuggestion, markOutcome } = useSuggestionsDB();
   const { wallets } = useTrackedWallets();
+  const markets = useAppStore((s) => s.markets);
+
+  const [analyzing, setAnalyzing] = useState(false);
+  const [aiResult, setAiResult] = useState<ClaudeAnalysis | null>(null);
+  const [aiError, setAiError] = useState<string | null>(null);
+
+  const handleAnalyze = async () => {
+    if (!markets || markets.length === 0) {
+      setAiError("Load markets first before running analysis.");
+      return;
+    }
+    setAnalyzing(true);
+    setAiError(null);
+    setAiResult(null);
+    try {
+      const result = await analyzeMarketWithClaude({
+        market: markets[0],
+        wallets,
+        bankroll: settings.bankroll,
+        kellyMultiplier: settings.kellyMultiplier,
+        maxPositionPct: settings.maxPosition * 100,
+      });
+      if (result) setAiResult(result);
+      else setAiError("No strong signal detected on current top market.");
+    } catch {
+      setAiError("Analysis failed. Try again in a moment.");
+    } finally {
+      setAnalyzing(false);
+    }
+  };
 
   const totalPnl = MOCK_HISTORY.reduce((acc, h) => acc + h.pnl, 0);
   const wins = MOCK_HISTORY.filter((h) => h.win).length;
@@ -31,6 +66,102 @@ export default function Dashboard() {
   return (
     <div className="space-y-6">
       <SafetyBanner />
+
+      {/* Claude AI Analysis */}
+      <div className="rounded-lg border border-border bg-card p-5 shadow-card">
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+          <div className="flex items-center gap-2">
+            <Brain className="h-4 w-4 text-purple" />
+            <h2 className="text-sm font-semibold uppercase tracking-wide text-foreground">AI Market Analysis</h2>
+          </div>
+          <div className="flex flex-col items-end gap-1">
+            <button
+              onClick={handleAnalyze}
+              disabled={analyzing}
+              className="inline-flex items-center gap-2 rounded-md bg-info px-3.5 py-2 text-xs font-semibold text-white hover:bg-info/90 transition-colors disabled:opacity-50 shadow-glow-blue"
+            >
+              {analyzing ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Zap className="h-3.5 w-3.5" />}
+              {analyzing ? "Analyzing..." : "Run Analysis"}
+            </button>
+            <span className="text-[10px] font-mono text-muted-foreground">~$0.003 per analysis</span>
+          </div>
+        </div>
+
+        {analyzing && (
+          <div className="mt-4 space-y-3 animate-pulse">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <div className="h-24 rounded-md bg-muted/40" />
+              <div className="h-24 rounded-md bg-muted/40" />
+            </div>
+            <div className="h-12 rounded-md bg-muted/40" />
+            <div className="h-2 rounded-full bg-muted/40" />
+          </div>
+        )}
+
+        {aiError && !analyzing && (
+          <div className="mt-4 rounded-md border border-destructive/40 bg-destructive/10 px-3 py-2 text-sm text-destructive">
+            {aiError}
+          </div>
+        )}
+
+        {aiResult && !analyzing && (
+          <div className="mt-4 space-y-3">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+              <div className="rounded-md border border-border bg-background/60 p-4 space-y-2">
+                <div className="text-[10px] uppercase tracking-wide text-muted-foreground font-semibold">Recommendation</div>
+                <div className="flex items-center gap-2">
+                  <span className={cn("rounded-md px-2 py-0.5 text-xs font-bold",
+                    aiResult.direction === "YES" ? "bg-success/20 text-success" : "bg-destructive/20 text-destructive")}>
+                    {aiResult.direction}
+                  </span>
+                  <span className={cn("rounded-md border px-2 py-0.5 text-[10px] font-semibold uppercase capitalize",
+                    aiResult.riskLevel === "low" ? "border-success/40 text-success" :
+                    aiResult.riskLevel === "medium" ? "border-warning/40 text-warning" :
+                    "border-destructive/40 text-destructive")}>
+                    {aiResult.riskLevel} risk
+                  </span>
+                </div>
+                <div className="font-mono text-2xl font-bold text-foreground">{fmtUSD(aiResult.suggestedAmount)}</div>
+                <div className="font-mono text-xs text-success font-semibold">+{(aiResult.edge * 100).toFixed(1)}% edge</div>
+              </div>
+              <div className="rounded-md border border-border bg-background/60 p-4 space-y-2">
+                <div className="text-[10px] uppercase tracking-wide text-muted-foreground font-semibold">Reasoning</div>
+                <p className="text-sm text-foreground leading-relaxed">{aiResult.reasoning}</p>
+              </div>
+            </div>
+
+            {aiResult.keySignals && aiResult.keySignals.length > 0 && (
+              <div className="rounded-md border border-border bg-background/60 p-4 space-y-2">
+                <div className="text-[10px] uppercase tracking-wide text-muted-foreground font-semibold">Key Signals</div>
+                <div className="flex flex-wrap gap-1.5">
+                  {aiResult.keySignals.map((s, i) => (
+                    <span key={i} className="rounded-full border border-info/40 bg-info/10 px-2.5 py-1 text-xs font-medium text-info">
+                      {s}
+                    </span>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {aiResult.crossMarketEdge && (
+              <div className="rounded-md border border-warning/40 bg-warning/10 p-4 space-y-1">
+                <div className="text-[10px] uppercase tracking-wide text-warning font-semibold">Cross-Market Opportunity</div>
+                <p className="text-sm text-warning/90">{aiResult.crossMarketEdge}</p>
+              </div>
+            )}
+
+            <div className="flex items-center justify-between gap-3">
+              <span className="text-xs font-medium uppercase tracking-wide text-muted-foreground">Confidence</span>
+              <div className="flex-1 max-w-xs"><ConfidenceBar value={aiResult.confidence} /></div>
+            </div>
+
+            <div className="flex items-start gap-2 rounded-md border border-warning/30 bg-warning/10 px-3 py-2 text-xs text-warning">
+              <ShieldAlert className="h-3.5 w-3.5 mt-0.5 shrink-0" />
+              <span>AI suggestion only. No auto-execution. Verify independently before trading.</span>
+            </div>
+          </div>
+        )}
+      </div>
 
       {/* KPI Row */}
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
