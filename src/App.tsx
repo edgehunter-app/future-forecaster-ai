@@ -1,19 +1,30 @@
+import { lazy, Suspense } from "react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Route, Routes } from "react-router-dom";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import Layout from "@/components/layout/Layout";
-import Dashboard from "./pages/Dashboard";
-import Suggestions from "./pages/Suggestions";
-import Wallets from "./pages/Wallets";
-import Markets from "./pages/Markets";
-import History from "./pages/History";
-import Settings from "./pages/Settings";
-import CrossMarket from "./pages/CrossMarket";
-import NotFound from "./pages/NotFound";
+import PageLoadingSkeleton from "@/components/ui/PageLoadingSkeleton";
+import KeyboardShortcuts from "@/components/ui/KeyboardShortcuts";
+import WelcomeModal from "@/components/onboarding/WelcomeModal";
+
+const Dashboard = lazy(() => import("./pages/Dashboard"));
+const Suggestions = lazy(() => import("./pages/Suggestions"));
+const Wallets = lazy(() => import("./pages/Wallets"));
+const Markets = lazy(() => import("./pages/Markets"));
+const History = lazy(() => import("./pages/History"));
+const Settings = lazy(() => import("./pages/Settings"));
+const CrossMarket = lazy(() => import("./pages/CrossMarket"));
+const NotFound = lazy(() => import("./pages/NotFound"));
 
 const queryClient = new QueryClient();
+
+const wrap = (node: React.ReactNode) => (
+  <Layout>
+    <Suspense fallback={<PageLoadingSkeleton />}>{node}</Suspense>
+  </Layout>
+);
 
 const App = () => (
   <QueryClientProvider client={queryClient}>
@@ -21,15 +32,17 @@ const App = () => (
       <Toaster />
       <Sonner />
       <BrowserRouter>
+        <KeyboardShortcuts />
+        <WelcomeModal />
         <Routes>
-          <Route path="/" element={<Layout><Dashboard /></Layout>} />
-          <Route path="/suggestions" element={<Layout><Suggestions /></Layout>} />
-          <Route path="/wallets" element={<Layout><Wallets /></Layout>} />
-          <Route path="/markets" element={<Layout><Markets /></Layout>} />
-          <Route path="/cross-market" element={<Layout><CrossMarket /></Layout>} />
-          <Route path="/history" element={<Layout><History /></Layout>} />
-          <Route path="/settings" element={<Layout><Settings /></Layout>} />
-          <Route path="*" element={<NotFound />} />
+          <Route path="/" element={wrap(<Dashboard />)} />
+          <Route path="/suggestions" element={wrap(<Suggestions />)} />
+          <Route path="/wallets" element={wrap(<Wallets />)} />
+          <Route path="/markets" element={wrap(<Markets />)} />
+          <Route path="/cross-market" element={wrap(<CrossMarket />)} />
+          <Route path="/history" element={wrap(<History />)} />
+          <Route path="/settings" element={wrap(<Settings />)} />
+          <Route path="*" element={<Suspense fallback={<PageLoadingSkeleton />}><NotFound /></Suspense>} />
         </Routes>
       </BrowserRouter>
     </TooltipProvider>
