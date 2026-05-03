@@ -1,8 +1,6 @@
-// TODO: Move to /api/analyze in production
 import type { Market, Wallet, Suggestion, ClaudeAnalysis } from "@/types";
 import { fmtUSD } from "@/lib/utils";
-
-const ANTHROPIC_API = "https://api.anthropic.com/v1/messages";
+import { supabase } from "@/integrations/supabase/client";
 
 interface AnalyzeParams {
   market: Market;
@@ -13,9 +11,6 @@ interface AnalyzeParams {
 }
 
 export async function analyzeMarketWithClaude(params: AnalyzeParams): Promise<ClaudeAnalysis | null> {
-  const apiKey = import.meta.env.VITE_ANTHROPIC_API_KEY;
-  if (!apiKey) return null;
-
   const { market, wallets, crossMarketData, bankroll, kellyMultiplier } = params;
 
   const prompt = `You are a quantitative prediction market analyst with expertise in probability assessment and edge detection.
@@ -56,24 +51,11 @@ Analyze this market and respond with ONLY a valid JSON object, no markdown, no e
 }`;
 
   try {
-    const resp = await fetch(ANTHROPIC_API, {
-      method: "POST",
-      headers: {
-        "x-api-key": apiKey,
-        "anthropic-version": "2023-06-01",
-        "content-type": "application/json",
-      },
-      body: JSON.stringify({
-        model: "claude-sonnet-4-20250514",
-        max_tokens: 1000,
-        messages: [{ role: "user", content: prompt }],
-      }),
+    const { data, error } = await supabase.functions.invoke("analyze-market", {
+      body: { prompt, max_tokens: 1000 },
     });
-    if (!resp.ok) return null;
-    const data = await resp.json();
-    const text = (data.content as { type: string; text?: string }[]).find((b) => b.type === "text")?.text;
-    if (!text) return null;
-    const cleaned = text.replace(/```json|```/g, "").trim();
+    if (error || !data?.text) return null;
+    const cleaned = String(data.text).replace(/```json|```/g, "").trim();
     const parsed = JSON.parse(cleaned) as ClaudeAnalysis;
     parsed.suggestedAmount = Math.min(parsed.suggestedAmount, Math.floor(bankroll * 0.05));
     return parsed;
