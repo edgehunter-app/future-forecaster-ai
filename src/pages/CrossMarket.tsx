@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { ArrowRight, Brain, ChevronDown, ChevronUp, GitCompare, Loader2, RotateCw, SearchX, ShieldAlert, X } from "lucide-react";
+import { AlertTriangle, ArrowRight, Brain, ChevronDown, ChevronUp, GitCompare, Info, Loader2, RotateCw, SearchX, ShieldAlert, X } from "lucide-react";
 import { useCrossMarket } from "@/hooks/useCrossMarket";
 import { useAppStore } from "@/store/useAppStore";
 import { analyzeMarketWithClaude } from "@/lib/claude";
@@ -9,7 +9,7 @@ import { cn, fmtUSD } from "@/lib/utils";
 import type { CrossMarketOpp, ClaudeAnalysis } from "@/types";
 
 export default function CrossMarket() {
-  const { opportunities, loading, lastScanned, scan } = useCrossMarket();
+  const { opportunities, loading, lastScanned, kalshiAvailable, scan } = useCrossMarket();
   const setCrossMarketOpps = useAppStore((s) => s.setCrossMarketOpps);
   const [howOpen, setHowOpen] = useState(false);
 
@@ -34,6 +34,19 @@ export default function CrossMarket() {
         </div>
       </div>
 
+      {/* Kalshi public API info */}
+      <div className="rounded-lg border border-info/40 bg-info/10 px-4 py-3 text-sm text-info flex items-start gap-2">
+        <Info className="h-4 w-4 mt-0.5 shrink-0" />
+        <span>Kalshi data is fetched from their public API. No account or API key required. Prices update every 15 minutes.</span>
+      </div>
+
+      {!kalshiAvailable && !loading && (
+        <div className="rounded-lg border border-warning/40 bg-warning/10 px-4 py-3 text-sm text-warning flex items-start gap-2">
+          <AlertTriangle className="h-4 w-4 mt-0.5 shrink-0" />
+          <span>Kalshi market data is temporarily unavailable. Cross-market comparison is paused. Polymarket data is unaffected.</span>
+        </div>
+      )}
+
       {/* How it works */}
       <div className="rounded-lg border border-border bg-card overflow-hidden">
         <button onClick={() => setHowOpen((v) => !v)}
@@ -56,8 +69,8 @@ export default function CrossMarket() {
       {opportunities.length === 0 && !loading && (
         <EmptyState
           icon={SearchX}
-          title="No significant spreads detected right now"
-          subtitle="Minimum threshold: 5% spread"
+          title="No spreads above 5% detected right now"
+          subtitle="Both platforms are pricing these events similarly. Check back in 15 minutes."
           action={{ label: "Scan again", onClick: () => void scan() }}
         />
       )}

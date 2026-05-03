@@ -211,6 +211,7 @@ export default function Settings() {
           <Card>
             <CardHeader icon={Key} title="API Keys & Services" />
             <ClaudeStatusRow />
+            <KalshiStatusRow />
           </Card>
 
           {/* Alerts */}
@@ -477,3 +478,22 @@ function ClaudeStatusRow() {
     </div>
   );
 }
+
+function KalshiStatusRow() {
+  return (
+    <div className="rounded-md border border-border/60 bg-background/40 p-3">
+      <div className="flex items-center justify-between gap-3">
+        <div className="flex items-center gap-2">
+          <span className="text-sm font-semibold text-foreground">Kalshi</span>
+        </div>
+        <span className="rounded-full border border-success/40 bg-success/15 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-success">
+          Public API — No key required
+        </span>
+      </div>
+      <p className="mt-2 text-[11px] text-muted-foreground">
+        Market data is fetched from Kalshi's public endpoint. No account needed.
+      </p>
+    </div>
+  );
+}
+
