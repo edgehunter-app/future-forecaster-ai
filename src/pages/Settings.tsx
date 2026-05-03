@@ -433,3 +433,47 @@ function ToggleRow({ label, enabled, onChange }: { label: string; enabled: boole
     </div>
   );
 }
+
+function ClaudeStatusRow() {
+  const [status, setStatus] = useState<"checking" | "connected" | "error">("checking");
+
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const { data, error } = await supabase.functions.invoke("analyze-market", {
+          body: { ping: true },
+        });
+        if (cancelled) return;
+        if (error || !data?.ok) setStatus("error");
+        else setStatus("connected");
+      } catch {
+        if (!cancelled) setStatus("error");
+      }
+    })();
+    return () => { cancelled = true; };
+  }, []);
+
+  return (
+    <div className="rounded-md border border-border/60 bg-background/40 p-3">
+      <div className="flex items-center justify-between gap-3">
+        <div className="flex items-center gap-2">
+          <Brain className="h-4 w-4 text-purple" />
+          <span className="text-sm font-semibold text-foreground">Claude AI</span>
+          <span className="text-[11px] text-muted-foreground">(via secure backend)</span>
+        </div>
+        <span className={cn(
+          "rounded-full border px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide",
+          status === "connected" && "border-success/40 bg-success/15 text-success",
+          status === "error" && "border-destructive/40 bg-destructive/15 text-destructive",
+          status === "checking" && "border-border bg-muted/40 text-muted-foreground",
+        )}>
+          {status === "connected" ? "Connected" : status === "error" ? "Not configured" : "Checking..."}
+        </span>
+      </div>
+      <p className="mt-2 text-[11px] text-muted-foreground">
+        Secured server-side. Key never exposed to browser.
+      </p>
+    </div>
+  );
+}
