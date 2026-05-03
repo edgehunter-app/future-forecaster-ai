@@ -200,4 +200,5 @@ function ActionBtn({ icon: Icon, label, onClick, danger, className }: {
   );
 }
 
-export default SuggestionCard;
+import { memo as __memo } from "react";
+export default __memo(SuggestionCard);
