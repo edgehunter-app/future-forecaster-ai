@@ -14,7 +14,275 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      alerts_log: {
+        Row: {
+          channel: string
+          created_at: string
+          error_message: string
+          id: string
+          status: string
+          suggestion_id: string | null
+          user_id: string
+        }
+        Insert: {
+          channel: string
+          created_at?: string
+          error_message?: string
+          id?: string
+          status?: string
+          suggestion_id?: string | null
+          user_id: string
+        }
+        Update: {
+          channel?: string
+          created_at?: string
+          error_message?: string
+          id?: string
+          status?: string
+          suggestion_id?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "alerts_log_suggestion_id_fkey"
+            columns: ["suggestion_id"]
+            isOneToOne: false
+            referencedRelation: "suggestions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      markets_cache: {
+        Row: {
+          category: string
+          change_24h: number
+          end_date: string
+          id: string
+          no_price: number | null
+          question: string | null
+          source: string
+          total_volume: number
+          trend: string
+          updated_at: string
+          volume_24h: number
+          yes_price: number | null
+        }
+        Insert: {
+          category?: string
+          change_24h?: number
+          end_date?: string
+          id: string
+          no_price?: number | null
+          question?: string | null
+          source?: string
+          total_volume?: number
+          trend?: string
+          updated_at?: string
+          volume_24h?: number
+          yes_price?: number | null
+        }
+        Update: {
+          category?: string
+          change_24h?: number
+          end_date?: string
+          id?: string
+          no_price?: number | null
+          question?: string | null
+          source?: string
+          total_volume?: number
+          trend?: string
+          updated_at?: string
+          volume_24h?: number
+          yes_price?: number | null
+        }
+        Relationships: []
+      }
+      profiles: {
+        Row: {
+          alert_email: string
+          alert_threshold: number
+          bankroll: number
+          compact_cards: boolean
+          created_at: string
+          dark_mode: boolean
+          discord_enabled: boolean
+          discord_webhook: string
+          email_enabled: boolean
+          email_frequency: string
+          favorite_categories: string[]
+          id: string
+          kelly_multiplier: number
+          max_position: number
+          min_confidence: number
+          scan_interval: string
+          show_position_details: boolean
+          show_wallet_addresses: boolean
+          telegram_chat_id: string
+          telegram_enabled: boolean
+          updated_at: string
+        }
+        Insert: {
+          alert_email?: string
+          alert_threshold?: number
+          bankroll?: number
+          compact_cards?: boolean
+          created_at?: string
+          dark_mode?: boolean
+          discord_enabled?: boolean
+          discord_webhook?: string
+          email_enabled?: boolean
+          email_frequency?: string
+          favorite_categories?: string[]
+          id: string
+          kelly_multiplier?: number
+          max_position?: number
+          min_confidence?: number
+          scan_interval?: string
+          show_position_details?: boolean
+          show_wallet_addresses?: boolean
+          telegram_chat_id?: string
+          telegram_enabled?: boolean
+          updated_at?: string
+        }
+        Update: {
+          alert_email?: string
+          alert_threshold?: number
+          bankroll?: number
+          compact_cards?: boolean
+          created_at?: string
+          dark_mode?: boolean
+          discord_enabled?: boolean
+          discord_webhook?: string
+          email_enabled?: boolean
+          email_frequency?: string
+          favorite_categories?: string[]
+          id?: string
+          kelly_multiplier?: number
+          max_position?: number
+          min_confidence?: number
+          scan_interval?: string
+          show_position_details?: boolean
+          show_wallet_addresses?: boolean
+          telegram_chat_id?: string
+          telegram_enabled?: boolean
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      suggestions: {
+        Row: {
+          category: string
+          confidence: number | null
+          created_at: string
+          cross_market_edge: string
+          current_odds: number | null
+          direction: string
+          edge: number | null
+          expires_at: string | null
+          id: string
+          key_signals: string[]
+          market_id: string
+          question: string
+          reasoning: string
+          source: string
+          status: string
+          suggested_amount: number | null
+          user_id: string
+          wallet_signals: string[]
+        }
+        Insert: {
+          category?: string
+          confidence?: number | null
+          created_at?: string
+          cross_market_edge?: string
+          current_odds?: number | null
+          direction: string
+          edge?: number | null
+          expires_at?: string | null
+          id?: string
+          key_signals?: string[]
+          market_id: string
+          question: string
+          reasoning?: string
+          source?: string
+          status?: string
+          suggested_amount?: number | null
+          user_id: string
+          wallet_signals?: string[]
+        }
+        Update: {
+          category?: string
+          confidence?: number | null
+          created_at?: string
+          cross_market_edge?: string
+          current_odds?: number | null
+          direction?: string
+          edge?: number | null
+          expires_at?: string | null
+          id?: string
+          key_signals?: string[]
+          market_id?: string
+          question?: string
+          reasoning?: string
+          source?: string
+          status?: string
+          suggested_amount?: number | null
+          user_id?: string
+          wallet_signals?: string[]
+        }
+        Relationships: []
+      }
+      tracked_wallets: {
+        Row: {
+          address: string
+          consistency: number
+          created_at: string
+          id: string
+          is_auto_discovered: boolean
+          label: string
+          last_scanned: string
+          recent_trades: number
+          roi_30d: number
+          sharpe: number
+          tier: string
+          total_volume: number
+          user_id: string
+          win_rate: number
+        }
+        Insert: {
+          address: string
+          consistency?: number
+          created_at?: string
+          id?: string
+          is_auto_discovered?: boolean
+          label?: string
+          last_scanned?: string
+          recent_trades?: number
+          roi_30d?: number
+          sharpe?: number
+          tier?: string
+          total_volume?: number
+          user_id: string
+          win_rate?: number
+        }
+        Update: {
+          address?: string
+          consistency?: number
+          created_at?: string
+          id?: string
+          is_auto_discovered?: boolean
+          label?: string
+          last_scanned?: string
+          recent_trades?: number
+          roi_30d?: number
+          sharpe?: number
+          tier?: string
+          total_volume?: number
+          user_id?: string
+          win_rate?: number
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
