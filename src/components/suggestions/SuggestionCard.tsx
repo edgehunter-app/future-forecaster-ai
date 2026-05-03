@@ -1,13 +1,14 @@
 import { useState } from "react";
 import {
   Sparkles, ShieldAlert, ChevronDown, ChevronUp, Copy, X, Share2,
-  Zap, TrendingUp, Target, Repeat,
+  Zap, TrendingUp, Target, Repeat, Check, XCircle,
 } from "lucide-react";
 import type { Suggestion } from "@/types";
 import { cn, fmtUSD, categoryColor } from "@/lib/utils";
 import Badge from "@/components/ui/Badge";
 import ConfidenceBar from "@/components/ui/ConfidenceBar";
 import { useAppStore } from "@/store/useAppStore";
+import { useToast } from "@/components/ui/AppToast";
 
 const COLORS = {
   yes: "#10b981",
@@ -20,12 +21,31 @@ const COLORS = {
 interface Props {
   suggestion: Suggestion;
   bankroll: number;
+  onDismiss?: () => void;
+  onMarkOutcome?: (outcome: "won" | "lost") => void;
 }
 
-export function SuggestionCard({ suggestion: s, bankroll }: Props) {
-  const dismiss = useAppStore((st) => st.dismissSuggestion);
+export function SuggestionCard({ suggestion: s, bankroll, onDismiss, onMarkOutcome }: Props) {
+  const dismissStore = useAppStore((st) => st.dismissSuggestion);
   const kellyMult = useAppStore((st) => st.settings.kellyMultiplier);
+  const { showToast } = useToast();
   const [open, setOpen] = useState(false);
+  const ageMs = (() => {
+    const m = /(\d+)\s*h/.exec(s.createdAt);
+    if (m) return Number(m[1]) * 3600000;
+    const t = Date.parse(s.createdAt);
+    return isNaN(t) ? Infinity : Date.now() - t;
+  })();
+  const showOutcome = onMarkOutcome && ageMs > 60 * 60 * 1000 && s.status === "active";
+
+  const handleOutcome = (o: "won" | "lost") => {
+    onMarkOutcome?.(o);
+    showToast("✓ Outcome recorded", "success");
+  };
+  const handleDismiss = () => {
+    if (onDismiss) onDismiss();
+    else dismissStore(s.id);
+  };
 
   const dirColor = s.direction === "YES" ? COLORS.yes : COLORS.no;
   const catColor = categoryColor(s.category);
@@ -160,7 +180,23 @@ export function SuggestionCard({ suggestion: s, bankroll }: Props) {
       <div className="mt-3 flex items-center gap-2">
         <ActionBtn icon={Copy} label="Copy Trade" onClick={copyTrade} />
         <ActionBtn icon={Share2} label="Share" />
-        <ActionBtn icon={X} label="Dismiss" onClick={() => dismiss(s.id)} danger className="ml-auto" />
+        {showOutcome && (
+          <>
+            <button
+              onClick={() => handleOutcome("won")}
+              className="inline-flex items-center gap-1 rounded-md border border-success/40 bg-success/10 px-2 py-1 text-[11px] font-semibold text-success hover:bg-success/20"
+            >
+              <Check className="h-3 w-3" /> Won
+            </button>
+            <button
+              onClick={() => handleOutcome("lost")}
+              className="inline-flex items-center gap-1 rounded-md border border-destructive/40 bg-destructive/10 px-2 py-1 text-[11px] font-semibold text-destructive hover:bg-destructive/20"
+            >
+              <XCircle className="h-3 w-3" /> Lost
+            </button>
+          </>
+        )}
+        <ActionBtn icon={X} label="Dismiss" onClick={handleDismiss} danger className="ml-auto" />
       </div>
     </div>
   );
