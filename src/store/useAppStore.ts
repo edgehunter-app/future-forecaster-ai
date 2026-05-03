@@ -1,75 +1,129 @@
 import { create } from "zustand";
-import { persist } from "zustand/middleware";
-import type { Settings, AlertChannel, Wallet, Suggestion } from "@/types";
-import { MOCK_WALLETS, MOCK_SUGGESTIONS } from "@/data/mockData";
+import { persist, createJSONStorage } from "zustand/middleware";
+import type { Wallet, Suggestion, Market } from "@/types";
+import { MOCK_WALLETS, MOCK_SUGGESTIONS, MOCK_MARKETS } from "@/data/mockData";
 
-interface UIState {
+export interface AlertChannelTelegram { enabled: boolean; chatId: string; }
+export interface AlertChannelDiscord { enabled: boolean; webhookUrl: string; }
+export interface AlertChannelEmail { enabled: boolean; address: string; frequency: string; }
+
+export interface SettingsState {
+  bankroll: number;
+  kellyMultiplier: number;
+  /** Max single position as fraction of bankroll, e.g. 0.05 */
+  maxPosition: number;
+  /** Min confidence to display, 0-100 */
+  minConfidence: number;
+  /** Min confidence to alert, 0-100 */
+  alertThreshold: number;
+  scanInterval: "15m" | "30m" | "1h" | "manual";
+  showPositionDetails: boolean;
+  showWalletAddresses: boolean;
+  compactCards: boolean;
+  favoriteCategories: string[];
+  alerts: {
+    telegram: AlertChannelTelegram;
+    discord: AlertChannelDiscord;
+    email: AlertChannelEmail;
+  };
+}
+
+export interface UIState {
   darkMode: boolean;
   sidebarOpen: boolean;
   activePage: string;
 }
 
-export type SortBy = "confidence" | "edge" | "newest" | "expiring";
-export type DirectionFilter = "all" | "YES" | "NO";
-export type StatusFilter = "active" | "expired" | "won" | "lost";
-
 export interface SuggestionFilters {
   category: string;
-  direction: DirectionFilter;
-  status: StatusFilter;
-  sortBy: SortBy;
+  direction: string; // "all" | "YES" | "NO"
+  status: string;    // "active" | "expired" | "won" | "lost"
+  sortBy: string;    // "confidence" | "edge" | "newest" | "expiring"
 }
 
-interface AppState {
-  settings: Settings;
-  alerts: AlertChannel[];
-  ui: UIState;
+export interface MarketFilters {
   searchQuery: string;
-  selectedCategory: string;
-  trackedWallets: Wallet[];
+  category: string;
+}
+
+export interface AppState {
+  settings: SettingsState;
+  ui: UIState;
   suggestions: Suggestion[];
+  trackedWallets: Wallet[];
+  markets: Market[];
   suggestionFilters: SuggestionFilters;
-  setSettings: (patch: Partial<Settings>) => void;
-  setAlerts: (alerts: AlertChannel[]) => void;
+  marketFilters: MarketFilters;
+
+  updateSettings: (partial: Partial<SettingsState>) => void;
+  updateAlerts: (
+    channel: "telegram" | "discord" | "email",
+    partial: Partial<AlertChannelTelegram & AlertChannelDiscord & AlertChannelEmail>,
+  ) => void;
+
+  setDarkMode: (val: boolean) => void;
+  setSidebarOpen: (val: boolean) => void;
+  setActivePage: (val: string) => void;
   toggleSidebar: () => void;
-  setSidebarOpen: (open: boolean) => void;
   toggleDarkMode: () => void;
-  setActivePage: (page: string) => void;
-  setSearchQuery: (q: string) => void;
-  setSelectedCategory: (c: string) => void;
+
+  dismissSuggestion: (id: string) => void;
   addWallet: (wallet: Wallet) => void;
   removeWallet: (address: string) => void;
-  dismissSuggestion: (id: string) => void;
-  setSuggestionFilters: (patch: Partial<SuggestionFilters>) => void;
+
+  setSuggestionFilters: (partial: Partial<SuggestionFilters>) => void;
+  setMarketFilters: (partial: Partial<MarketFilters>) => void;
 }
+
+const defaultSettings: SettingsState = {
+  bankroll: 5000,
+  kellyMultiplier: 0.25,
+  maxPosition: 0.05,
+  minConfidence: 65,
+  alertThreshold: 75,
+  scanInterval: "30m",
+  showPositionDetails: true,
+  showWalletAddresses: true,
+  compactCards: false,
+  favoriteCategories: ["Economics", "Crypto"],
+  alerts: {
+    telegram: { enabled: true, chatId: "" },
+    discord: { enabled: false, webhookUrl: "" },
+    email: { enabled: false, address: "", frequency: "Hourly digest" },
+  },
+};
 
 export const useAppStore = create<AppState>()(
   persist(
     (set) => ({
-      settings: {
-        bankroll: 5000,
-        kellyMultiplier: 0.25,
-        maxPosition: 250,
-        minConfidence: 0.65,
-        telegramId: "",
-        discordWebhook: "",
-        alertEmail: "",
-      },
-      alerts: ["telegram"],
+      settings: defaultSettings,
       ui: { darkMode: true, sidebarOpen: true, activePage: "dashboard" },
-      searchQuery: "",
-      selectedCategory: "All",
-      trackedWallets: MOCK_WALLETS,
       suggestions: MOCK_SUGGESTIONS,
+      trackedWallets: MOCK_WALLETS,
+      markets: MOCK_MARKETS,
       suggestionFilters: { category: "All", direction: "all", status: "active", sortBy: "confidence" },
-      setSettings: (patch) => set((s) => ({ settings: { ...s.settings, ...patch } })),
-      setAlerts: (alerts) => set({ alerts }),
+      marketFilters: { searchQuery: "", category: "All" },
+
+      updateSettings: (partial) => set((s) => ({ settings: { ...s.settings, ...partial } })),
+      updateAlerts: (channel, partial) =>
+        set((s) => ({
+          settings: {
+            ...s.settings,
+            alerts: {
+              ...s.settings.alerts,
+              [channel]: { ...s.settings.alerts[channel], ...partial },
+            },
+          },
+        })),
+
+      setDarkMode: (val) => set((s) => ({ ui: { ...s.ui, darkMode: val } })),
+      setSidebarOpen: (val) => set((s) => ({ ui: { ...s.ui, sidebarOpen: val } })),
+      setActivePage: (val) => set((s) => ({ ui: { ...s.ui, activePage: val } })),
       toggleSidebar: () => set((s) => ({ ui: { ...s.ui, sidebarOpen: !s.ui.sidebarOpen } })),
-      setSidebarOpen: (open) => set((s) => ({ ui: { ...s.ui, sidebarOpen: open } })),
       toggleDarkMode: () => set((s) => ({ ui: { ...s.ui, darkMode: !s.ui.darkMode } })),
-      setActivePage: (activePage) => set((s) => ({ ui: { ...s.ui, activePage } })),
-      setSearchQuery: (searchQuery) => set({ searchQuery }),
-      setSelectedCategory: (selectedCategory) => set({ selectedCategory }),
+
+      dismissSuggestion: (id) =>
+        set((s) => ({ suggestions: s.suggestions.filter((x) => x.id !== id) })),
       addWallet: (wallet) =>
         set((s) =>
           s.trackedWallets.some((w) => w.address === wallet.address)
@@ -78,11 +132,21 @@ export const useAppStore = create<AppState>()(
         ),
       removeWallet: (address) =>
         set((s) => ({ trackedWallets: s.trackedWallets.filter((w) => w.address !== address) })),
-      dismissSuggestion: (id) =>
-        set((s) => ({ suggestions: s.suggestions.filter((x) => x.id !== id) })),
-      setSuggestionFilters: (patch) =>
-        set((s) => ({ suggestionFilters: { ...s.suggestionFilters, ...patch } })),
+
+      setSuggestionFilters: (partial) =>
+        set((s) => ({ suggestionFilters: { ...s.suggestionFilters, ...partial } })),
+      setMarketFilters: (partial) =>
+        set((s) => ({ marketFilters: { ...s.marketFilters, ...partial } })),
     }),
-    { name: "polysignal-store" },
+    {
+      name: "polysignal-store",
+      storage: createJSONStorage(() => localStorage),
+      partialize: (s) => ({ settings: s.settings, ui: { darkMode: s.ui.darkMode } }),
+    },
   ),
 );
+
+// Compatibility helper for old API
+export type SortBy = "confidence" | "edge" | "newest" | "expiring";
+export type DirectionFilter = "all" | "YES" | "NO";
+export type StatusFilter = "active" | "expired" | "won" | "lost";
