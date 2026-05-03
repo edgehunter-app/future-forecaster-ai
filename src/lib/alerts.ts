@@ -1,5 +1,5 @@
-import type { Suggestion, SettingsState } from "@/types";
-import type { } from "@/store/useAppStore";
+import type { Suggestion } from "@/types";
+import type { SettingsState } from "@/store/useAppStore";
 
 interface TgParams { chatId: string; suggestion: Suggestion; crossMarketEdge?: string; }
 
