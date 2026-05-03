@@ -1,23 +1,20 @@
-import { Sparkles, ShieldAlert } from "lucide-react";
+import { useState } from "react";
+import {
+  Sparkles, ShieldAlert, ChevronDown, ChevronUp, Copy, X, Share2,
+  Zap, TrendingUp, Target, Repeat,
+} from "lucide-react";
 import type { Suggestion } from "@/types";
-import { cn, fmtUSD } from "@/lib/utils";
+import { cn, fmtUSD, categoryColor } from "@/lib/utils";
 import Badge from "@/components/ui/Badge";
 import ConfidenceBar from "@/components/ui/ConfidenceBar";
+import { useAppStore } from "@/store/useAppStore";
 
 const COLORS = {
   yes: "#10b981",
   no: "#ef4444",
   purple: "#8b5cf6",
-  amber: "#f59e0b",
-};
-
-const CATEGORY_COLORS: Record<string, string> = {
-  Economics: "#3b82f6",
-  Crypto: "#f59e0b",
-  Science: "#8b5cf6",
-  Finance: "#10b981",
-  Sports: "#10b981",
-  Politics: "#3b82f6",
+  warning: "#f59e0b",
+  info: "#3b82f6",
 };
 
 interface Props {
@@ -25,38 +22,73 @@ interface Props {
   bankroll: number;
 }
 
-export function SuggestionCard({ suggestion: s }: Props) {
+export function SuggestionCard({ suggestion: s, bankroll }: Props) {
+  const dismiss = useAppStore((st) => st.dismissSuggestion);
+  const kellyMult = useAppStore((st) => st.settings.kellyMultiplier);
+  const [open, setOpen] = useState(false);
+
   const dirColor = s.direction === "YES" ? COLORS.yes : COLORS.no;
-  const catColor = CATEGORY_COLORS[s.category] ?? "#6b7280";
+  const catColor = categoryColor(s.category);
+
+  const rawKelly = (s.edge * bankroll) / Math.max(s.currentOdds, 0.01);
+  const quarterKelly = rawKelly * kellyMult;
+  const maxCap = bankroll * 0.05;
+  const finalSize = Math.min(quarterKelly, maxCap);
+
+  const statusDot =
+    s.status === "active" ? { color: COLORS.yes, pulse: true } :
+    s.status === "expired" ? { color: "#6b7280", pulse: false } :
+    s.status === "executed" ? { color: COLORS.info, pulse: false } :
+    { color: "#ef4444", pulse: false };
+
+  const signals: { icon: typeof Zap; label: string; color: string }[] = [
+    { icon: Target, label: "Odds Mispricing", color: COLORS.info },
+  ];
+  if (s.confidence > 70) signals.unshift({ icon: Zap, label: "Whale Entry", color: COLORS.purple });
+  if (s.edge > 0.10) signals.push({ icon: TrendingUp, label: "Volume Spike", color: COLORS.warning });
+  if (s.currentOdds < 0.40) signals.push({ icon: Repeat, label: "Contrarian Play", color: COLORS.yes });
+
+  const copyTrade = () => {
+    const txt = `PolySignal: ${s.question} → ${s.direction} ${fmtUSD(s.suggestedAmount)} (confidence: ${s.confidence}%)`;
+    void navigator.clipboard?.writeText(txt);
+  };
 
   return (
     <div
-      className="group rounded-lg bg-card p-5 transition-all duration-200 hover:-translate-y-0.5"
+      className="group relative rounded-lg bg-card p-5 transition-all duration-200 hover:-translate-y-0.5"
       style={{
         border: `1px solid ${dirColor}33`,
         boxShadow: `0 8px 24px -12px ${dirColor}1a`,
       }}
     >
+      {/* Status dot */}
+      <span className="absolute right-3 top-3 flex h-2.5 w-2.5">
+        {statusDot.pulse && (
+          <span className="absolute inline-flex h-full w-full rounded-full opacity-60 live-dot"
+            style={{ backgroundColor: statusDot.color }} />
+        )}
+        <span className="relative inline-flex h-2.5 w-2.5 rounded-full" style={{ backgroundColor: statusDot.color }} />
+      </span>
+
       {/* Top row */}
-      <div className="flex items-center gap-2 flex-wrap">
+      <div className="flex items-center gap-2 flex-wrap pr-6">
         <Badge color={catColor} small>{s.category}</Badge>
         <Badge color={dirColor}>{s.direction}</Badge>
         <span className="ml-auto text-xs text-muted-foreground font-mono">{s.createdAt}</span>
       </div>
 
-      {/* Question */}
       <h3 className="mt-3 text-sm font-semibold leading-snug text-foreground">{s.question}</h3>
 
       {/* Metrics */}
       <div className="mt-4 grid grid-cols-3 gap-px overflow-hidden rounded-md border border-border bg-border">
         <Metric label="Current Odds" value={`${(s.currentOdds * 100).toFixed(0)}%`} color="hsl(var(--foreground))" />
         <Metric label="Edge" value={`+${(s.edge * 100).toFixed(1)}%`} color={COLORS.yes} />
-        <Metric label="Suggested" value={fmtUSD(s.suggestedAmount, { compact: true })} color={dirColor} />
+        <Metric label="Suggested" value={fmtUSD(s.suggestedAmount)} color={dirColor} />
       </div>
 
       {/* Confidence */}
       <div className="mt-4">
-        <div className="mb-1.5 flex items-center justify-between">
+        <div className="mb-1.5">
           <span className="text-xs font-medium uppercase tracking-wide text-muted-foreground">Confidence</span>
         </div>
         <ConfidenceBar value={s.confidence} />
@@ -76,12 +108,59 @@ export function SuggestionCard({ suggestion: s }: Props) {
         ))}
       </div>
 
+      {/* Expandable */}
+      <button
+        onClick={() => setOpen((v) => !v)}
+        className="mt-4 inline-flex items-center gap-1 text-xs font-semibold text-info hover:text-info/80 transition-colors"
+      >
+        {open ? <ChevronUp className="h-3.5 w-3.5" /> : <ChevronDown className="h-3.5 w-3.5" />}
+        {open ? "Hide Analysis" : "Show Analysis"}
+      </button>
+
+      {open && (
+        <div className="mt-3 space-y-3">
+          <div className="rounded-md border border-border bg-background/60 p-3">
+            <div className="text-[11px] uppercase tracking-wide text-muted-foreground font-semibold mb-2">
+              Position Sizing (Quarter Kelly)
+            </div>
+            <SizingRow label="Bankroll" value={fmtUSD(bankroll)} />
+            <SizingRow label="Raw Kelly" value={fmtUSD(rawKelly)} />
+            <SizingRow label={`Quarter Kelly (${kellyMult}x)`} value={fmtUSD(quarterKelly)} />
+            <SizingRow label="Max position cap (5%)" value={fmtUSD(maxCap)} />
+            <div className="mt-1.5 flex items-center justify-between border-t border-border pt-1.5">
+              <span className="text-xs font-semibold text-foreground">→ Suggested</span>
+              <span className="font-mono text-sm font-bold" style={{ color: dirColor }}>{fmtUSD(finalSize)}</span>
+            </div>
+          </div>
+
+          <div>
+            <div className="text-[11px] uppercase tracking-wide text-muted-foreground font-semibold mb-2">Signal Breakdown</div>
+            <div className="flex flex-wrap gap-1.5">
+              {signals.map((sig) => (
+                <span key={sig.label}
+                  className="inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-[11px] font-medium"
+                  style={{ backgroundColor: `${sig.color}1a`, borderColor: `${sig.color}40`, color: sig.color }}>
+                  <sig.icon className="h-3 w-3" /> {sig.label}
+                </span>
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Safety */}
       <div className="mt-4 flex items-start gap-2 rounded-md border border-warning/30 bg-warning/10 px-3 py-2">
         <ShieldAlert className="mt-0.5 h-3.5 w-3.5 shrink-0 text-warning" />
         <p className="text-[11px] font-medium uppercase tracking-wide text-warning leading-snug">
           Suggestion only — No auto-execution. Verify independently before trading.
         </p>
+      </div>
+
+      {/* Actions */}
+      <div className="mt-3 flex items-center gap-2">
+        <ActionBtn icon={Copy} label="Copy Trade" onClick={copyTrade} />
+        <ActionBtn icon={Share2} label="Share" />
+        <ActionBtn icon={X} label="Dismiss" onClick={() => dismiss(s.id)} danger className="ml-auto" />
       </div>
     </div>
   );
@@ -93,6 +172,31 @@ function Metric({ label, value, color }: { label: string; value: string; color: 
       <div className="text-[10px] uppercase tracking-wide text-muted-foreground font-medium">{label}</div>
       <div className={cn("mt-0.5 font-mono text-sm font-bold")} style={{ color }}>{value}</div>
     </div>
+  );
+}
+
+function SizingRow({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="flex items-center justify-between py-0.5 text-xs">
+      <span className="text-muted-foreground">{label}</span>
+      <span className="font-mono text-foreground">{value}</span>
+    </div>
+  );
+}
+
+function ActionBtn({ icon: Icon, label, onClick, danger, className }: {
+  icon: typeof Copy; label: string; onClick?: () => void; danger?: boolean; className?: string;
+}) {
+  return (
+    <button onClick={onClick}
+      className={cn(
+        "inline-flex items-center gap-1.5 rounded-md border border-border bg-background/40 px-2.5 py-1 text-xs font-medium transition-colors",
+        danger ? "text-destructive hover:bg-destructive/10 hover:border-destructive/40"
+               : "text-muted-foreground hover:text-foreground hover:bg-muted",
+        className,
+      )}>
+      <Icon className="h-3.5 w-3.5" /> {label}
+    </button>
   );
 }
 
