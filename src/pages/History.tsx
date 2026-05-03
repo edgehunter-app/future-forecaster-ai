@@ -4,6 +4,8 @@ import PerformanceChart from "@/components/history/PerformanceChart";
 import TradeLogTable from "@/components/history/TradeLogTable";
 import { MOCK_HISTORY, MOCK_MARKETS } from "@/data/mockData";
 import { CATEGORY_COLORS, fmtSign, fmtUSD } from "@/lib/utils";
+import { useSuggestionsDB } from "@/hooks/useSuggestionsDB";
+import type { HistoryPoint } from "@/types";
 
 const CATEGORY_PNL: { name: string; value: number }[] = [
   { name: "Economics", value: 400 },
@@ -12,18 +14,40 @@ const CATEGORY_PNL: { name: string; value: number }[] = [
 ];
 
 export default function History() {
-  const total = MOCK_HISTORY.reduce((a, h) => a + h.pnl, 0);
-  const wins = MOCK_HISTORY.filter((h) => h.win).length;
-  const winRate = (wins / MOCK_HISTORY.length) * 100;
-  const avg = total / MOCK_HISTORY.length;
+  const { suggestions } = useSuggestionsDB(["won", "lost", "dismissed"]);
+
+  // Build history series from DB if we have any won/lost outcomes; else MOCK_HISTORY.
+  const dbHistory: HistoryPoint[] = (() => {
+    const outcomes = suggestions.filter((s) => s.status === "won" || s.status === "lost");
+    if (outcomes.length === 0) return MOCK_HISTORY;
+    let cum = 0;
+    return outcomes
+      .slice()
+      .reverse()
+      .map((s, i) => {
+        const pnl = s.status === "won" ? s.suggestedAmount * (s.edge || 0.1) : -s.suggestedAmount;
+        cum += pnl;
+        return {
+          date: `T${i + 1}`,
+          pnl: Math.round(pnl),
+          cumulative: Math.round(cum),
+          win: s.status === "won",
+        };
+      });
+  })();
+
+  const total = dbHistory.reduce((a, h) => a + h.pnl, 0);
+  const wins = dbHistory.filter((h) => h.win).length;
+  const winRate = dbHistory.length ? (wins / dbHistory.length) * 100 : 0;
+  const avg = dbHistory.length ? total / dbHistory.length : 0;
 
   // streaks
   let winStreak = 0, lossStreak = 0, curW = 0, curL = 0;
-  MOCK_HISTORY.forEach((h) => {
+  dbHistory.forEach((h) => {
     if (h.win) { curW++; curL = 0; winStreak = Math.max(winStreak, curW); }
     else { curL++; curW = 0; lossStreak = Math.max(lossStreak, curL); }
   });
-  const maxDD = Math.min(...MOCK_HISTORY.map((h) => h.pnl));
+  const maxDD = dbHistory.length ? Math.min(...dbHistory.map((h) => h.pnl)) : 0;
 
   const maxCat = Math.max(...CATEGORY_PNL.map((c) => c.value));
 
@@ -43,8 +67,8 @@ export default function History() {
       {/* KPIs */}
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
         <StatCard label="Total P&L" value={fmtSign(total)} icon={TrendingUp} color="#10b981" trend="up" />
-        <StatCard label="Win Rate" value={`${winRate.toFixed(1)}%`} icon={Target} color="#3b82f6" sub={`${wins} / ${MOCK_HISTORY.length} trades`} />
-        <StatCard label="Total Trades" value={MOCK_HISTORY.length} icon={Activity} color="#8b5cf6" />
+        <StatCard label="Win Rate" value={`${winRate.toFixed(1)}%`} icon={Target} color="#3b82f6" sub={`${wins} / ${dbHistory.length} trades`} />
+        <StatCard label="Total Trades" value={dbHistory.length} icon={Activity} color="#8b5cf6" />
         <StatCard label="Avg Trade Size" value={fmtSign(Math.round(avg))} icon={DollarSign} color="#f59e0b" />
       </div>
 
@@ -54,13 +78,13 @@ export default function History() {
           <h2 className="text-sm font-semibold uppercase tracking-wide text-foreground">Cumulative P&L</h2>
           <span className="font-mono text-sm font-bold text-success">{fmtUSD(total)}</span>
         </div>
-        <PerformanceChart data={MOCK_HISTORY} />
+        <PerformanceChart data={dbHistory} />
       </div>
 
       {/* Trade log */}
       <div>
         <h2 className="text-sm font-semibold uppercase tracking-wide text-foreground mb-3">Trade Log</h2>
-        <TradeLogTable history={MOCK_HISTORY} markets={MOCK_MARKETS} />
+        <TradeLogTable history={dbHistory} markets={MOCK_MARKETS} />
       </div>
 
       {/* Backtest stats */}
