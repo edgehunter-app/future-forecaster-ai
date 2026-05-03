@@ -1,65 +1,41 @@
 import type { Market, Wallet, Suggestion, ClaudeAnalysis } from "@/types";
-import { fmtUSD } from "@/lib/utils";
 import { supabase } from "@/integrations/supabase/client";
 
-interface AnalyzeParams {
+export interface AnalyzeMarketParams {
   market: Market;
   wallets: Wallet[];
-  crossMarketData?: { kalshiYes: number; spread: number } | null;
   bankroll: number;
   kellyMultiplier: number;
+  /** Max position as percent of bankroll, e.g. 5 for 5% */
+  maxPositionPct: number;
+  crossMarketData?: {
+    kalshiYes: number;
+    spread: number;
+    favoredPlatform: string;
+  } | null;
 }
 
-export async function analyzeMarketWithClaude(params: AnalyzeParams): Promise<ClaudeAnalysis | null> {
-  const { market, wallets, crossMarketData, bankroll, kellyMultiplier } = params;
-
-  const prompt = `You are a quantitative prediction market analyst with expertise in probability assessment and edge detection.
-
-MARKET: "${market.question}"
-Category: ${market.category}
-Platform: ${market.source || "Polymarket"}
-
-CURRENT PRICING:
-- YES: ${(market.yesPrice * 100).toFixed(1)}%
-- NO: ${(market.noPrice * 100).toFixed(1)}%
-- 24h Volume: ${fmtUSD(market.volume24h)}
-- 24h Price Change: ${market.change24h > 0 ? "+" : ""}${(market.change24h * 100).toFixed(1)}%
-
-SMART WALLET SIGNALS:
-${wallets.map((w) => `- ${w.label}: ${(w.winRate * 100).toFixed(0)}% win rate, Sharpe ${w.sharpe}, Tier ${w.tier}`).join("\n")}
-${crossMarketData ? `
-CROSS-MARKET DATA:
-- Kalshi pricing same event at: ${(crossMarketData.kalshiYes * 100).toFixed(1)}% YES
-- Spread vs Polymarket: ${(crossMarketData.spread * 100).toFixed(1)}%
-- This is a potential cross-market mispricing opportunity
-` : ""}
-USER RISK PROFILE:
-- Bankroll: $${bankroll}
-- Kelly multiplier: ${kellyMultiplier}x
-- Max single position: 5% = $${(bankroll * 0.05).toFixed(0)}
-
-Analyze this market and respond with ONLY a valid JSON object, no markdown, no explanation outside the JSON:
-{
-  "direction": "YES" or "NO",
-  "confidence": integer 0-100,
-  "edge": decimal e.g. 0.08 for 8% edge,
-  "suggestedAmount": dollar amount integer,
-  "reasoning": "2-3 sentences max, specific and actionable",
-  "riskLevel": "low" | "medium" | "high",
-  "keySignals": ["signal1", "signal2", "signal3"],
-  "crossMarketEdge": "one sentence if cross-market opportunity exists, else null"
-}`;
-
+export async function analyzeMarketWithClaude(
+  params: AnalyzeMarketParams,
+): Promise<ClaudeAnalysis | null> {
   try {
     const { data, error } = await supabase.functions.invoke("analyze-market", {
-      body: { prompt, max_tokens: 1000 },
+      body: params,
     });
-    if (error || !data?.text) return null;
-    const cleaned = String(data.text).replace(/```json|```/g, "").trim();
-    const parsed = JSON.parse(cleaned) as ClaudeAnalysis;
-    parsed.suggestedAmount = Math.min(parsed.suggestedAmount, Math.floor(bankroll * 0.05));
-    return parsed;
-  } catch {
+    if (error) throw error;
+    if (!data || typeof data !== "object" || data.error) return null;
+
+    const result = data as ClaudeAnalysis;
+    const maxPosition = (params.bankroll * params.maxPositionPct) / 100;
+    result.suggestedAmount = Math.min(
+      Math.round(result.suggestedAmount ?? 0),
+      Math.floor(maxPosition),
+    );
+    result.confidence = Math.max(0, Math.min(100, result.confidence ?? 0));
+    result.edge = Math.max(0, Math.min(0.5, result.edge ?? 0));
+    return result;
+  } catch (err) {
+    console.error("Claude analysis failed:", err);
     return null;
   }
 }
