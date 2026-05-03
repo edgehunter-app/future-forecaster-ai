@@ -65,13 +65,21 @@ export function Sidebar() {
               >
                 <item.icon className="h-[18px] w-[18px] shrink-0" />
                 {open && <span className="flex-1 truncate">{item.label}</span>}
-                {open && item.badge !== undefined && (
-                  <span className="ml-auto inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-info/20 px-1.5 text-[10px] font-semibold text-info">
+                {open && item.badge !== undefined && item.badge > 0 && (
+                  <span className={cn(
+                    "ml-auto inline-flex h-5 min-w-5 items-center justify-center rounded-full px-1.5 text-[10px] font-semibold",
+                    item.badgeColor === "warning"
+                      ? "bg-warning/20 text-warning"
+                      : "bg-info/20 text-info",
+                  )}>
                     {item.badge}
                   </span>
                 )}
-                {!open && item.badge !== undefined && (
-                  <span className="absolute right-1 top-1 h-1.5 w-1.5 rounded-full bg-info" />
+                {!open && item.badge !== undefined && item.badge > 0 && (
+                  <span className={cn(
+                    "absolute right-1 top-1 h-1.5 w-1.5 rounded-full",
+                    item.badgeColor === "warning" ? "bg-warning" : "bg-info",
+                  )} />
                 )}
               </NavLink>
             </li>
