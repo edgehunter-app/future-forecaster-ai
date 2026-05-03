@@ -5,46 +5,49 @@ export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
 }
 
-export function fmtUSD(value: number, opts: { compact?: boolean } = {}): string {
-  if (opts.compact && Math.abs(value) >= 1000) {
-    return new Intl.NumberFormat("en-US", {
-      notation: "compact",
-      maximumFractionDigits: 1,
-      style: "currency",
-      currency: "USD",
-    }).format(value);
+export const TIER_COLORS = {
+  S: "#f59e0b",
+  A: "#10b981",
+  B: "#3b82f6",
+  C: "#8b5cf6",
+} as const;
+
+export const CATEGORY_COLORS: Record<string, string> = {
+  Economics: "#0ea5e9",
+  Crypto: "#f97316",
+  Science: "#8b5cf6",
+  Finance: "#10b981",
+  Politics: "#ef4444",
+};
+
+export function fmtUSD(n: number, opts: { compact?: boolean } = {}): string {
+  const abs = Math.abs(n);
+  const sign = n < 0 ? "-" : "";
+  if (opts.compact === false) {
+    return `${sign}$${abs.toLocaleString("en-US", { maximumFractionDigits: 2 })}`;
   }
-  return new Intl.NumberFormat("en-US", {
-    style: "currency",
-    currency: "USD",
-    maximumFractionDigits: 2,
-  }).format(value);
+  if (abs >= 1_000_000) return `${sign}$${(abs / 1_000_000).toFixed(abs >= 10_000_000 ? 0 : 1)}M`;
+  if (abs >= 1_000) return `${sign}$${(abs / 1_000).toFixed(abs >= 10_000 ? 0 : 1)}k`;
+  return `${sign}$${abs.toFixed(0)}`;
 }
 
-export function fmtPct(value: number, digits = 1): string {
-  return `${(value * 100).toFixed(digits)}%`;
+export function fmtPct(n: number): string {
+  return `${(n * 100).toFixed(1)}%`;
 }
 
-export function fmtSign(value: number, digits = 2): string {
-  const sign = value > 0 ? "+" : "";
-  return `${sign}${value.toFixed(digits)}`;
+export function fmtPct0(n: number): string {
+  return `${Math.round(n * 100)}%`;
 }
 
-export function tierColor(tier: "S" | "A" | "B" | "C"): string {
-  switch (tier) {
-    case "S": return "bg-purple/15 text-purple border-purple/30";
-    case "A": return "bg-info/15 text-info border-info/30";
-    case "B": return "bg-success/15 text-success border-success/30";
-    case "C": return "bg-muted text-muted-foreground border-border";
-  }
+export function fmtSign(n: number): string {
+  const sign = n > 0 ? "+" : n < 0 ? "-" : "";
+  return `${sign}$${Math.abs(n).toLocaleString("en-US", { maximumFractionDigits: 0 })}`;
+}
+
+export function tierColor(tier: keyof typeof TIER_COLORS): string {
+  return TIER_COLORS[tier];
 }
 
 export function categoryColor(category: string): string {
-  const c = category.toLowerCase();
-  if (c.includes("politic")) return "bg-info/15 text-info border-info/30";
-  if (c.includes("crypto")) return "bg-warning/15 text-warning border-warning/30";
-  if (c.includes("sport")) return "bg-success/15 text-success border-success/30";
-  if (c.includes("econ")) return "bg-purple/15 text-purple border-purple/30";
-  if (c.includes("culture") || c.includes("entertain")) return "bg-destructive/15 text-destructive border-destructive/30";
-  return "bg-muted text-muted-foreground border-border";
+  return CATEGORY_COLORS[category] ?? "#6b7280";
 }
