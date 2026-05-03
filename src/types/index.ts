@@ -1,6 +1,6 @@
 export type Tier = "S" | "A" | "B" | "C";
 export type Direction = "YES" | "NO";
-export type SuggestionStatus = "active" | "expired" | "executed" | "dismissed";
+export type SuggestionStatus = "active" | "expired" | "executed" | "dismissed" | "won" | "lost";
 export type AlertChannel = "telegram" | "discord" | "email";
 
 export interface Market {
@@ -43,6 +43,7 @@ export interface Suggestion {
   reasoning: string;
   /** wallet labels */
   walletSignals: string[];
+  keySignals?: string[];
   status: SuggestionStatus | "active";
   createdAt: string;
   expiresAt: string;
