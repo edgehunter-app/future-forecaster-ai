@@ -1,25 +1,28 @@
 import { NavLink } from "react-router-dom";
 import {
   LayoutDashboard, Lightbulb, Wallet, BarChart2, History, Settings,
-  ChevronLeft, ChevronRight, Moon, Sun, Activity,
+  ChevronLeft, ChevronRight, Moon, Sun, Activity, GitCompare,
 } from "lucide-react";
 import { useAppStore } from "@/store/useAppStore";
 import { cn } from "@/lib/utils";
-
-const navItems = [
-  { to: "/", label: "Dashboard", icon: LayoutDashboard, end: true },
-  { to: "/suggestions", label: "Suggestions", icon: Lightbulb, badge: 3 },
-  { to: "/wallets", label: "Wallets", icon: Wallet },
-  { to: "/markets", label: "Markets", icon: BarChart2 },
-  { to: "/history", label: "History", icon: History },
-  { to: "/settings", label: "Settings", icon: Settings },
-];
 
 export function Sidebar() {
   const open = useAppStore((s) => s.ui.sidebarOpen);
   const darkMode = useAppStore((s) => s.ui.darkMode);
   const toggleSidebar = useAppStore((s) => s.toggleSidebar);
   const toggleDarkMode = useAppStore((s) => s.toggleDarkMode);
+  const suggestionsCount = useAppStore((s) => s.suggestions.length);
+  const xmCount = useAppStore((s) => s.crossMarketOpps.length);
+
+  const navItems = [
+    { to: "/", label: "Dashboard", icon: LayoutDashboard, end: true } as const,
+    { to: "/suggestions", label: "Suggestions", icon: Lightbulb, badge: suggestionsCount, badgeColor: "info" as const },
+    { to: "/wallets", label: "Wallets", icon: Wallet },
+    { to: "/markets", label: "Markets", icon: BarChart2 },
+    { to: "/cross-market", label: "Cross-Market", icon: GitCompare, badge: xmCount || undefined, badgeColor: "warning" as const },
+    { to: "/history", label: "History", icon: History },
+    { to: "/settings", label: "Settings", icon: Settings },
+  ];
 
   return (
     <aside
