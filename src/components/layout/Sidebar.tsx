@@ -6,7 +6,7 @@ import {
 import { useAppStore } from "@/store/useAppStore";
 import { cn } from "@/lib/utils";
 
-export function Sidebar() {
+export function Sidebar({ mobileOpen = false, onMobileClose }: { mobileOpen?: boolean; onMobileClose?: () => void } = {}) {
   const open = useAppStore((s) => s.ui.sidebarOpen);
   const darkMode = useAppStore((s) => s.ui.darkMode);
   const toggleSidebar = useAppStore((s) => s.toggleSidebar);
@@ -25,12 +25,22 @@ export function Sidebar() {
   ];
 
   return (
-    <aside
-      className={cn(
-        "flex h-screen flex-col border-r border-sidebar-border bg-sidebar text-sidebar-foreground transition-all duration-200",
-        open ? "w-60" : "w-[68px]",
+    <>
+      {mobileOpen && (
+        <div
+          className="fixed inset-0 z-40 bg-black/60 backdrop-blur-sm lg:hidden"
+          onClick={onMobileClose}
+          aria-hidden
+        />
       )}
-    >
+      <aside
+        className={cn(
+          "fixed inset-y-0 left-0 z-50 flex h-screen flex-col border-r border-sidebar-border bg-sidebar text-sidebar-foreground transition-all duration-200",
+          "lg:static lg:translate-x-0",
+          mobileOpen ? "translate-x-0" : "-translate-x-full lg:translate-x-0",
+          open ? "w-60" : "w-[68px]",
+        )}
+      >
       <div className="flex items-center gap-2 px-4 py-4 border-b border-sidebar-border h-16">
         <div className="relative h-9 w-9 shrink-0 rounded-lg bg-gradient-to-br from-info to-purple flex items-center justify-center shadow-glow-blue">
           <Activity className="h-5 w-5 text-white" />
@@ -98,14 +108,15 @@ export function Sidebar() {
         </button>
         <button
           onClick={toggleSidebar}
-          className="flex w-full items-center gap-3 rounded-md px-3 py-2 text-sm text-sidebar-foreground hover:bg-sidebar-accent hover:text-foreground transition-colors"
+          className="hidden lg:flex w-full items-center gap-3 rounded-md px-3 py-2 text-sm text-sidebar-foreground hover:bg-sidebar-accent hover:text-foreground transition-colors"
           title={!open ? "Expand" : undefined}
         >
           {open ? <ChevronLeft className="h-[18px] w-[18px]" /> : <ChevronRight className="h-[18px] w-[18px]" />}
           {open && <span>Collapse</span>}
         </button>
       </div>
-    </aside>
+      </aside>
+    </>
   );
 }
 
