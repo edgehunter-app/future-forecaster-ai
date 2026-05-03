@@ -43,12 +43,13 @@ export async function analyzeMarketWithClaude(
 export async function analyzeAllMarkets(params: {
   markets: Market[];
   wallets: Wallet[];
-  crossMarketOpps: { polymarket: Market; kalshiYes: number; spread: number }[];
+  crossMarketOpps: { polymarket: Market; kalshiYes: number; spread: number; favoredPlatform: string }[];
   bankroll: number;
   kellyMultiplier: number;
   minConfidence: number;
+  maxPositionPct?: number;
 }): Promise<Suggestion[]> {
-  const { markets, wallets, crossMarketOpps, bankroll, kellyMultiplier, minConfidence } = params;
+  const { markets, wallets, crossMarketOpps, bankroll, kellyMultiplier, minConfidence, maxPositionPct = 5 } = params;
   const out: Suggestion[] = [];
   const top = markets.slice(0, 5);
   for (const m of top) {
@@ -56,9 +57,12 @@ export async function analyzeAllMarkets(params: {
     const r = await analyzeMarketWithClaude({
       market: m,
       wallets,
-      crossMarketData: xm ? { kalshiYes: xm.kalshiYes, spread: xm.spread } : null,
+      crossMarketData: xm
+        ? { kalshiYes: xm.kalshiYes, spread: xm.spread, favoredPlatform: xm.favoredPlatform }
+        : null,
       bankroll,
       kellyMultiplier,
+      maxPositionPct,
     });
     if (r && r.confidence >= minConfidence) {
       out.push({
