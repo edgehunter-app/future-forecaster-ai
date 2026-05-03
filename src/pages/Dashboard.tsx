@@ -1,10 +1,12 @@
-import { Lightbulb, Wallet as WalletIcon, BarChart2, TrendingUp, Zap, LineChart, Star } from "lucide-react";
+import { Link } from "react-router-dom";
+import { Lightbulb, Wallet as WalletIcon, BarChart2, TrendingUp, Zap, LineChart, Star, GitCompare, ArrowRight } from "lucide-react";
 import StatCard from "@/components/ui/StatCard";
 import SuggestionCard from "@/components/suggestions/SuggestionCard";
 import SafetyBanner from "@/components/ui/SafetyBanner";
 import { MOCK_SUGGESTIONS, MOCK_WALLETS, MOCK_MARKETS, MOCK_HISTORY } from "@/data/mockData";
 import { useAppStore } from "@/store/useAppStore";
-import { fmtUSD } from "@/lib/utils";
+import { fmtUSD, cn } from "@/lib/utils";
+import { useCrossMarket } from "@/hooks/useCrossMarket";
 
 const TIER_COLORS: Record<string, string> = {
   S: "#f59e0b",
@@ -126,6 +128,57 @@ export default function Dashboard() {
           </div>
         </div>
       </div>
+
+      {/* Cross-market opportunities */}
+      <CrossMarketStrip />
+    </div>
+  );
+}
+
+function CrossMarketStrip() {
+  const { opportunities, loading } = useCrossMarket();
+  return (
+    <div>
+      <div className="mb-3 flex items-center gap-2">
+        <GitCompare className="h-4 w-4 text-warning" />
+        <h2 className="text-sm font-semibold uppercase tracking-wide text-foreground">Cross-Market Opportunities</h2>
+        <Link to="/cross-market" className="ml-auto inline-flex items-center gap-1 text-xs font-semibold text-info hover:text-info/80">
+          View all <ArrowRight className="h-3 w-3" />
+        </Link>
+      </div>
+      {loading && opportunities.length === 0 ? (
+        <div className="flex gap-3 overflow-x-auto scrollbar-thin pb-2">
+          {[0, 1, 2].map((i) => (
+            <div key={i} className="h-24 min-w-[280px] animate-pulse rounded-lg border border-border bg-card" />
+          ))}
+        </div>
+      ) : opportunities.length === 0 ? (
+        <div className="rounded-lg border border-dashed border-border bg-card/40 p-6 text-center text-sm text-muted-foreground">
+          No opportunities detected
+        </div>
+      ) : (
+        <div className="flex gap-3 overflow-x-auto scrollbar-thin pb-2">
+          {opportunities.map((o) => {
+            const spreadPct = o.spread * 100;
+            const hi = spreadPct >= 10;
+            return (
+              <Link to="/cross-market" key={o.question}
+                className="min-w-[280px] max-w-[320px] flex-1 rounded-lg border border-border bg-card p-4 hover:border-foreground/20 transition-colors">
+                <div className="text-xs font-semibold text-foreground line-clamp-2 min-h-[32px]">{o.question}</div>
+                <div className="mt-3 flex items-center justify-between">
+                  <span className={cn(
+                    "rounded-full border px-2 py-0.5 text-[10px] font-bold uppercase",
+                    hi ? "border-success/40 bg-success/15 text-success" : "border-warning/40 bg-warning/15 text-warning",
+                  )}>{spreadPct.toFixed(1)}%</span>
+                  <span className="text-[11px] font-mono text-muted-foreground">
+                    Poly {(o.polyYes * 100).toFixed(0)}% · Kalshi {(o.kalshiYes * 100).toFixed(0)}%
+                  </span>
+                </div>
+              </Link>
+            );
+          })}
+        </div>
+      )}
     </div>
   );
 }

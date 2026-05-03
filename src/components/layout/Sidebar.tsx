@@ -1,25 +1,28 @@
 import { NavLink } from "react-router-dom";
 import {
   LayoutDashboard, Lightbulb, Wallet, BarChart2, History, Settings,
-  ChevronLeft, ChevronRight, Moon, Sun, Activity,
+  ChevronLeft, ChevronRight, Moon, Sun, Activity, GitCompare,
 } from "lucide-react";
 import { useAppStore } from "@/store/useAppStore";
 import { cn } from "@/lib/utils";
-
-const navItems = [
-  { to: "/", label: "Dashboard", icon: LayoutDashboard, end: true },
-  { to: "/suggestions", label: "Suggestions", icon: Lightbulb, badge: 3 },
-  { to: "/wallets", label: "Wallets", icon: Wallet },
-  { to: "/markets", label: "Markets", icon: BarChart2 },
-  { to: "/history", label: "History", icon: History },
-  { to: "/settings", label: "Settings", icon: Settings },
-];
 
 export function Sidebar() {
   const open = useAppStore((s) => s.ui.sidebarOpen);
   const darkMode = useAppStore((s) => s.ui.darkMode);
   const toggleSidebar = useAppStore((s) => s.toggleSidebar);
   const toggleDarkMode = useAppStore((s) => s.toggleDarkMode);
+  const suggestionsCount = useAppStore((s) => s.suggestions.length);
+  const xmCount = useAppStore((s) => s.crossMarketOpps.length);
+
+  const navItems = [
+    { to: "/", label: "Dashboard", icon: LayoutDashboard, end: true } as const,
+    { to: "/suggestions", label: "Suggestions", icon: Lightbulb, badge: suggestionsCount, badgeColor: "info" as const },
+    { to: "/wallets", label: "Wallets", icon: Wallet },
+    { to: "/markets", label: "Markets", icon: BarChart2 },
+    { to: "/cross-market", label: "Cross-Market", icon: GitCompare, badge: xmCount || undefined, badgeColor: "warning" as const },
+    { to: "/history", label: "History", icon: History },
+    { to: "/settings", label: "Settings", icon: Settings },
+  ];
 
   return (
     <aside
@@ -62,13 +65,21 @@ export function Sidebar() {
               >
                 <item.icon className="h-[18px] w-[18px] shrink-0" />
                 {open && <span className="flex-1 truncate">{item.label}</span>}
-                {open && item.badge !== undefined && (
-                  <span className="ml-auto inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-info/20 px-1.5 text-[10px] font-semibold text-info">
+                {open && item.badge !== undefined && item.badge > 0 && (
+                  <span className={cn(
+                    "ml-auto inline-flex h-5 min-w-5 items-center justify-center rounded-full px-1.5 text-[10px] font-semibold",
+                    item.badgeColor === "warning"
+                      ? "bg-warning/20 text-warning"
+                      : "bg-info/20 text-info",
+                  )}>
                     {item.badge}
                   </span>
                 )}
-                {!open && item.badge !== undefined && (
-                  <span className="absolute right-1 top-1 h-1.5 w-1.5 rounded-full bg-info" />
+                {!open && item.badge !== undefined && item.badge > 0 && (
+                  <span className={cn(
+                    "absolute right-1 top-1 h-1.5 w-1.5 rounded-full",
+                    item.badgeColor === "warning" ? "bg-warning" : "bg-info",
+                  )} />
                 )}
               </NavLink>
             </li>

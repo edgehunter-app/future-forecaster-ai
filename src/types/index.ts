@@ -14,6 +14,7 @@ export interface Market {
   endDate: string;
   trend: "up" | "down" | "flat";
   change24h: number;
+  source?: "polymarket" | "kalshi" | "both";
 }
 
 export interface Wallet {
@@ -62,4 +63,28 @@ export interface HistoryPoint {
   pnl: number;
   cumulative: number;
   win: boolean;
+}
+
+export interface CrossMarketOpp {
+  question: string;
+  polymarket: Market;
+  kalshi: Market;
+  polyYes: number;
+  kalshiYes: number;
+  spread: number;
+  edge: number;
+  favoredPlatform: "polymarket" | "kalshi";
+  direction: "YES" | "NO";
+  claudeAnalysis?: ClaudeAnalysis | null;
+}
+
+export interface ClaudeAnalysis {
+  direction: "YES" | "NO";
+  confidence: number;
+  edge: number;
+  suggestedAmount: number;
+  reasoning: string;
+  riskLevel: "low" | "medium" | "high";
+  keySignals: string[];
+  crossMarketEdge?: string | null;
 }

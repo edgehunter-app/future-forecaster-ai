@@ -2,9 +2,9 @@ import { useEffect, useState } from "react";
 import {
   Bell, Calculator, Check, Info, Moon, Save, Sliders, Sun, TrendingUp,
 } from "lucide-react";
-import Toggle from "@/components/ui/Toggle";
-import Tooltip from "@/components/ui/Tooltip";
-import { useToast } from "@/components/ui/Toast";
+import Toggle from "@/components/ui/AppToggle";
+import Tooltip from "@/components/ui/AppTooltip";
+import { useToast } from "@/components/ui/AppToast";
 import { useAppStore } from "@/store/useAppStore";
 import { cn, fmtUSD } from "@/lib/utils";
 import { MOCK_SUGGESTIONS } from "@/data/mockData";
@@ -209,6 +209,9 @@ export default function Settings() {
           {/* Alerts */}
           <Card>
             <CardHeader icon={Bell} title="Alert Channels" />
+            <p className="-mt-2 text-xs text-muted-foreground">
+              Add your API keys to the <code className="font-mono text-foreground">.env</code> file to enable live data and alerts. See <code className="font-mono text-foreground">.env.example</code> for reference.
+            </p>
 
             <ChannelSection
               name="Telegram"
