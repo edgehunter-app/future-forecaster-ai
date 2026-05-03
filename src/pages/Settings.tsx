@@ -496,4 +496,4 @@ function KalshiStatusRow() {
     </div>
   );
 }
-}
+
