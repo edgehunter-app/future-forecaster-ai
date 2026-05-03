@@ -4,6 +4,7 @@ import SuggestionCard from "@/components/suggestions/SuggestionCard";
 import EmptyState from "@/components/ui/EmptyState";
 import { cn, fmtUSD } from "@/lib/utils";
 import type { DirectionFilter, SortBy, StatusFilter } from "@/store/useAppStore";
+import { useSuggestionsDB } from "@/hooks/useSuggestionsDB";
 
 const CATEGORIES = ["All", "Economics", "Crypto", "Science", "Finance", "Politics"];
 const SORTS: { key: SortBy; label: string }[] = [
@@ -21,10 +22,15 @@ const STATUSES: { key: StatusFilter; label: string }[] = [
 ];
 
 export default function Suggestions() {
-  const suggestions = useAppStore((s) => s.suggestions);
-  const bankroll = useAppStore((s) => s.settings.bankroll);
   const filters = useAppStore((s) => s.suggestionFilters);
   const setFilters = useAppStore((s) => s.setSuggestionFilters);
+  const statuses =
+    filters.status === "active" ? ["active"] :
+    filters.status === "expired" ? ["expired"] :
+    filters.status === "won" ? ["won"] :
+    filters.status === "lost" ? ["lost"] : ["active"];
+  const { suggestions, dismissSuggestion, markOutcome } = useSuggestionsDB(statuses);
+  const bankroll = useAppStore((s) => s.settings.bankroll);
 
   const filtered = suggestions
     .filter((s) => filters.category === "All" || s.category === filters.category)
@@ -116,7 +122,15 @@ export default function Suggestions() {
         />
       ) : (
         <div className="grid grid-cols-1 gap-5 xl:grid-cols-2">
-          {filtered.map((s) => <SuggestionCard key={s.id} suggestion={s} bankroll={bankroll} />)}
+          {filtered.map((s) => (
+            <SuggestionCard
+              key={s.id}
+              suggestion={s}
+              bankroll={bankroll}
+              onDismiss={() => dismissSuggestion(s.id)}
+              onMarkOutcome={(o) => markOutcome(s.id, o)}
+            />
+          ))}
         </div>
       )}
     </div>
