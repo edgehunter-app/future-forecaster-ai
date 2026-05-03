@@ -1,9 +1,10 @@
 import { useEffect, useState } from "react";
-import { ArrowRight, Brain, ChevronDown, ChevronUp, GitCompare, RotateCw, SearchX } from "lucide-react";
+import { ArrowRight, Brain, ChevronDown, ChevronUp, GitCompare, Loader2, RotateCw, SearchX, ShieldAlert, X } from "lucide-react";
 import { useCrossMarket } from "@/hooks/useCrossMarket";
 import { useAppStore } from "@/store/useAppStore";
 import { analyzeMarketWithClaude } from "@/lib/claude";
 import EmptyState from "@/components/ui/EmptyState";
+import ConfidenceBar from "@/components/ui/ConfidenceBar";
 import { cn, fmtUSD } from "@/lib/utils";
 import type { CrossMarketOpp, ClaudeAnalysis } from "@/types";
 
@@ -72,8 +73,10 @@ function OpportunityCard({ opp }: { opp: CrossMarketOpp }) {
   const wallets = useAppStore((s) => s.trackedWallets);
   const bankroll = useAppStore((s) => s.settings.bankroll);
   const kelly = useAppStore((s) => s.settings.kellyMultiplier);
+  const maxPosition = useAppStore((s) => s.settings.maxPosition);
   const [analysis, setAnalysis] = useState<ClaudeAnalysis | null>(null);
   const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   const spreadPct = opp.spread * 100;
   const spreadColor = spreadPct >= 10 ? "success" : "warning";
@@ -81,12 +84,19 @@ function OpportunityCard({ opp }: { opp: CrossMarketOpp }) {
 
   const analyze = async () => {
     setLoading(true);
+    setError(null);
     const market = polyFav ? opp.polymarket : opp.kalshi;
     const r = await analyzeMarketWithClaude({
       market, wallets, bankroll, kellyMultiplier: kelly,
-      crossMarketData: { kalshiYes: opp.kalshiYes, spread: opp.spread },
+      maxPositionPct: maxPosition * 100,
+      crossMarketData: {
+        kalshiYes: opp.kalshiYes,
+        spread: opp.spread,
+        favoredPlatform: opp.favoredPlatform,
+      },
     });
-    setAnalysis(r);
+    if (r) setAnalysis(r);
+    else setError("No strong signal detected on this market right now.");
     setLoading(false);
   };
 
@@ -122,23 +132,40 @@ function OpportunityCard({ opp }: { opp: CrossMarketOpp }) {
         <span className="text-xs font-mono text-success font-semibold">+{(opp.edge * 100).toFixed(1)}% estimated edge</span>
         <button onClick={analyze} disabled={loading}
           className="ml-auto inline-flex items-center gap-1.5 rounded-md border border-purple/40 bg-purple/10 px-3 py-1.5 text-xs font-semibold text-purple hover:bg-purple/20 transition-colors disabled:opacity-50">
-          <Brain className={cn("h-3.5 w-3.5", loading && "animate-pulse")} />
+          {loading ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Brain className="h-3.5 w-3.5" />}
           {loading ? "Analyzing..." : "Analyze with Claude"}
         </button>
       </div>
 
+      {error && !analysis && (
+        <div className="mt-3 rounded-md border border-destructive/40 bg-destructive/10 px-3 py-2 text-xs text-destructive">
+          {error}
+        </div>
+      )}
+
       {analysis && (
-        <div className="mt-4 rounded-md border border-purple/30 bg-purple/5 p-4 space-y-2">
+        <div className="mt-4 relative rounded-md border border-purple/30 bg-purple/5 p-4 space-y-3">
+          <button onClick={() => setAnalysis(null)}
+            className="absolute right-2 top-2 rounded p-1 text-muted-foreground hover:text-foreground hover:bg-muted/40 transition-colors">
+            <X className="h-3.5 w-3.5" />
+          </button>
           <div className="flex items-center gap-2 text-xs font-semibold text-purple uppercase tracking-wide">
             <Brain className="h-3.5 w-3.5" /> Claude Analysis
           </div>
+          <div className="flex flex-wrap items-center gap-2 text-xs font-mono">
+            <span className={cn("rounded-md px-2 py-0.5 font-bold",
+              analysis.direction === "YES" ? "bg-success/20 text-success" : "bg-destructive/20 text-destructive")}>
+              {analysis.direction}
+            </span>
+            <span className="font-bold text-foreground">{fmtUSD(analysis.suggestedAmount)}</span>
+            <span className="text-success">+{(analysis.edge * 100).toFixed(1)}% edge</span>
+            <span className="text-warning capitalize">{analysis.riskLevel} risk</span>
+          </div>
           <p className="text-sm text-foreground leading-relaxed">{analysis.reasoning}</p>
-          <div className="flex flex-wrap gap-3 text-xs font-mono">
-            <span>Direction: <span className="font-bold text-foreground">{analysis.direction}</span></span>
-            <span>Confidence: <span className="font-bold text-info">{analysis.confidence}%</span></span>
-            <span>Edge: <span className="font-bold text-success">+{(analysis.edge * 100).toFixed(1)}%</span></span>
-            <span>Suggested: <span className="font-bold text-foreground">{fmtUSD(analysis.suggestedAmount)}</span></span>
-            <span>Risk: <span className="font-bold text-warning">{analysis.riskLevel}</span></span>
+          <ConfidenceBar value={analysis.confidence} size="sm" />
+          <div className="flex items-start gap-2 rounded-md border border-warning/30 bg-warning/10 px-2.5 py-1.5 text-[11px] text-warning">
+            <ShieldAlert className="h-3 w-3 mt-0.5 shrink-0" />
+            <span>AI suggestion only. Verify independently before trading.</span>
           </div>
         </div>
       )}
