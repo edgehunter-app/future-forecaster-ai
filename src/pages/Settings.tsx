@@ -209,6 +209,9 @@ export default function Settings() {
           {/* Alerts */}
           <Card>
             <CardHeader icon={Bell} title="Alert Channels" />
+            <p className="-mt-2 text-xs text-muted-foreground">
+              Add your API keys to the <code className="font-mono text-foreground">.env</code> file to enable live data and alerts. See <code className="font-mono text-foreground">.env.example</code> for reference.
+            </p>
 
             <ChannelSection
               name="Telegram"
