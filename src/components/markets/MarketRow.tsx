@@ -43,4 +43,5 @@ export function MarketRow({ market: m }: Props) {
   );
 }
 
-export default MarketRow;
+import { memo as __memo } from "react";
+export default __memo(MarketRow);

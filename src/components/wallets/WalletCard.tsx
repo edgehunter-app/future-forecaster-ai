@@ -69,4 +69,5 @@ function Metric({ label, value, color }: { label: string; value: string; color?:
   );
 }
 
-export default WalletCard;
+import { memo as __memo } from "react";
+export default __memo(WalletCard);
