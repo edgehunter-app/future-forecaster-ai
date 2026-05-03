@@ -1,6 +1,6 @@
 import { create } from "zustand";
 import { persist, createJSONStorage } from "zustand/middleware";
-import type { Wallet, Suggestion, Market } from "@/types";
+import type { Wallet, Suggestion, Market, CrossMarketOpp } from "@/types";
 import { MOCK_WALLETS, MOCK_SUGGESTIONS, MOCK_MARKETS } from "@/data/mockData";
 
 export interface AlertChannelTelegram { enabled: boolean; chatId: string; }
@@ -54,6 +54,8 @@ export interface AppState {
   markets: Market[];
   suggestionFilters: SuggestionFilters;
   marketFilters: MarketFilters;
+  crossMarketOpps: CrossMarketOpp[];
+  setCrossMarketOpps: (opps: CrossMarketOpp[]) => void;
 
   updateSettings: (partial: Partial<SettingsState>) => void;
   updateAlerts: (
@@ -103,6 +105,8 @@ export const useAppStore = create<AppState>()(
       markets: MOCK_MARKETS,
       suggestionFilters: { category: "All", direction: "all", status: "active", sortBy: "confidence" },
       marketFilters: { searchQuery: "", category: "All" },
+      crossMarketOpps: [],
+      setCrossMarketOpps: (opps) => set({ crossMarketOpps: opps }),
 
       updateSettings: (partial) => set((s) => ({ settings: { ...s.settings, ...partial } })),
       updateAlerts: (channel, partial) =>
