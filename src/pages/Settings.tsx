@@ -211,6 +211,7 @@ export default function Settings() {
           <Card>
             <CardHeader icon={Key} title="API Keys & Services" />
             <ClaudeStatusRow />
+            <KalshiStatusRow />
           </Card>
 
           {/* Alerts */}
