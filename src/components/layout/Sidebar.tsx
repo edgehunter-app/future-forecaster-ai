@@ -1,9 +1,10 @@
 import { NavLink } from "react-router-dom";
 import {
   LayoutDashboard, Lightbulb, Wallet, BarChart2, History, Settings,
-  ChevronLeft, ChevronRight, Moon, Sun, Activity, GitCompare,
+  ChevronLeft, ChevronRight, Moon, Sun, Activity, GitCompare, Download,
 } from "lucide-react";
 import { useAppStore } from "@/store/useAppStore";
+import { usePWA } from "@/hooks/usePWA";
 import { cn } from "@/lib/utils";
 
 export function Sidebar({ mobileOpen = false, onMobileClose }: { mobileOpen?: boolean; onMobileClose?: () => void } = {}) {
@@ -13,6 +14,7 @@ export function Sidebar({ mobileOpen = false, onMobileClose }: { mobileOpen?: bo
   const toggleDarkMode = useAppStore((s) => s.toggleDarkMode);
   const suggestionsCount = useAppStore((s) => s.suggestions.length);
   const xmCount = useAppStore((s) => s.crossMarketOpps.length);
+  const { canInstall, isInstalled, install } = usePWA();
 
   const navItems = [
     { to: "/", label: "Dashboard", icon: LayoutDashboard, end: true } as const,
@@ -98,6 +100,16 @@ export function Sidebar({ mobileOpen = false, onMobileClose }: { mobileOpen?: bo
       </nav>
 
       <div className="border-t border-sidebar-border p-2 space-y-1">
+        {canInstall && !isInstalled && (
+          <button
+            onClick={() => void install()}
+            className="flex w-full items-center gap-3 rounded-md px-3 py-2 text-sm text-info hover:bg-sidebar-accent transition-colors"
+            title={!open ? "Install App" : undefined}
+          >
+            <Download className="h-[18px] w-[18px]" />
+            {open && <span>Install App</span>}
+          </button>
+        )}
         <button
           onClick={toggleDarkMode}
           className="flex w-full items-center gap-3 rounded-md px-3 py-2 text-sm text-sidebar-foreground hover:bg-sidebar-accent hover:text-foreground transition-colors"
