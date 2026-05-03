@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import {
-  Bell, Calculator, Check, Info, Moon, Save, Sliders, Sun, TrendingUp,
+  Bell, Brain, Calculator, Check, Info, Key, Moon, Save, Sliders, Sun, TrendingUp,
 } from "lucide-react";
 import Toggle from "@/components/ui/AppToggle";
 import Tooltip from "@/components/ui/AppTooltip";
@@ -9,6 +9,7 @@ import { useAppStore } from "@/store/useAppStore";
 import { cn, fmtUSD } from "@/lib/utils";
 import { MOCK_SUGGESTIONS } from "@/data/mockData";
 import { useProfile } from "@/hooks/useProfile";
+import { supabase } from "@/integrations/supabase/client";
 
 const KELLY_PRESETS = [
   { label: "1/10 Kelly", value: 0.10, hint: "Safest" },
@@ -206,6 +207,12 @@ export default function Settings() {
 
         {/* RIGHT 40% */}
         <div className="lg:col-span-2 space-y-6">
+          {/* API Keys */}
+          <Card>
+            <CardHeader icon={Key} title="API Keys & Services" />
+            <ClaudeStatusRow />
+          </Card>
+
           {/* Alerts */}
           <Card>
             <CardHeader icon={Bell} title="Alert Channels" />
