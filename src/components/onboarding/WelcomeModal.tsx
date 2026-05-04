@@ -29,7 +29,7 @@ export default function WelcomeModal() {
             <div className="mx-auto h-16 w-16 rounded-2xl bg-gradient-to-br from-info to-purple flex items-center justify-center mb-4">
               <Activity className="h-8 w-8 text-white" />
             </div>
-            <h2 className="text-2xl font-extrabold text-foreground">PolySignal</h2>
+            <h2 className="text-2xl font-extrabold text-foreground">EdgeHunter</h2>
             <p className="mt-1 text-sm text-info font-medium">Your prediction market edge, amplified</p>
             <p className="mt-4 text-sm text-muted-foreground">
               Track smart wallets, detect mispricings, and get AI-powered trade suggestions across Polymarket and Kalshi.
@@ -73,7 +73,7 @@ export default function WelcomeModal() {
             </div>
             <h2 className="text-lg font-bold text-foreground">Important: Suggestions Only</h2>
             <p className="mt-3 text-sm text-muted-foreground">
-              PolySignal provides analysis and position sizing suggestions. All trades must be executed manually
+              EdgeHunter provides analysis and position sizing suggestions. All trades must be executed manually
               by you. This is not financial advice. Prediction markets carry significant risk.
             </p>
             <label className="mt-5 inline-flex items-center gap-2 cursor-pointer">
@@ -86,7 +86,7 @@ export default function WelcomeModal() {
                 onClick={close}
                 className="inline-flex items-center gap-2 rounded-md bg-info px-4 py-2 text-sm font-semibold text-white hover:bg-info/90 disabled:opacity-50 disabled:cursor-not-allowed"
               >
-                <Check className="h-4 w-4" /> Start Using PolySignal
+                <Check className="h-4 w-4" /> Start Using EdgeHunter
               </button>
             </div>
           </div>

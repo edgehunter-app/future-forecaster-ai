@@ -69,7 +69,7 @@ export function SuggestionCard({ suggestion: s, bankroll, onDismiss, onMarkOutco
   if (s.currentOdds < 0.40) signals.push({ icon: Repeat, label: "Contrarian Play", color: COLORS.yes });
 
   const copyTrade = () => {
-    const txt = `PolySignal: ${s.question} → ${s.direction} ${fmtUSD(s.suggestedAmount)} (confidence: ${s.confidence}%)`;
+    const txt = `EdgeHunter: ${s.question} → ${s.direction} ${fmtUSD(s.suggestedAmount)} (confidence: ${s.confidence}%)`;
     void navigator.clipboard?.writeText(txt);
   };
 

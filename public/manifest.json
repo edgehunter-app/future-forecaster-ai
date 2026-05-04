@@ -1,6 +1,6 @@
 {
-  "name": "PolySignal",
-  "short_name": "PolySignal",
+  "name": "EdgeHunter",
+  "short_name": "EdgeHunter",
   "description": "Prediction market intelligence — track smart wallets, detect mispricings, get AI-powered trade suggestions",
   "start_url": "/",
   "display": "standalone",

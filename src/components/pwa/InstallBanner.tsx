@@ -3,7 +3,7 @@ import { Download, Share, Plus, X, Zap } from "lucide-react";
 import { usePWA } from "@/hooks/usePWA";
 import { cn } from "@/lib/utils";
 
-const DISMISS_KEY = "polysignal-install-dismissed";
+const DISMISS_KEY = "edgehunter-install-dismissed";
 const DELAY_MS = 30_000;
 
 export default function InstallBanner() {
@@ -32,7 +32,7 @@ export default function InstallBanner() {
               <Zap className="h-5 w-5 text-white" />
             </div>
             <div className="flex-1 min-w-0">
-              <div className="text-sm font-semibold text-foreground">Install PolySignal</div>
+              <div className="text-sm font-semibold text-foreground">Install EdgeHunter</div>
               <div className="text-xs text-muted-foreground">Add to home screen for quick access</div>
             </div>
             <button
@@ -78,7 +78,7 @@ function IOSInstructions({ onClose }: { onClose: () => void }) {
             Scroll down and tap <span className="font-semibold text-foreground">Add to Home Screen</span>
           </Step>
           <Step n={3} icon={<Zap className="h-5 w-5 text-white" />} iconBg>
-            Tap <span className="font-semibold text-foreground">Add</span> — PolySignal will appear on your home screen
+            Tap <span className="font-semibold text-foreground">Add</span> — EdgeHunter will appear on your home screen
           </Step>
         </div>
         <p className="mt-5 rounded-md border border-warning/40 bg-warning/10 px-3 py-2 text-xs text-warning">

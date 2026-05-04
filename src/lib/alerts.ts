@@ -7,7 +7,7 @@ export async function sendTelegramAlert({ chatId, suggestion, crossMarketEdge }:
   const token = import.meta.env.VITE_TELEGRAM_BOT_TOKEN;
   if (!token || !chatId) return false;
   const text = [
-    `*🎯 PolySignal Alert*`,
+    `*🎯 EdgeHunter Alert*`,
     ``,
     `*${suggestion.question}*`,
     ``,
@@ -50,7 +50,7 @@ export async function sendDiscordAlert({ webhookUrl, suggestion }: DcParams): Pr
             { name: "Edge", value: "+" + (suggestion.edge * 100).toFixed(1) + "%", inline: true },
             { name: "Reasoning", value: suggestion.reasoning, inline: false },
           ],
-          footer: { text: "PolySignal — Suggestion only, not financial advice" },
+          footer: { text: "EdgeHunter — Suggestion only, not financial advice" },
           timestamp: new Date().toISOString(),
         }],
       }),

@@ -147,7 +147,7 @@ export const useAppStore = create<AppState>()(
         set((s) => ({ marketFilters: { ...s.marketFilters, ...partial } })),
     }),
     {
-      name: "polysignal-store",
+      name: "edgehunter-store",
       storage: createJSONStorage(() => localStorage),
       partialize: (s) => ({ settings: s.settings, ui: { darkMode: s.ui.darkMode }, isDemoMode: s.isDemoMode }),
     },
