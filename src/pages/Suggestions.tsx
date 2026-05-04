@@ -11,7 +11,6 @@ import {
   getConfidenceTier,
   getConfidenceColor,
   getConfidenceBg,
-  getConfidenceBorder,
   type ConfidenceTier,
 } from "@/lib/confidenceColor";
 
