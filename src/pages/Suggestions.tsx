@@ -5,6 +5,7 @@ import EmptyState from "@/components/ui/EmptyState";
 import { cn, fmtUSD } from "@/lib/utils";
 import type { DirectionFilter, SortBy, StatusFilter } from "@/store/useAppStore";
 import { useSuggestionsDB } from "@/hooks/useSuggestionsDB";
+import { usePageTitle } from "@/hooks/usePageTitle";
 
 const CATEGORIES = ["All", "Economics", "Crypto", "Science", "Finance", "Politics"];
 const SORTS: { key: SortBy; label: string }[] = [
@@ -22,6 +23,7 @@ const STATUSES: { key: StatusFilter; label: string }[] = [
 ];
 
 export default function Suggestions() {
+  usePageTitle("Suggestions");
   const filters = useAppStore((s) => s.suggestionFilters);
   const setFilters = useAppStore((s) => s.setSuggestionFilters);
   const statuses =

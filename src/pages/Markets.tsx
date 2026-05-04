@@ -3,10 +3,12 @@ import { useAppStore } from "@/store/useAppStore";
 import { MOCK_MARKETS } from "@/data/mockData";
 import MarketRow from "@/components/markets/MarketRow";
 import { cn, fmtUSD } from "@/lib/utils";
+import { usePageTitle } from "@/hooks/usePageTitle";
 
 const CATEGORIES = ["All", "Economics", "Crypto", "Science", "Finance"];
 
 export default function Markets() {
+  usePageTitle("Markets");
   const { searchQuery: search, category: cat } = useAppStore((s) => s.marketFilters);
   const setMarketFilters = useAppStore((s) => s.setMarketFilters);
   const setSearch = (q: string) => setMarketFilters({ searchQuery: q });

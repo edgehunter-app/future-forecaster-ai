@@ -10,6 +10,7 @@ import { cn, fmtUSD } from "@/lib/utils";
 import { MOCK_SUGGESTIONS } from "@/data/mockData";
 import { useProfile } from "@/hooks/useProfile";
 import { supabase } from "@/integrations/supabase/client";
+import { usePageTitle } from "@/hooks/usePageTitle";
 
 const KELLY_PRESETS = [
   { label: "1/10 Kelly", value: 0.10, hint: "Safest" },
@@ -28,6 +29,7 @@ const SCAN_OPTS = [
 ];
 
 export default function Settings() {
+  usePageTitle("Settings");
   const settings = useAppStore((s) => s.settings);
   const updateSettings = useAppStore((s) => s.updateSettings);
   const updateAlerts = useAppStore((s) => s.updateAlerts);

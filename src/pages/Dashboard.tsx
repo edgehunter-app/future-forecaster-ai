@@ -13,6 +13,7 @@ import { useSuggestionsDB } from "@/hooks/useSuggestionsDB";
 import { useTrackedWallets } from "@/hooks/useTrackedWallets";
 import { analyzeMarketWithClaude } from "@/lib/claude";
 import type { ClaudeAnalysis } from "@/types";
+import { usePageTitle } from "@/hooks/usePageTitle";
 
 const TIER_COLORS: Record<string, string> = {
   S: "#f59e0b",
@@ -22,6 +23,7 @@ const TIER_COLORS: Record<string, string> = {
 };
 
 export default function Dashboard() {
+  usePageTitle("Dashboard");
   const bankroll = useAppStore((s) => s.settings.bankroll);
   const settings = useAppStore((s) => s.settings);
   const { suggestions, dismissSuggestion, markOutcome } = useSuggestionsDB();

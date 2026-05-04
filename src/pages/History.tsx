@@ -6,6 +6,7 @@ import { MOCK_HISTORY, MOCK_MARKETS } from "@/data/mockData";
 import { CATEGORY_COLORS, fmtSign, fmtUSD } from "@/lib/utils";
 import { useSuggestionsDB } from "@/hooks/useSuggestionsDB";
 import type { HistoryPoint } from "@/types";
+import { usePageTitle } from "@/hooks/usePageTitle";
 
 const CATEGORY_PNL: { name: string; value: number }[] = [
   { name: "Economics", value: 400 },
@@ -14,6 +15,7 @@ const CATEGORY_PNL: { name: string; value: number }[] = [
 ];
 
 export default function History() {
+  usePageTitle("History");
   const { suggestions } = useSuggestionsDB(["won", "lost", "dismissed"]);
 
   // Build history series from DB if we have any won/lost outcomes; else MOCK_HISTORY.

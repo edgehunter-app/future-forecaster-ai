@@ -7,8 +7,10 @@ import EmptyState from "@/components/ui/EmptyState";
 import ConfidenceBar from "@/components/ui/ConfidenceBar";
 import { cn, fmtUSD } from "@/lib/utils";
 import type { CrossMarketOpp, ClaudeAnalysis } from "@/types";
+import { usePageTitle } from "@/hooks/usePageTitle";
 
 export default function CrossMarket() {
+  usePageTitle("Cross-Market");
   const { opportunities, loading, lastScanned, kalshiAvailable, scan } = useCrossMarket();
   const setCrossMarketOpps = useAppStore((s) => s.setCrossMarketOpps);
   const [howOpen, setHowOpen] = useState(false);
