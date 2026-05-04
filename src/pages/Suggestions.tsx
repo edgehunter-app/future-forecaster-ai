@@ -6,6 +6,13 @@ import { cn, fmtUSD } from "@/lib/utils";
 import type { DirectionFilter, SortBy, StatusFilter } from "@/store/useAppStore";
 import { useSuggestionsDB } from "@/hooks/useSuggestionsDB";
 import { usePageTitle } from "@/hooks/usePageTitle";
+import { useState } from "react";
+import {
+  getConfidenceTier,
+  getConfidenceColor,
+  getConfidenceBg,
+  type ConfidenceTier,
+} from "@/lib/confidenceColor";
 
 const CATEGORIES = ["All", "Economics", "Crypto", "Science", "Finance", "Politics"];
 const SORTS: { key: SortBy; label: string }[] = [
@@ -33,11 +40,15 @@ export default function Suggestions() {
     filters.status === "lost" ? ["lost"] : ["active"];
   const { suggestions, dismissSuggestion, markOutcome } = useSuggestionsDB(statuses);
   const bankroll = useAppStore((s) => s.settings.bankroll);
+  const [activeTiers, setActiveTiers] = useState<ConfidenceTier[]>(["strong", "moderate", "weak"]);
+  const toggleTier = (t: ConfidenceTier) =>
+    setActiveTiers((prev) => (prev.includes(t) ? prev.filter((x) => x !== t) : [...prev, t]));
 
   const filtered = suggestions
     .filter((s) => filters.category === "All" || s.category === filters.category)
     .filter((s) => filters.direction === "all" || s.direction === filters.direction)
     .filter((s) => filters.status !== "active" || s.status === "active")
+    .filter((s) => activeTiers.includes(getConfidenceTier(s.confidence)))
     .sort((a, b) => {
       switch (filters.sortBy) {
         case "edge": return b.edge - a.edge;
@@ -85,6 +96,28 @@ export default function Suggestions() {
         </div>
 
         <div className="flex flex-wrap items-center gap-x-6 gap-y-3">
+          <FilterGroup label="Signal">
+            {(["strong", "moderate", "weak"] as ConfidenceTier[]).map((t) => {
+              const score = t === "strong" ? 70 : t === "moderate" ? 55 : 30;
+              const c = getConfidenceColor(score);
+              const active = activeTiers.includes(t);
+              return (
+                <button
+                  key={t}
+                  onClick={() => toggleTier(t)}
+                  className="inline-flex items-center gap-1.5 rounded-md border px-2.5 py-1 text-[11px] font-semibold capitalize transition-colors"
+                  style={{
+                    borderColor: active ? c : "hsl(var(--border))",
+                    background: active ? getConfidenceBg(score) : "transparent",
+                    color: active ? c : "hsl(var(--muted-foreground))",
+                  }}
+                >
+                  <span className="h-1.5 w-1.5 rounded-full" style={{ background: c }} />
+                  {t}
+                </button>
+              );
+            })}
+          </FilterGroup>
           <FilterGroup label="Sort by">
             {SORTS.map((o) => (
               <PillBtn key={o.key} active={filters.sortBy === o.key} onClick={() => setFilters({ sortBy: o.key })}>{o.label}</PillBtn>

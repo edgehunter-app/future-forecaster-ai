@@ -9,6 +9,14 @@ import Badge from "@/components/ui/Badge";
 import ConfidenceBar from "@/components/ui/ConfidenceBar";
 import { useAppStore } from "@/store/useAppStore";
 import { useToast } from "@/components/ui/AppToast";
+import {
+  getConfidenceColor,
+  getConfidenceBg,
+  getConfidenceBorder,
+  getConfidenceLabel,
+  getConfidenceAction,
+  getConfidenceTier,
+} from "@/lib/confidenceColor";
 
 const COLORS = {
   yes: "#10b981",
@@ -50,6 +58,14 @@ export function SuggestionCard({ suggestion: s, bankroll, onDismiss, onMarkOutco
   const dirColor = s.direction === "YES" ? COLORS.yes : COLORS.no;
   const catColor = categoryColor(s.category);
 
+  const confColor = getConfidenceColor(s.confidence);
+  const confBg = getConfidenceBg(s.confidence);
+  const confBorder = getConfidenceBorder(s.confidence);
+  const confLabel = getConfidenceLabel(s.confidence);
+  const confAction = getConfidenceAction(s.confidence, s.direction);
+  const confTier = getConfidenceTier(s.confidence);
+  const isWeak = confTier === "weak";
+
   const rawKelly = (s.edge * bankroll) / Math.max(s.currentOdds, 0.01);
   const quarterKelly = rawKelly * kellyMult;
   const maxCap = bankroll * 0.05;
@@ -75,35 +91,62 @@ export function SuggestionCard({ suggestion: s, bankroll, onDismiss, onMarkOutco
 
   return (
     <div
-      className="group relative rounded-lg bg-card p-5 transition-all duration-200 hover:-translate-y-0.5"
+      className="group relative rounded-lg bg-card p-5 transition-all duration-200 hover:-translate-y-0.5 overflow-hidden"
       style={{
-        border: `1px solid ${dirColor}33`,
-        boxShadow: `0 8px 24px -12px ${dirColor}1a`,
+        border: `1px solid ${confBorder}`,
+        boxShadow: `0 0 0 1px ${confColor}10, 0 4px 24px ${confColor}14`,
+        opacity: isWeak ? 0.7 : 1,
       }}
     >
-      {/* Status dot */}
-      <span className="absolute right-3 top-3 flex h-2.5 w-2.5">
-        {statusDot.pulse && (
-          <span className="absolute inline-flex h-full w-full rounded-full opacity-60 live-dot"
-            style={{ backgroundColor: statusDot.color }} />
-        )}
-        <span className="relative inline-flex h-2.5 w-2.5 rounded-full" style={{ backgroundColor: statusDot.color }} />
-      </span>
+      {isWeak && (
+        <span
+          className="pointer-events-none absolute -right-4 top-6 select-none font-extrabold tracking-widest"
+          style={{ fontSize: 48, color: confColor, opacity: 0.15, transform: "rotate(20deg)" }}
+        >
+          WEAK
+        </span>
+      )}
 
       {/* Top row */}
-      <div className="flex items-center gap-2 flex-wrap pr-6">
+      <div className="flex items-center gap-2 flex-wrap pr-2">
         <Badge color={catColor} small>{s.category}</Badge>
         <Badge color={dirColor}>{s.direction}</Badge>
-        <span className="ml-auto text-xs text-muted-foreground font-mono">{s.createdAt}</span>
+        <span
+          className="ml-auto inline-flex items-center gap-1.5 rounded-full px-2.5 py-1"
+          style={{ background: confBg, border: `1px solid ${confBorder}` }}
+        >
+          <span className="relative inline-flex h-2 w-2 rounded-full" style={{ background: confColor }}>
+            {statusDot.pulse && (
+              <span className="absolute inline-flex h-full w-full rounded-full opacity-60 live-dot" style={{ backgroundColor: confColor }} />
+            )}
+          </span>
+          <span className="text-[10px] font-bold tracking-wider" style={{ color: confColor }}>
+            {confLabel.toUpperCase()}
+          </span>
+        </span>
+        <span className="text-xs text-muted-foreground font-mono">{s.createdAt}</span>
       </div>
 
       <h3 className="mt-3 text-sm font-semibold leading-snug text-foreground">{s.question}</h3>
+
+      {/* Action strip */}
+      <div
+        className="mt-3 flex items-center justify-between rounded-md px-3 py-2"
+        style={{ background: confBg, border: `1px solid ${confBorder}` }}
+      >
+        <span className="text-[13px] font-bold" style={{ color: confColor }}>
+          {isWeak ? "Low Confidence — Consider Skipping" : confAction}
+        </span>
+        <span className="font-mono text-[11px]" style={{ color: confColor, opacity: 0.85 }}>
+          {s.confidence}% confidence
+        </span>
+      </div>
 
       {/* Metrics */}
       <div className="mt-4 grid grid-cols-3 gap-px overflow-hidden rounded-md border border-border bg-border">
         <Metric label="Current Odds" value={`${(s.currentOdds * 100).toFixed(0)}%`} color="hsl(var(--foreground))" />
         <Metric label="Edge" value={`+${(s.edge * 100).toFixed(1)}%`} color={COLORS.yes} />
-        <Metric label="Suggested" value={fmtUSD(s.suggestedAmount)} color={dirColor} />
+        <Metric label="Suggested" value={isWeak ? "—" : fmtUSD(s.suggestedAmount)} color={confColor} />
       </div>
 
       {/* Confidence */}

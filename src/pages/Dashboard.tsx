@@ -181,6 +181,13 @@ export default function Dashboard() {
             <Zap className="h-4 w-4 text-warning" />
             <h2 className="text-sm font-semibold uppercase tracking-wide text-foreground">Top Suggestions</h2>
           </div>
+          <div className="flex items-center gap-3 text-[11px] font-semibold font-mono">
+            <span style={{ color: "#10b981" }}>{suggestions.filter((s) => s.confidence >= 65).length} strong</span>
+            <span className="text-muted-foreground">·</span>
+            <span style={{ color: "#f59e0b" }}>{suggestions.filter((s) => s.confidence >= 50 && s.confidence < 65).length} moderate</span>
+            <span className="text-muted-foreground">·</span>
+            <span style={{ color: "#ef4444" }}>{suggestions.filter((s) => s.confidence < 50).length} weak</span>
+          </div>
           <div className="space-y-4">
             {suggestions.slice(0, 2).map((s) => (
               <SuggestionCard

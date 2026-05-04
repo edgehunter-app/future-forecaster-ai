@@ -1,15 +1,34 @@
 import type { Market } from "@/types";
 import Badge from "@/components/ui/Badge";
 import { cn, fmtUSD, categoryColor } from "@/lib/utils";
+import {
+  estimateMarketConfidence,
+  getConfidenceColor,
+  getConfidenceBg,
+  getConfidenceBorder,
+  getConfidenceLabel,
+} from "@/lib/confidenceColor";
+import { useState } from "react";
 
 interface Props { market: Market; }
 
 export function MarketRow({ market: m }: Props) {
   const isUp = m.change24h >= 0;
   const changeColor = isUp ? "text-success" : "text-destructive";
+  const score = estimateMarketConfidence(m);
+  const sColor = getConfidenceColor(score);
+  const sBg = getConfidenceBg(score);
+  const sBorder = getConfidenceBorder(score);
+  const sLabel = getConfidenceLabel(score);
+  const [hover, setHover] = useState(false);
 
   return (
-    <div className="group grid grid-cols-1 gap-4 rounded-lg border border-border bg-card p-4 cursor-pointer transition-all hover:bg-card/70 hover:border-foreground/15 md:grid-cols-[1fr_280px_110px] md:items-center">
+    <div
+      onMouseEnter={() => setHover(true)}
+      onMouseLeave={() => setHover(false)}
+      className="group grid grid-cols-1 gap-4 rounded-lg border border-border p-4 cursor-pointer transition-all hover:border-foreground/15 md:grid-cols-[1fr_260px_110px_140px] md:items-center"
+      style={{ borderLeft: `3px solid ${sColor}`, background: hover ? sBg : "hsl(var(--card))" }}
+    >
       {/* LEFT */}
       <div className="min-w-0">
         <div className="flex items-center gap-2 mb-1.5">
@@ -38,6 +57,18 @@ export function MarketRow({ market: m }: Props) {
         <div className={cn("text-xs font-mono font-semibold mt-0.5", changeColor)}>
           {isUp ? "▲" : "▼"} {Math.abs(m.change24h * 100).toFixed(1)}%
         </div>
+      </div>
+
+      {/* SIGNAL */}
+      <div className="md:text-right">
+        <div className="text-[10px] uppercase tracking-wide text-muted-foreground font-medium mb-1">Signal</div>
+        <span
+          className="inline-flex items-center gap-1.5 rounded-full px-2.5 py-1"
+          style={{ background: sBg, border: `1px solid ${sBorder}` }}
+        >
+          <span className="h-1.5 w-1.5 rounded-full" style={{ background: sColor }} />
+          <span className="text-[11px] font-semibold" style={{ color: sColor }}>{sLabel}</span>
+        </span>
       </div>
     </div>
   );

@@ -7,6 +7,12 @@ import { usePageTitle } from "@/hooks/usePageTitle";
 
 const CATEGORIES = ["All", "Economics", "Crypto", "Science", "Finance"];
 
+const LEGEND = [
+  { color: "#10b981", label: "Strong (65%+)" },
+  { color: "#f59e0b", label: "Moderate (50-64%)" },
+  { color: "#ef4444", label: "Weak (below 50%)" },
+];
+
 export default function Markets() {
   usePageTitle("Markets");
   const { searchQuery: search, category: cat } = useAppStore((s) => s.marketFilters);
@@ -64,6 +70,15 @@ export default function Markets() {
 
       {/* List */}
       <div className="space-y-3">
+        <div className="flex flex-wrap items-center gap-4 rounded-lg border border-border bg-card px-3.5 py-2">
+          <span className="text-[11px] text-muted-foreground">Signal strength:</span>
+          {LEGEND.map((l) => (
+            <div key={l.label} className="flex items-center gap-1.5">
+              <span className="h-2 w-2 rounded-full" style={{ background: l.color }} />
+              <span className="text-[11px] text-muted-foreground">{l.label}</span>
+            </div>
+          ))}
+        </div>
         {filtered.length === 0 && (
           <div className="rounded-lg border border-dashed border-border bg-card/40 p-8 text-center text-sm text-muted-foreground">
             No markets match your filters.
