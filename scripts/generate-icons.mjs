@@ -43,7 +43,7 @@ for (const [w,h] of splashes) {
   const iconSize = 192;
   const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="${w}" height="${h}">
     <rect width="${w}" height="${h}" fill="${bg}"/>
-    <text x="${w/2}" y="${h/2 + 140}" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="32" font-weight="700" fill="#ffffff" text-anchor="middle">PolySignal</text>
+    <text x="${w/2}" y="${h/2 + 140}" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="32" font-weight="700" fill="#ffffff" text-anchor="middle">EdgeHunter</text>
     <text x="${w/2}" y="${h/2 + 175}" font-family="-apple-system,Helvetica,Arial,sans-serif" font-size="16" fill="#9ca3af" text-anchor="middle">Prediction Market Intelligence</text>
   </svg>`;
   const iconPng = await sharp(Buffer.from(svgIcon(iconSize))).png().toBuffer();

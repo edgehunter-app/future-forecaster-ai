@@ -26,8 +26,8 @@ if ("serviceWorker" in navigator) {
     window.addEventListener("load", () => {
       navigator.serviceWorker
         .register("/sw.js")
-        .then((reg) => console.log("PolySignal SW registered:", reg.scope))
-        .catch((err) => console.warn("PolySignal SW registration failed:", err));
+        .then((reg) => console.log("EdgeHunter SW registered:", reg.scope))
+        .catch((err) => console.warn("EdgeHunter SW registration failed:", err));
     });
   }
 }

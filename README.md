@@ -1,4 +1,4 @@
-# PolySignal
+# EdgeHunter
 
 > Prediction market intelligence — track smart wallets, detect cross-market mispricings, get AI-powered trade suggestions across Polymarket and Kalshi.
 
@@ -45,7 +45,7 @@ src/
 
 ## Safety
 
-PolySignal never executes trades automatically. All suggestions require manual verification and execution. Not financial advice.
+EdgeHunter never executes trades automatically. All suggestions require manual verification and execution. Not financial advice.
 
 ## Tech Stack
 

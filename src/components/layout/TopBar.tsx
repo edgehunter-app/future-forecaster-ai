@@ -49,7 +49,7 @@ export function TopBar({ onMenuClick }: { onMenuClick?: () => void } = {}) {
     navigate("/");
   };
 
-  const meta = titles[pathname] ?? { title: "PolySignal" };
+  const meta = titles[pathname] ?? { title: "EdgeHunter" };
 
   return (
     <div>

@@ -1,4 +1,4 @@
-const CACHE_NAME = "polysignal-v1";
+const CACHE_NAME = "edgehunter-v1";
 
 const STATIC_ASSETS = [
   "/",
@@ -59,6 +59,6 @@ self.addEventListener("fetch", (event) => {
 
 self.addEventListener("sync", (event) => {
   if (event.tag === "sync-suggestions") {
-    event.waitUntil((async () => { console.log("PolySignal: background sync triggered"); })());
+    event.waitUntil((async () => { console.log("EdgeHunter: background sync triggered"); })());
   }
 });

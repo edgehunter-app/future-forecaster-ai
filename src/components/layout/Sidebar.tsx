@@ -49,7 +49,7 @@ export function Sidebar({ mobileOpen = false, onMobileClose }: { mobileOpen?: bo
         </div>
         {open && (
           <div className="flex items-center gap-2 overflow-hidden">
-            <span className="font-semibold text-base text-foreground tracking-tight">PolySignal</span>
+            <span className="font-semibold text-base text-foreground tracking-tight">EdgeHunter</span>
             <span className="relative flex h-2 w-2">
               <span className="absolute inline-flex h-full w-full rounded-full bg-success opacity-60 live-dot" />
               <span className="relative inline-flex h-2 w-2 rounded-full bg-success" />

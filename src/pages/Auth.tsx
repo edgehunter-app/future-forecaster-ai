@@ -60,7 +60,7 @@ export default function Auth() {
             <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-info/15 border border-info/30">
               <Activity className="h-5 w-5 text-info" />
             </div>
-            <span className="font-sans text-xl font-extrabold tracking-tight text-foreground">PolySignal</span>
+            <span className="font-sans text-xl font-extrabold tracking-tight text-foreground">EdgeHunter</span>
           </div>
           <p className="text-sm text-muted-foreground">Prediction market intelligence</p>
         </div>

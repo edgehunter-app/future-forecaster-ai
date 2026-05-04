@@ -10,7 +10,7 @@ export function SafetyBanner({ className }: { className?: string }) {
       <ShieldAlert className="mt-0.5 h-4 w-4 shrink-0 text-warning" />
       <div className="text-warning/90">
         <span className="font-semibold text-warning">Suggestion only.</span>{" "}
-        PolySignal never auto-trades. All execution requires your manual confirmation on Polymarket.
+        EdgeHunter never auto-trades. All execution requires your manual confirmation on Polymarket.
       </div>
     </div>
   );

@@ -31,7 +31,7 @@ export default class ErrorBoundary extends Component<{ children: ReactNode }, St
               Reload Page
             </button>
             <a
-              href="mailto:support@polysignal.app?subject=PolySignal%20Error"
+              href="mailto:support@edgehunter.app?subject=EdgeHunter%20Error"
               className="text-sm font-medium text-info hover:underline"
             >
               Report Issue
