@@ -1,7 +1,7 @@
 {
   "name": "EdgeHunter",
   "short_name": "EdgeHunter",
-  "description": "Prediction market intelligence — track smart wallets, detect mispricings, get AI-powered trade suggestions",
+  "description": "AI-powered prediction market intelligence. Stop guessing. Start hunting.",
   "start_url": "/",
   "display": "standalone",
   "orientation": "portrait",
@@ -19,7 +19,7 @@
     { "src": "/icons/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any maskable" }
   ],
   "shortcuts": [
-    { "name": "Dashboard", "url": "/", "description": "View your trading dashboard" },
+    { "name": "Dashboard", "url": "/", "description": "View your EdgeHunter dashboard" },
     { "name": "Suggestions", "url": "/suggestions", "description": "View current trade suggestions" },
     { "name": "Cross-Market", "url": "/cross-market", "description": "View cross-market opportunities" }
   ]

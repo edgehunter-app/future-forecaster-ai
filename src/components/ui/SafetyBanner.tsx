@@ -9,8 +9,8 @@ export function SafetyBanner({ className }: { className?: string }) {
     )}>
       <ShieldAlert className="mt-0.5 h-4 w-4 shrink-0 text-warning" />
       <div className="text-warning/90">
-        <span className="font-semibold text-warning">Suggestion only.</span>{" "}
-        EdgeHunter never auto-trades. All execution requires your manual confirmation on Polymarket.
+        <span className="font-semibold text-warning">EdgeHunter suggestion only.</span>{" "}
+        No auto-execution. Always verify independently before trading.
       </div>
     </div>
   );

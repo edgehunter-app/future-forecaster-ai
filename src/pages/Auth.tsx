@@ -62,7 +62,7 @@ export default function Auth() {
             </div>
             <span className="font-sans text-xl font-extrabold tracking-tight text-foreground">EdgeHunter</span>
           </div>
-          <p className="text-sm text-muted-foreground">Prediction market intelligence</p>
+          <p className="text-sm text-muted-foreground">Stop guessing. Start hunting.</p>
         </div>
 
         <div className="rounded-lg border border-border bg-card p-6 shadow-card">

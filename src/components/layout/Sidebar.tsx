@@ -48,12 +48,15 @@ export function Sidebar({ mobileOpen = false, onMobileClose }: { mobileOpen?: bo
           <Activity className="h-5 w-5 text-white" />
         </div>
         {open && (
-          <div className="flex items-center gap-2 overflow-hidden">
-            <span className="font-semibold text-base text-foreground tracking-tight">EdgeHunter</span>
-            <span className="relative flex h-2 w-2">
-              <span className="absolute inline-flex h-full w-full rounded-full bg-success opacity-60 live-dot" />
-              <span className="relative inline-flex h-2 w-2 rounded-full bg-success" />
-            </span>
+          <div className="flex flex-col overflow-hidden leading-tight">
+            <div className="flex items-center gap-2">
+              <span className="font-semibold text-base text-foreground tracking-tight">EdgeHunter</span>
+              <span className="relative flex h-2 w-2">
+                <span className="absolute inline-flex h-full w-full rounded-full bg-success opacity-60 live-dot" />
+                <span className="relative inline-flex h-2 w-2 rounded-full bg-success" />
+              </span>
+            </div>
+            <span className="text-[10px] text-muted-foreground truncate">Stop guessing. Start hunting.</span>
           </div>
         )}
       </div>
