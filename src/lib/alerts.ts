@@ -7,7 +7,7 @@ export async function sendTelegramAlert({ chatId, suggestion, crossMarketEdge }:
   const token = import.meta.env.VITE_TELEGRAM_BOT_TOKEN;
   if (!token || !chatId) return false;
   const text = [
-    `*🎯 EdgeHunter Alert*`,
+    `*EdgeHunter Alert*`,
     ``,
     `*${suggestion.question}*`,
     ``,

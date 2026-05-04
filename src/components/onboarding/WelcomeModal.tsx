@@ -30,7 +30,7 @@ export default function WelcomeModal() {
               <Activity className="h-8 w-8 text-white" />
             </div>
             <h2 className="text-2xl font-extrabold text-foreground">EdgeHunter</h2>
-            <p className="mt-1 text-sm text-info font-medium">Your prediction market edge, amplified</p>
+            <p className="mt-1 text-sm text-info font-medium">Stop guessing. Start hunting.</p>
             <p className="mt-4 text-sm text-muted-foreground">
               Track smart wallets, detect mispricings, and get AI-powered trade suggestions across Polymarket and Kalshi.
             </p>

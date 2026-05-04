@@ -5,8 +5,10 @@ import WalletCard from "@/components/wallets/WalletCard";
 import type { Wallet } from "@/types";
 import { scoreWallet, getTier } from "@/lib/walletScorer";
 import { useTrackedWallets } from "@/hooks/useTrackedWallets";
+import { usePageTitle } from "@/hooks/usePageTitle";
 
 export default function Wallets() {
+  usePageTitle("Wallets");
   const { wallets: tracked, addWallet, removeWallet } = useTrackedWallets();
 
   const [open, setOpen] = useState(false);
