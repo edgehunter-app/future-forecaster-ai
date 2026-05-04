@@ -14,7 +14,6 @@ import { useTrackedWallets } from "@/hooks/useTrackedWallets";
 import { analyzeMarketWithClaude } from "@/lib/claude";
 import type { ClaudeAnalysis } from "@/types";
 import { usePageTitle } from "@/hooks/usePageTitle";
-import { getConfidenceTier } from "@/lib/confidenceColor";
 
 const TIER_COLORS: Record<string, string> = {
   S: "#f59e0b",
