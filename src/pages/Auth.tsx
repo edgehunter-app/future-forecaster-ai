@@ -1,10 +1,11 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { Activity, Loader2 } from "lucide-react";
+import { Loader2 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAppStore } from "@/store/useAppStore";
 import { useToast } from "@/components/ui/AppToast";
 import { cn } from "@/lib/utils";
+import { EdgeHunterLogo } from "@/components/brand/EdgeHunterLogo";
 
 export default function Auth() {
   const navigate = useNavigate();
@@ -55,14 +56,12 @@ export default function Auth() {
   return (
     <div className="min-h-screen w-full flex items-center justify-center bg-background px-4">
       <div className="w-full max-w-md">
-        <div className="text-center mb-6">
-          <div className="inline-flex items-center gap-2 mb-3">
-            <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-info/15 border border-info/30">
-              <Activity className="h-5 w-5 text-info" />
-            </div>
-            <span className="font-sans text-xl font-extrabold tracking-tight text-foreground">EdgeHunter</span>
+        <div className="flex flex-col items-center gap-3 mb-6">
+          <EdgeHunterLogo size={64} variant="icon" />
+          <div className="text-center">
+            <p className="font-sans text-2xl font-extrabold tracking-tight text-foreground">EdgeHunter</p>
+            <p className="mt-1 text-sm text-muted-foreground">Stop guessing. Start hunting.</p>
           </div>
-          <p className="text-sm text-muted-foreground">Stop guessing. Start hunting.</p>
         </div>
 
         <div className="rounded-lg border border-border bg-card p-6 shadow-card">
