@@ -1,11 +1,12 @@
 import { NavLink } from "react-router-dom";
 import {
   LayoutDashboard, Lightbulb, Wallet, BarChart2, History, Settings,
-  ChevronLeft, ChevronRight, Moon, Sun, Activity, GitCompare, Download,
+  ChevronLeft, ChevronRight, Moon, Sun, GitCompare, Download,
 } from "lucide-react";
 import { useAppStore } from "@/store/useAppStore";
 import { usePWA } from "@/hooks/usePWA";
 import { cn } from "@/lib/utils";
+import { EdgeHunterLogo } from "@/components/brand/EdgeHunterLogo";
 
 export function Sidebar({ mobileOpen = false, onMobileClose }: { mobileOpen?: boolean; onMobileClose?: () => void } = {}) {
   const open = useAppStore((s) => s.ui.sidebarOpen);
@@ -44,20 +45,12 @@ export function Sidebar({ mobileOpen = false, onMobileClose }: { mobileOpen?: bo
         )}
       >
       <div className="flex items-center gap-2 px-4 py-4 border-b border-sidebar-border h-16">
-        <div className="relative h-9 w-9 shrink-0 rounded-lg bg-gradient-to-br from-info to-purple flex items-center justify-center shadow-glow-blue">
-          <Activity className="h-5 w-5 text-white" />
-        </div>
+        <EdgeHunterLogo size={open ? 36 : 32} variant={open ? "full" : "icon"} />
         {open && (
-          <div className="flex flex-col overflow-hidden leading-tight">
-            <div className="flex items-center gap-2">
-              <span className="font-semibold text-base text-foreground tracking-tight">EdgeHunter</span>
-              <span className="relative flex h-2 w-2">
-                <span className="absolute inline-flex h-full w-full rounded-full bg-success opacity-60 live-dot" />
-                <span className="relative inline-flex h-2 w-2 rounded-full bg-success" />
-              </span>
-            </div>
-            <span className="text-[10px] text-muted-foreground truncate">Stop guessing. Start hunting.</span>
-          </div>
+          <span className="relative ml-auto flex h-2 w-2 shrink-0">
+            <span className="absolute inline-flex h-full w-full rounded-full bg-success opacity-60 live-dot" />
+            <span className="relative inline-flex h-2 w-2 rounded-full bg-success" />
+          </span>
         )}
       </div>
 

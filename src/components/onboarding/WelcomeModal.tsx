@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { Activity, Shield, ArrowRight, Check } from "lucide-react";
+import { Shield, ArrowRight, Check } from "lucide-react";
+import { EdgeHunterLogo } from "@/components/brand/EdgeHunterLogo";
 
 const KEY = "hasSeenWelcome";
 
@@ -26,8 +27,11 @@ export default function WelcomeModal() {
       <div className="max-w-lg w-full rounded-xl border border-border bg-card p-6 sm:p-8 shadow-2xl">
         {step === 1 && (
           <div className="text-center">
-            <div className="mx-auto h-16 w-16 rounded-2xl bg-gradient-to-br from-info to-purple flex items-center justify-center mb-4">
-              <Activity className="h-8 w-8 text-white" />
+            <div
+              className="flex justify-center mb-5"
+              style={{ filter: "drop-shadow(0 0 24px #3b82f630)" }}
+            >
+              <EdgeHunterLogo size={80} variant="icon" />
             </div>
             <h2 className="text-2xl font-extrabold text-foreground">EdgeHunter</h2>
             <p className="mt-1 text-sm text-info font-medium">Stop guessing. Start hunting.</p>
