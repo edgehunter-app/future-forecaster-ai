@@ -506,3 +506,124 @@ function KalshiStatusRow() {
   );
 }
 
+
+function SportsOddsSection() {
+  const settings = useAppStore((s) => s.settings);
+  const updateSettings = useAppStore((s) => s.updateSettings);
+  const { showToast } = useToast();
+  const [keyInput, setKeyInput] = useState(settings.oddsApiKey || "");
+  const [testing, setTesting] = useState(false);
+  const hasKey = !!settings.oddsApiKey;
+  const alertChannelOk = settings.alerts.telegram.enabled || settings.alerts.discord.enabled;
+
+  const test = async () => {
+    if (!keyInput) return;
+    setTesting(true);
+    try {
+      const games = await fetchOdds("americanfootball_nfl", keyInput);
+      if (games.length > 0) showToast(`Connected — ${games.length} games found`, "success");
+      else showToast("Invalid key or API unavailable", "error");
+    } finally {
+      setTesting(false);
+    }
+  };
+
+  const save = () => {
+    updateSettings({ oddsApiKey: keyInput.trim() });
+    showToast("Odds API key saved", "success");
+  };
+
+  const gapPct = Math.round((settings.sportsGapThreshold ?? 0.08) * 100);
+
+  return (
+    <div className="space-y-4">
+      <div>
+        <div className="mb-2 flex items-center justify-between">
+          <label className="text-xs font-medium uppercase tracking-wide text-muted-foreground">Odds API Key</label>
+          <span className={cn(
+            "rounded-full border px-2 py-0.5 text-[10px] font-bold uppercase",
+            hasKey ? "border-success/40 bg-success/15 text-success" : "border-destructive/40 bg-destructive/15 text-destructive",
+          )}>
+            {hasKey ? "Connected" : "Not configured"}
+          </span>
+        </div>
+        <input
+          type="password"
+          value={keyInput}
+          onChange={(e) => setKeyInput(e.target.value)}
+          placeholder="Enter your Odds API key"
+          className="w-full rounded-md border border-border bg-background px-3 py-2 font-mono text-sm text-foreground focus:border-info focus:outline-none"
+        />
+        <div className="mt-2 flex gap-2">
+          <button onClick={save} className="rounded-md bg-info px-3 py-1.5 text-xs font-semibold text-white hover:bg-info/90">Save Key</button>
+          <button onClick={test} disabled={!keyInput || testing}
+            className="rounded-md border border-border bg-card px-3 py-1.5 text-xs font-semibold text-muted-foreground hover:text-foreground disabled:opacity-50">
+            {testing ? "Testing..." : "Test Connection"}
+          </button>
+        </div>
+        <p className="mt-2 text-[11px] text-muted-foreground">
+          <a href="https://the-odds-api.com" target="_blank" rel="noreferrer" className="text-info underline">
+            Get free key at the-odds-api.com
+          </a>{" · "}Free tier: 500 requests/month
+        </p>
+      </div>
+
+      <div>
+        <label className="text-xs font-medium uppercase tracking-wide text-muted-foreground">Favorite Sports</label>
+        <p className="mt-0.5 mb-2 text-[11px] text-muted-foreground">These leagues are scanned first</p>
+        <div className="flex flex-wrap gap-1.5">
+          {SPORTS.map((s) => {
+            const sel = settings.favoriteSports.includes(s.key);
+            return (
+              <button key={s.key}
+                onClick={() => {
+                  const next = sel
+                    ? settings.favoriteSports.filter((x) => x !== s.key)
+                    : [...settings.favoriteSports, s.key];
+                  updateSettings({ favoriteSports: next });
+                }}
+                className={cn(
+                  "rounded-full border px-3 py-1 text-xs font-semibold transition-colors",
+                  sel ? "border-info bg-info text-white"
+                      : "border-border bg-card text-muted-foreground hover:text-foreground",
+                )}>{s.label}</button>
+            );
+          })}
+        </div>
+      </div>
+
+      <div>
+        <label className="text-xs font-medium uppercase tracking-wide text-muted-foreground">Minimum Gap Threshold</label>
+        <p className="mt-0.5 mb-2 text-[11px] text-muted-foreground">Only surface mispricings above this %</p>
+        <div className="flex items-center gap-3">
+          <input type="range" min={5} max={20} step={1} value={gapPct}
+            onChange={(e) => updateSettings({ sportsGapThreshold: Number(e.target.value) / 100 })}
+            className="flex-1 accent-info" />
+          <span className="font-mono font-bold text-info w-12 text-right">{gapPct}%</span>
+        </div>
+        <p className="mt-1 text-[11px] text-muted-foreground">Showing gaps above {gapPct}%</p>
+      </div>
+
+      <div className={cn("rounded-md border border-border/60 bg-background/40 p-3", !alertChannelOk && "opacity-60")}>
+        <div className="flex items-start justify-between gap-3">
+          <div>
+            <div className="text-sm font-semibold text-foreground">Alert on sports mispricings</div>
+            <p className="mt-0.5 text-[11px] text-muted-foreground">
+              {alertChannelOk
+                ? "Send alert when gap above threshold found"
+                : "Configure Telegram or Discord first"}
+            </p>
+          </div>
+          <Toggle
+            enabled={settings.alertOnSportsMispricings}
+            onChange={(v) => alertChannelOk && updateSettings({ alertOnSportsMispricings: v })}
+          />
+        </div>
+      </div>
+
+      <p className="text-[11px] text-muted-foreground">
+        EdgeHunter displays odds data for informational purposes only. Not a gambling service.
+      </p>
+    </div>
+  );
+}
