@@ -15,7 +15,6 @@ export function Sidebar({ mobileOpen = false, onMobileClose }: { mobileOpen?: bo
   const toggleDarkMode = useAppStore((s) => s.toggleDarkMode);
   const suggestionsCount = useAppStore((s) => s.suggestions.length);
   const xmCount = useAppStore((s) => s.crossMarketOpps.length);
-  const oddsApiKey = useAppStore((s) => s.settings.oddsApiKey);
   const { canInstall, isInstalled, install } = usePWA();
 
   const navItems = [
@@ -24,7 +23,7 @@ export function Sidebar({ mobileOpen = false, onMobileClose }: { mobileOpen?: bo
     { to: "/wallets", label: "Wallets", icon: Wallet },
     { to: "/markets", label: "Markets", icon: BarChart2 },
     { to: "/cross-market", label: "Cross-Market", icon: GitCompare, badge: xmCount || undefined, badgeColor: "warning" as const },
-    { to: "/sports", label: "Sports", icon: Trophy, badge: undefined, badgeColor: "info" as const, locked: !oddsApiKey } as const,
+    { to: "/sports", label: "Sports", icon: Trophy, badge: undefined, badgeColor: "info" as const } as const,
     { to: "/history", label: "History", icon: History },
     { to: "/settings", label: "Settings", icon: Settings },
   ];
