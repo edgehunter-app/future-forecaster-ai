@@ -1,5 +1,7 @@
 import type { Suggestion } from "@/types";
 import type { SettingsState } from "@/store/useAppStore";
+import type { SportsMispricing } from "@/lib/oddsApi";
+import { getConfidenceColor } from "@/lib/confidenceColor";
 
 interface TgParams { chatId: string; suggestion: Suggestion; crossMarketEdge?: string; }
 
@@ -79,5 +81,77 @@ export async function dispatchAlert(
     // Email requires backend; mark as queued
     out.email = false;
   }
+  return out;
+}
+
+export async function sendSportsAlert(
+  m: SportsMispricing,
+  alertSettings: SettingsState["alerts"],
+): Promise<{ telegram: boolean; discord: boolean }> {
+  const out = { telegram: false, discord: false };
+  const tgToken = import.meta.env.VITE_TELEGRAM_BOT_TOKEN;
+
+  const tgText = [
+    `*EdgeHunter Sports Alert*`,
+    ``,
+    `${m.game.homeTeam} vs ${m.game.awayTeam}`,
+    `League: ${m.league}`,
+    ``,
+    `Polymarket:  ${(m.polyImplied * 100).toFixed(1)}%`,
+    `Vegas:       ${(m.vegasImplied * 100).toFixed(1)}%`,
+    `Gap:         ${(m.spread * 100).toFixed(1)}%`,
+    `Best book:   ${m.bestBook}`,
+    ``,
+    `Action: Buy ${m.direction} on Polymarket`,
+    `Edge: +${(m.edge * 100).toFixed(1)}%`,
+    ``,
+    `_${m.question}_`,
+    ``,
+    `⚠️ Odds comparison only. Not a gambling service.`,
+    `Must be 18+ to use sportsbooks. 1-800-522-4700`,
+    ``,
+    `EdgeHunter -- edgehunter.net`,
+  ].join("\n");
+
+  if (alertSettings.telegram.enabled && alertSettings.telegram.chatId && tgToken) {
+    try {
+      const r = await fetch(`https://api.telegram.org/bot${tgToken}/sendMessage`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ chat_id: alertSettings.telegram.chatId, text: tgText, parse_mode: "Markdown" }),
+      });
+      out.telegram = r.ok;
+    } catch {}
+  }
+
+  if (alertSettings.discord.enabled && alertSettings.discord.webhookUrl) {
+    const colorHex = parseInt(getConfidenceColor(m.confidence).replace("#", ""), 16);
+    try {
+      const r = await fetch(alertSettings.discord.webhookUrl, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          embeds: [{
+            title: `${m.game.homeTeam} vs ${m.game.awayTeam}`,
+            color: colorHex,
+            fields: [
+              { name: "League", value: m.league, inline: true },
+              { name: "Direction", value: `Buy ${m.direction} on Polymarket`, inline: true },
+              { name: "Polymarket", value: `${(m.polyImplied * 100).toFixed(1)}%`, inline: true },
+              { name: "Vegas", value: `${(m.vegasImplied * 100).toFixed(1)}%`, inline: true },
+              { name: "Gap", value: `${(m.spread * 100).toFixed(1)}%`, inline: true },
+              { name: "Edge", value: `+${(m.edge * 100).toFixed(1)}%`, inline: true },
+              { name: "Best book", value: m.bestBook, inline: false },
+              { name: "Question", value: m.question, inline: false },
+            ],
+            footer: { text: "EdgeHunter — Odds data only. Not a gambling service. 18+ | 1-800-522-4700" },
+            timestamp: new Date().toISOString(),
+          }],
+        }),
+      });
+      out.discord = r.ok;
+    } catch {}
+  }
+
   return out;
 }
