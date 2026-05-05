@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import {
-  Bell, Brain, Calculator, Check, Info, Key, Moon, Save, Sliders, Sun, TrendingUp,
+  Bell, Brain, Calculator, Check, Info, Key, Moon, Save, Sliders, Sun, TrendingUp, Trophy,
 } from "lucide-react";
 import Toggle from "@/components/ui/AppToggle";
 import Tooltip from "@/components/ui/AppTooltip";
@@ -11,6 +11,7 @@ import { MOCK_SUGGESTIONS } from "@/data/mockData";
 import { useProfile } from "@/hooks/useProfile";
 import { supabase } from "@/integrations/supabase/client";
 import { usePageTitle } from "@/hooks/usePageTitle";
+import { fetchOdds, SPORTS } from "@/lib/oddsApi";
 
 const KELLY_PRESETS = [
   { label: "1/10 Kelly", value: 0.10, hint: "Safest" },
@@ -214,6 +215,12 @@ export default function Settings() {
             <CardHeader icon={Key} title="API Keys & Services" />
             <ClaudeStatusRow />
             <KalshiStatusRow />
+          </Card>
+
+          {/* Sports & Odds */}
+          <Card>
+            <CardHeader icon={Trophy} title="Sports and Odds" />
+            <SportsOddsSection />
           </Card>
 
           {/* Alerts */}
