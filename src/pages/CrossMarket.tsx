@@ -8,12 +8,18 @@ import ConfidenceBar from "@/components/ui/ConfidenceBar";
 import { cn, fmtUSD } from "@/lib/utils";
 import type { CrossMarketOpp, ClaudeAnalysis } from "@/types";
 import { usePageTitle } from "@/hooks/usePageTitle";
+import { useSportsOdds } from "@/hooks/useSportsOdds";
+import SportsMispricingCard from "@/components/sports/SportsMispricingCard";
+import GamblingDisclaimer from "@/components/sports/GamblingDisclaimer";
 
 export default function CrossMarket() {
   usePageTitle("Cross-Market");
   const { opportunities, loading, lastScanned, kalshiAvailable, scan } = useCrossMarket();
   const setCrossMarketOpps = useAppStore((s) => s.setCrossMarketOpps);
+  const markets = useAppStore((s) => s.markets);
+  const { mispricings: sportsMispricings, hasApiKey: hasOddsKey } = useSportsOdds(markets);
   const [howOpen, setHowOpen] = useState(false);
+  const [view, setView] = useState<"all" | "prediction" | "sports">("all");
 
   useEffect(() => { setCrossMarketOpps(opportunities); }, [opportunities, setCrossMarketOpps]);
 
@@ -22,7 +28,9 @@ export default function CrossMarket() {
       <div className="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-4">
         <div>
           <h1 className="font-sans text-[22px] font-extrabold tracking-tight text-foreground">Cross-Market Radar</h1>
-          <p className="text-sm text-muted-foreground">Polymarket vs Kalshi price discrepancies</p>
+          <p className="text-sm text-muted-foreground">
+            {opportunities.length + sportsMispricings.length} opportunities — Polymarket vs Kalshi & Vegas
+          </p>
         </div>
         <div className="flex items-center gap-3">
           <span className="text-xs font-mono text-muted-foreground">
@@ -34,6 +42,22 @@ export default function CrossMarket() {
             {loading ? "Scanning..." : "Scan Now"}
           </button>
         </div>
+      </div>
+
+      <div className="inline-flex items-center gap-1 rounded-md border border-border bg-card p-1">
+        {([
+          { k: "all", label: "All" },
+          { k: "prediction", label: "Prediction Markets" },
+          { k: "sports", label: "Sports Books" },
+        ] as const).map((t) => (
+          <button key={t.k} onClick={() => setView(t.k)}
+            className={cn(
+              "rounded-sm px-3 py-1 text-xs font-semibold transition-colors",
+              view === t.k ? "bg-info text-white" : "text-muted-foreground hover:text-foreground",
+            )}>
+            {t.label}
+          </button>
+        ))}
       </div>
 
       {/* Kalshi public API info */}
@@ -77,9 +101,38 @@ export default function CrossMarket() {
         />
       )}
 
-      <div className="space-y-4">
-        {opportunities.map((o) => <OpportunityCard key={o.question} opp={o} />)}
-      </div>
+      {(view === "all" || view === "prediction") && (
+        <div className="space-y-4">
+          {view === "all" && opportunities.length > 0 && (
+            <h2 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">Prediction Markets</h2>
+          )}
+          {opportunities.map((o) => <OpportunityCard key={o.question} opp={o} />)}
+        </div>
+      )}
+
+      {(view === "all" || view === "sports") && hasOddsKey && (
+        <div className="space-y-4">
+          {view === "all" && sportsMispricings.length > 0 && (
+            <h2 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">Sports Books</h2>
+          )}
+          {sportsMispricings.length === 0 ? (
+            view === "sports" ? (
+              <EmptyState icon={SearchX} title="No sports gaps detected right now"
+                subtitle="Vegas and Polymarket are aligned on current sports markets." />
+            ) : null
+          ) : (
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {sportsMispricings.map((m) => <SportsMispricingCard key={m.id} mispricing={m} />)}
+            </div>
+          )}
+          <GamblingDisclaimer variant="compact" />
+        </div>
+      )}
+
+      {view === "sports" && !hasOddsKey && (
+        <EmptyState icon={SearchX} title="Sports odds not configured"
+          subtitle="Add your Odds API key in Settings to enable Vegas comparisons." />
+      )}
     </div>
   );
 }
