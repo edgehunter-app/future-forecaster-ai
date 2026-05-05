@@ -75,6 +75,9 @@ export function Sidebar({ mobileOpen = false, onMobileClose }: { mobileOpen?: bo
               >
                 <item.icon className="h-[18px] w-[18px] shrink-0" />
                 {open && <span className="flex-1 truncate">{item.label}</span>}
+                {open && "locked" in item && item.locked && (
+                  <Lock className="ml-auto h-3.5 w-3.5 text-muted-foreground" aria-label="Add Odds API key to enable" />
+                )}
                 {open && item.badge !== undefined && item.badge > 0 && (
                   <span className={cn(
                     "ml-auto inline-flex h-5 min-w-5 items-center justify-center rounded-full px-1.5 text-[10px] font-semibold",
