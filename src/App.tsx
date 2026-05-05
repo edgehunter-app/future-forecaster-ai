@@ -19,6 +19,7 @@ const Markets = lazy(() => import("./pages/Markets"));
 const History = lazy(() => import("./pages/History"));
 const Settings = lazy(() => import("./pages/Settings"));
 const CrossMarket = lazy(() => import("./pages/CrossMarket"));
+const Sports = lazy(() => import("./pages/Sports"));
 const NotFound = lazy(() => import("./pages/NotFound"));
 const Auth = lazy(() => import("./pages/Auth"));
 
@@ -58,6 +59,7 @@ function AppRoutes() {
         <Route path="/wallets" element={wrap(<Wallets />)} />
         <Route path="/markets" element={wrap(<Markets />)} />
         <Route path="/cross-market" element={wrap(<CrossMarket />)} />
+        <Route path="/sports" element={wrap(<Sports />)} />
         <Route path="/history" element={wrap(<History />)} />
         <Route path="/settings" element={wrap(<Settings />)} />
         <Route path="*" element={<Suspense fallback={<PageLoadingSkeleton />}><NotFound /></Suspense>} />

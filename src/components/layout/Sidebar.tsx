@@ -1,7 +1,7 @@
 import { NavLink } from "react-router-dom";
 import {
   LayoutDashboard, Lightbulb, Wallet, BarChart2, History, Settings,
-  ChevronLeft, ChevronRight, Moon, Sun, GitCompare, Download,
+  ChevronLeft, ChevronRight, Moon, Sun, GitCompare, Download, Trophy, Lock,
 } from "lucide-react";
 import { useAppStore } from "@/store/useAppStore";
 import { usePWA } from "@/hooks/usePWA";
@@ -15,6 +15,7 @@ export function Sidebar({ mobileOpen = false, onMobileClose }: { mobileOpen?: bo
   const toggleDarkMode = useAppStore((s) => s.toggleDarkMode);
   const suggestionsCount = useAppStore((s) => s.suggestions.length);
   const xmCount = useAppStore((s) => s.crossMarketOpps.length);
+  const oddsApiKey = useAppStore((s) => s.settings.oddsApiKey);
   const { canInstall, isInstalled, install } = usePWA();
 
   const navItems = [
@@ -23,6 +24,7 @@ export function Sidebar({ mobileOpen = false, onMobileClose }: { mobileOpen?: bo
     { to: "/wallets", label: "Wallets", icon: Wallet },
     { to: "/markets", label: "Markets", icon: BarChart2 },
     { to: "/cross-market", label: "Cross-Market", icon: GitCompare, badge: xmCount || undefined, badgeColor: "warning" as const },
+    { to: "/sports", label: "Sports", icon: Trophy, badge: undefined, badgeColor: "info" as const, locked: !oddsApiKey } as const,
     { to: "/history", label: "History", icon: History },
     { to: "/settings", label: "Settings", icon: Settings },
   ];
@@ -73,6 +75,9 @@ export function Sidebar({ mobileOpen = false, onMobileClose }: { mobileOpen?: bo
               >
                 <item.icon className="h-[18px] w-[18px] shrink-0" />
                 {open && <span className="flex-1 truncate">{item.label}</span>}
+                {open && "locked" in item && item.locked && (
+                  <Lock className="ml-auto h-3.5 w-3.5 text-muted-foreground" aria-label="Add Odds API key to enable" />
+                )}
                 {open && item.badge !== undefined && item.badge > 0 && (
                   <span className={cn(
                     "ml-auto inline-flex h-5 min-w-5 items-center justify-center rounded-full px-1.5 text-[10px] font-semibold",

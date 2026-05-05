@@ -3,6 +3,42 @@ export type Direction = "YES" | "NO";
 export type SuggestionStatus = "active" | "expired" | "executed" | "dismissed" | "won" | "lost";
 export type AlertChannel = "telegram" | "discord" | "email";
 
+export interface OddsBookmaker {
+  key: string;
+  title: string;
+  homeOdds: number;
+  awayOdds: number;
+  drawOdds?: number;
+}
+
+export interface OddsGame {
+  id: string;
+  sport: string;
+  league: string;
+  homeTeam: string;
+  awayTeam: string;
+  commenceTime: string;
+  bookmakers: OddsBookmaker[];
+  consensusProb: { home: number; away: number; draw?: number };
+}
+
+export interface SportsMispricing {
+  id: string;
+  question: string;
+  game: OddsGame;
+  polyImplied: number;
+  vegasImplied: number;
+  spread: number;
+  edge: number;
+  direction: "YES" | "NO";
+  favoredSide: string;
+  bestBook: string;
+  bestOdds: number;
+  confidence: number;
+  league: string;
+  claudeAnalysis?: unknown | null;
+}
+
 export interface Market {
   id: string;
   question: string;
