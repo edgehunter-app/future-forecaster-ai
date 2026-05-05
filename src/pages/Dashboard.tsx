@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { Link } from "react-router-dom";
-import { Lightbulb, Wallet as WalletIcon, BarChart2, TrendingUp, Zap, LineChart, Star, GitCompare, ArrowRight, Loader2, Brain, ShieldAlert } from "lucide-react";
+import { Lightbulb, Wallet as WalletIcon, BarChart2, TrendingUp, Zap, LineChart, Star, GitCompare, ArrowRight, Loader2, Brain, ShieldAlert, Trophy } from "lucide-react";
 import StatCard from "@/components/ui/StatCard";
 import SuggestionCard from "@/components/suggestions/SuggestionCard";
 import SafetyBanner from "@/components/ui/SafetyBanner";
@@ -9,6 +9,9 @@ import { MOCK_MARKETS, MOCK_HISTORY } from "@/data/mockData";
 import { useAppStore } from "@/store/useAppStore";
 import { fmtUSD, cn } from "@/lib/utils";
 import { useCrossMarket } from "@/hooks/useCrossMarket";
+import { useSportsOdds } from "@/hooks/useSportsOdds";
+import GamblingDisclaimer from "@/components/sports/GamblingDisclaimer";
+import { getConfidenceColor, getConfidenceTier } from "@/lib/confidenceColor";
 import { useSuggestionsDB } from "@/hooks/useSuggestionsDB";
 import { useTrackedWallets } from "@/hooks/useTrackedWallets";
 import { analyzeMarketWithClaude } from "@/lib/claude";
@@ -281,6 +284,78 @@ export default function Dashboard() {
 
       {/* Cross-market opportunities */}
       <CrossMarketStrip />
+      <SportsEdgeStrip />
+    </div>
+  );
+}
+
+function SportsEdgeStrip() {
+  const markets = useAppStore((s) => s.markets);
+  const { mispricings, hasApiKey, lastScanned } = useSportsOdds(markets);
+
+  if (!hasApiKey) {
+    return (
+      <div>
+        <div className="mb-3 flex items-center gap-2">
+          <Trophy className="h-4 w-4 text-warning" />
+          <h2 className="text-sm font-semibold uppercase tracking-wide text-foreground">Sports Edge</h2>
+        </div>
+        <div className="rounded-lg border border-border bg-card p-5 flex flex-col sm:flex-row sm:items-center gap-3">
+          <Trophy className="h-8 w-8 text-muted-foreground shrink-0" />
+          <div className="flex-1">
+            <div className="text-sm font-semibold text-foreground">Sports Edge Finder</div>
+            <p className="text-xs text-muted-foreground">Add your Odds API key to compare Vegas odds against Polymarket</p>
+          </div>
+          <Link to="/settings" className="rounded-md bg-info px-3 py-1.5 text-xs font-semibold text-white hover:bg-info/90">
+            Set up in Settings
+          </Link>
+        </div>
+        <GamblingDisclaimer variant="compact" className="mt-3" />
+      </div>
+    );
+  }
+
+  return (
+    <div>
+      <div className="mb-3 flex items-center gap-2">
+        <Trophy className="h-4 w-4 text-warning" />
+        <h2 className="text-sm font-semibold uppercase tracking-wide text-foreground">Sports Edge</h2>
+        <Link to="/sports" className="ml-auto inline-flex items-center gap-1 text-xs font-semibold text-info hover:text-info/80">
+          View all <ArrowRight className="h-3 w-3" />
+        </Link>
+      </div>
+      {mispricings.length === 0 ? (
+        <div className="rounded-lg border border-dashed border-border bg-card/40 p-5 text-center text-sm text-muted-foreground">
+          No sports gaps detected right now
+          {lastScanned && <div className="mt-1 text-[11px] font-mono">Last scanned: {lastScanned.toLocaleTimeString()}</div>}
+        </div>
+      ) : (
+        <div className="flex gap-3 overflow-x-auto scrollbar-thin pb-2">
+          {mispricings.slice(0, 6).map((m) => {
+            const color = getConfidenceColor(m.confidence);
+            const tier = getConfidenceTier(m.confidence);
+            return (
+              <Link to="/sports" key={m.id}
+                className="min-w-[260px] max-w-[300px] flex-1 rounded-lg border bg-card p-3 hover:border-foreground/20 transition-colors"
+                style={{ borderLeft: `3px solid ${color}` }}>
+                <div className="flex items-center justify-between gap-2">
+                  <span className="rounded-md border border-info/40 bg-info/15 px-1.5 py-0.5 text-[9px] font-bold uppercase text-info">{m.league}</span>
+                  <span className="rounded-full px-2 py-0.5 text-[10px] font-bold uppercase"
+                    style={{ color, backgroundColor: `${color}20`, border: `1px solid ${color}40` }}>
+                    {(m.spread * 100).toFixed(1)}%
+                  </span>
+                </div>
+                <div className="mt-2 text-xs font-semibold text-foreground line-clamp-2">{m.game.homeTeam} vs {m.game.awayTeam}</div>
+                <div className="mt-2 flex items-center gap-1.5">
+                  <span className="h-1.5 w-1.5 rounded-full" style={{ backgroundColor: color }} />
+                  <span className="text-[10px] uppercase font-semibold" style={{ color }}>{tier}</span>
+                </div>
+              </Link>
+            );
+          })}
+        </div>
+      )}
+      <GamblingDisclaimer variant="compact" className="mt-3" />
     </div>
   );
 }
