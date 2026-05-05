@@ -14,7 +14,6 @@ const CACHE_TTL = 30 * 60 * 1000;
 
 export function useSportsOdds(polymarkets: Market[]) {
   const settings = useAppStore((s) => s.settings);
-  const apiKey = settings.oddsApiKey ?? "";
   const threshold = settings.sportsGapThreshold ?? 0.05;
 
   const [mispricings, setMispricings] = useState<SportsMispricing[]>([]);
@@ -41,49 +40,46 @@ export function useSportsOdds(polymarkets: Market[]) {
   }, []);
 
   const scan = useCallback(async () => {
-    if (!apiKey || fetchingRef.current) return;
+    if (fetchingRef.current) return;
     if (remainingRequests !== null && remainingRequests <= 0) return;
     fetchingRef.current = true;
     setLoading(true);
     setError(null);
     try {
-      const results = await findSportsMispricings(polymarkets, apiKey, threshold);
+      const results = await findSportsMispricings(polymarkets, threshold);
       setMispricings(results);
       setLastScanned(new Date());
       setFromCache(false);
       setRemainingRequests(getRemainingRequests());
       localStorage.setItem(CACHE_KEY, JSON.stringify({ data: results, timestamp: Date.now() }));
     } catch {
-      setError("Sports odds unavailable. Check your Odds API key in Settings.");
+      setError("Sports odds unavailable right now. Try again shortly.");
     } finally {
       setLoading(false);
       fetchingRef.current = false;
     }
-  }, [apiKey, polymarkets, threshold, remainingRequests]);
+  }, [polymarkets, threshold, remainingRequests]);
 
   const loadGamesForSport = useCallback(
     async (sportKey: string) => {
-      if (!apiKey) return;
       setLoading(true);
       try {
-        const data = await fetchOdds(sportKey, apiKey);
+        const data = await fetchOdds(sportKey);
         setGames(data);
         setRemainingRequests(getRemainingRequests());
       } finally {
         setLoading(false);
       }
     },
-    [apiKey],
+    [],
   );
 
   useEffect(() => {
-    if (apiKey && polymarkets.length > 0) void scan();
-    const interval = setInterval(() => {
-      if (apiKey) void scan();
-    }, 30 * 60 * 1000);
+    if (polymarkets.length > 0) void scan();
+    const interval = setInterval(() => { void scan(); }, 30 * 60 * 1000);
     return () => clearInterval(interval);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [apiKey]);
+  }, []);
 
   return {
     mispricings,
@@ -93,7 +89,7 @@ export function useSportsOdds(polymarkets: Market[]) {
     fromCache,
     error,
     remainingRequests,
-    hasApiKey: !!apiKey,
+    hasApiKey: true,
     scan,
     loadGamesForSport,
   };
