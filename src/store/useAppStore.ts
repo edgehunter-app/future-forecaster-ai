@@ -21,8 +21,6 @@ export interface SettingsState {
   showWalletAddresses: boolean;
   compactCards: boolean;
   favoriteCategories: string[];
-  // TODO: Move oddsApiKey to Supabase secrets before public launch for security
-  oddsApiKey: string;
   favoriteSports: string[];
   sportsGapThreshold: number;
   alertOnSportsMispricings: boolean;
@@ -95,7 +93,6 @@ const defaultSettings: SettingsState = {
   showWalletAddresses: true,
   compactCards: false,
   favoriteCategories: ["Economics", "Crypto"],
-  oddsApiKey: "",
   favoriteSports: ["americanfootball_nfl", "basketball_nba"],
   sportsGapThreshold: 0.08,
   alertOnSportsMispricings: false,

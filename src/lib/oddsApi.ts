@@ -1,6 +1,5 @@
 import type { Market } from "@/types";
-
-const ODDS_BASE = "https://api.the-odds-api.com/v4";
+import { supabase } from "@/integrations/supabase/client";
 
 export interface OddsBookmaker {
   key: string;
@@ -71,32 +70,18 @@ export function impliedToAmerican(prob: number): string {
 let lastRemaining: number | null = null;
 export function getRemainingRequests(): number | null { return lastRemaining; }
 
-async function oddsFetch(url: string): Promise<any | null> {
-  const controller = new AbortController();
-  const timer = setTimeout(() => controller.abort(), 10000);
-  try {
-    const res = await fetch(url, { signal: controller.signal });
-    clearTimeout(timer);
-    const remaining = res.headers.get("x-requests-remaining");
-    if (remaining !== null) lastRemaining = Number(remaining);
-    if (!res.ok) {
-      console.warn("Odds API:", res.status, res.statusText);
-      return null;
-    }
-    return res.json();
-  } catch (err) {
-    clearTimeout(timer);
-    console.warn("Odds API fetch failed:", err);
-    return null;
+export async function fetchOdds(sportKey: string): Promise<OddsGame[]> {
+  const { data: resp, error } = await supabase.functions.invoke("fetch-sports-odds", {
+    body: { sportKey, regions: "us", markets: "h2h", oddsFormat: "american" },
+  });
+  if (error) {
+    console.warn("fetch-sports-odds error:", error);
+    return [];
   }
-}
-
-export async function fetchOdds(sportKey: string, apiKey: string): Promise<OddsGame[]> {
-  if (!apiKey) return [];
-  const url =
-    `${ODDS_BASE}/sports/${sportKey}/odds` +
-    `?apiKey=${apiKey}&regions=us&markets=h2h&oddsFormat=american`;
-  const data = await oddsFetch(url);
+  if (resp && typeof resp.remainingRequests === "number") {
+    lastRemaining = resp.remainingRequests;
+  }
+  const data = resp?.data;
   if (!Array.isArray(data)) return [];
   return data.map((g: any): OddsGame => {
     const books: OddsBookmaker[] = (g.bookmakers ?? []).map((b: any) => {
@@ -139,11 +124,9 @@ function matchGame(market: Market, games: OddsGame[]): OddsGame | null {
 
 export async function findSportsMispricings(
   polymarkets: Market[],
-  apiKey: string,
   minGap = 0.05,
 ): Promise<SportsMispricing[]> {
-  if (!apiKey) return [];
-  const results = await Promise.allSettled(SPORTS.slice(0, 4).map((s) => fetchOdds(s.key, apiKey)));
+  const results = await Promise.allSettled(SPORTS.slice(0, 4).map((s) => fetchOdds(s.key)));
   const allGames = results
     .filter((r) => r.status === "fulfilled")
     .flatMap((r) => (r as PromiseFulfilledResult<OddsGame[]>).value);

@@ -511,61 +511,40 @@ function SportsOddsSection() {
   const settings = useAppStore((s) => s.settings);
   const updateSettings = useAppStore((s) => s.updateSettings);
   const { showToast } = useToast();
-  const [keyInput, setKeyInput] = useState(settings.oddsApiKey || "");
   const [testing, setTesting] = useState(false);
-  const hasKey = !!settings.oddsApiKey;
   const alertChannelOk = settings.alerts.telegram.enabled || settings.alerts.discord.enabled;
 
   const test = async () => {
-    if (!keyInput) return;
     setTesting(true);
     try {
-      const games = await fetchOdds("americanfootball_nfl", keyInput);
+      const games = await fetchOdds("americanfootball_nfl");
       if (games.length > 0) showToast(`Connected — ${games.length} games found`, "success");
-      else showToast("Invalid key or API unavailable", "error");
+      else showToast("API unavailable or no games returned", "error");
     } finally {
       setTesting(false);
     }
-  };
-
-  const save = () => {
-    updateSettings({ oddsApiKey: keyInput.trim() });
-    showToast("Odds API key saved", "success");
   };
 
   const gapPct = Math.round((settings.sportsGapThreshold ?? 0.08) * 100);
 
   return (
     <div className="space-y-4">
-      <div>
-        <div className="mb-2 flex items-center justify-between">
-          <label className="text-xs font-medium uppercase tracking-wide text-muted-foreground">Odds API Key</label>
-          <span className={cn(
-            "rounded-full border px-2 py-0.5 text-[10px] font-bold uppercase",
-            hasKey ? "border-success/40 bg-success/15 text-success" : "border-destructive/40 bg-destructive/15 text-destructive",
-          )}>
-            {hasKey ? "Connected" : "Not configured"}
+      <div className="rounded-md border border-border/60 bg-background/40 p-3">
+        <div className="flex items-center justify-between gap-3">
+          <div>
+            <div className="text-sm font-semibold text-foreground">The Odds API</div>
+            <p className="mt-0.5 text-[11px] text-muted-foreground">
+              Key stored as a backend secret. Never exposed to the browser.
+            </p>
+          </div>
+          <span className="rounded-full border border-success/40 bg-success/15 px-2 py-0.5 text-[10px] font-bold uppercase text-success">
+            Connected
           </span>
         </div>
-        <input
-          type="password"
-          value={keyInput}
-          onChange={(e) => setKeyInput(e.target.value)}
-          placeholder="Enter your Odds API key"
-          className="w-full rounded-md border border-border bg-background px-3 py-2 font-mono text-sm text-foreground focus:border-info focus:outline-none"
-        />
-        <div className="mt-2 flex gap-2">
-          <button onClick={save} className="rounded-md bg-info px-3 py-1.5 text-xs font-semibold text-white hover:bg-info/90">Save Key</button>
-          <button onClick={test} disabled={!keyInput || testing}
-            className="rounded-md border border-border bg-card px-3 py-1.5 text-xs font-semibold text-muted-foreground hover:text-foreground disabled:opacity-50">
-            {testing ? "Testing..." : "Test Connection"}
-          </button>
-        </div>
-        <p className="mt-2 text-[11px] text-muted-foreground">
-          <a href="https://the-odds-api.com" target="_blank" rel="noreferrer" className="text-info underline">
-            Get free key at the-odds-api.com
-          </a>{" · "}Free tier: 500 requests/month
-        </p>
+        <button onClick={test} disabled={testing}
+          className="mt-3 rounded-md border border-border bg-card px-3 py-1.5 text-xs font-semibold text-muted-foreground hover:text-foreground disabled:opacity-50">
+          {testing ? "Testing..." : "Test Connection"}
+        </button>
       </div>
 
       <div>
