@@ -6,6 +6,8 @@ import {
   getRemainingRequests,
   fetchPolymarketSportsMarkets,
   getLastScanDebug,
+  getLastEdgeResponse,
+  getLastEdgeError,
   type OddsGame,
   type SportsMispricing,
   type SportsScanDebug,
@@ -26,6 +28,8 @@ export function useSportsOdds(polymarkets: Market[]) {
   const [polymarketsCount, setPolymarketsCount] = useState(0);
   const [vegasGamesCount, setVegasGamesCount] = useState(0);
   const [matchesCount, setMatchesCount] = useState(0);
+  const [edgeResponse, setEdgeResponse] = useState<any>(null);
+  const [edgeError, setEdgeError] = useState<any>(null);
   const [loading, setLoading] = useState(false);
   const [lastScanned, setLastScanned] = useState<Date | null>(null);
   const [fromCache, setFromCache] = useState(false);
@@ -64,6 +68,8 @@ export function useSportsOdds(polymarkets: Market[]) {
       setPolymarketsCount(dbg.polymarketSportsMarkets);
       const sm = await fetchPolymarketSportsMarkets(polymarkets);
       setSportsMarkets(sm);
+      setEdgeResponse(getLastEdgeResponse());
+      setEdgeError(getLastEdgeError());
       setLastScanned(new Date());
       setFromCache(false);
       setRemainingRequests(getRemainingRequests());
@@ -105,6 +111,8 @@ export function useSportsOdds(polymarkets: Market[]) {
     polymarketsCount,
     vegasGamesCount,
     matchesCount,
+    edgeResponse,
+    edgeError,
     threshold,
     loading,
     lastScanned,

@@ -70,10 +70,19 @@ export function impliedToAmerican(prob: number): string {
 let lastRemaining: number | null = null;
 export function getRemainingRequests(): number | null { return lastRemaining; }
 
+let lastEdgeResponse: any = null;
+let lastEdgeError: any = null;
+export function getLastEdgeResponse() { return lastEdgeResponse; }
+export function getLastEdgeError() { return lastEdgeError; }
+
 export async function fetchOdds(sportKey: string): Promise<OddsGame[]> {
   const { data: resp, error } = await supabase.functions.invoke("fetch-sports-odds", {
     body: { sportKey, regions: "us", markets: "h2h", oddsFormat: "american" },
   });
+  console.log("Edge function response:", resp);
+  console.log("Edge function error:", error);
+  lastEdgeResponse = resp;
+  lastEdgeError = error;
   if (error) {
     console.warn("fetch-sports-odds error:", error);
     return [];
@@ -111,10 +120,12 @@ export async function fetchOdds(sportKey: string): Promise<OddsGame[]> {
 }
 
 const SPORTS_KEYWORDS = [
-  "nfl", "nba", "mlb", "nhl", "epl", "mls",
-  "ufc", "mma", "super bowl", "championship",
-  "playoff", "finals", "world series",
-  "stanley cup", "march madness",
+  "win", "champion", "title", "cup", "bowl", "series",
+  "league", "tournament", "match", "game", "beat",
+  "defeat", "playoffs", "finals", "nfl", "nba", "mlb",
+  "nhl", "soccer", "football", "basketball", "baseball",
+  "hockey", "tennis", "golf", "ufc", "mma", "fight",
+  "player", "team", "score", "season",
 ];
 
 const NFL_NICKNAMES: Record<string, string[]> = {
@@ -154,8 +165,7 @@ export function isSportsMarket(market: Market): boolean {
   const q = market.question.toLowerCase();
   return (
     market.category === "Sports" ||
-    SPORTS_KEYWORDS.some((k) => q.includes(k)) ||
-    /soccer|basketball|football|baseball|hockey|tennis|golf/i.test(q)
+    SPORTS_KEYWORDS.some((k) => q.includes(k))
   );
 }
 
@@ -202,7 +212,10 @@ function matchGame(market: Market, games: OddsGame[]): OddsGame | null {
 export async function fetchPolymarketSportsMarkets(
   polymarkets: Market[],
 ): Promise<Market[]> {
-  return polymarkets.filter((m) => isSportsMarket(m));
+  const markets = polymarkets.filter((m) => isSportsMarket(m));
+  console.log("Polymarket sports candidates:", markets.length);
+  console.log("Sample questions:", markets.slice(0, 3).map((m) => m.question));
+  return markets;
 }
 
 export interface SportsScanDebug {
