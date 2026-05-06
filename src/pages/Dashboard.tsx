@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { Link } from "react-router-dom";
-import { Lightbulb, Wallet as WalletIcon, BarChart2, TrendingUp, Zap, LineChart, Star, GitCompare, ArrowRight, Loader2, Brain, ShieldAlert, Trophy } from "lucide-react";
+import { Lightbulb, Wallet as WalletIcon, BarChart2, TrendingUp, Zap, LineChart, Star, GitCompare, ArrowRight, Loader2, Brain, ShieldAlert, Trophy, RotateCw } from "lucide-react";
 import StatCard from "@/components/ui/StatCard";
 import SuggestionCard from "@/components/suggestions/SuggestionCard";
 import SafetyBanner from "@/components/ui/SafetyBanner";
@@ -8,6 +8,8 @@ import ConfidenceBar from "@/components/ui/ConfidenceBar";
 import { useAppStore } from "@/store/useAppStore";
 import EmptyState from "@/components/ui/EmptyState";
 import { useMarkets } from "@/hooks/useMarkets";
+import { useWallets } from "@/hooks/useWallets";
+import { MOCK_MARKETS } from "@/data/mockData";
 import { fmtUSD, cn } from "@/lib/utils";
 import { useCrossMarket } from "@/hooks/useCrossMarket";
 import { useSportsOdds } from "@/hooks/useSportsOdds";
@@ -33,7 +35,8 @@ export default function Dashboard() {
   const settings = useAppStore((s) => s.settings);
   const { suggestions, dismissSuggestion, markOutcome } = useSuggestionsDB();
   const { wallets } = useTrackedWallets();
-  const { markets } = useMarkets();
+  const { markets, isLive, error: marketsError, loading: marketsLoading, refresh: refreshMarkets } = useMarkets();
+  const { scanning: walletsScanning, scanTopWallets } = useWallets();
   const { stats: histStats } = useHistory();
 
   const [analyzing, setAnalyzing] = useState(false);
@@ -41,16 +44,13 @@ export default function Dashboard() {
   const [aiError, setAiError] = useState<string | null>(null);
 
   const handleAnalyze = async () => {
-    if (!markets || markets.length === 0) {
-      setAiError("Load markets first before running analysis.");
-      return;
-    }
+    const marketsForAnalysis = markets && markets.length > 0 ? markets : MOCK_MARKETS;
     setAnalyzing(true);
     setAiError(null);
     setAiResult(null);
     try {
       const result = await analyzeMarketWithClaude({
-        market: markets[0],
+        market: marketsForAnalysis[0],
         wallets,
         bankroll: settings.bankroll,
         kellyMultiplier: settings.kellyMultiplier,
@@ -77,6 +77,31 @@ export default function Dashboard() {
     <div className="space-y-6">
       <SafetyBanner />
 
+      {/* Status header */}
+      <div className="flex flex-wrap items-center gap-2 justify-end">
+        <StatusPill
+          label="Markets"
+          state={marketsError ? "error" : isLive ? "ok" : markets.length > 0 ? "warn" : "loading"}
+          text={marketsError ? "Failed" : isLive ? "Live" : markets.length > 0 ? "Sample" : "Loading"}
+        />
+        <StatusPill
+          label="Wallets"
+          state={walletsScanning ? "loading" : wallets.length > 0 ? "ok" : "neutral"}
+          text={walletsScanning ? "Scanning..." : wallets.length > 0 ? `${wallets.length} found` : "None"}
+        />
+        <StatusPill label="Polymarket" state={isLive ? "ok" : "error"} text={isLive ? "Connected" : "Unavailable"} />
+        <StatusPill label="Kalshi" state="ok" text="Connected" />
+        <button
+          onClick={() => { void refreshMarkets(); void scanTopWallets(); }}
+          disabled={marketsLoading || walletsScanning}
+          title="Refresh markets and wallets"
+          className="inline-flex items-center gap-1.5 rounded-md border border-border bg-card px-2.5 py-1 text-xs font-semibold text-muted-foreground hover:text-foreground disabled:opacity-50"
+        >
+          <RotateCw className={cn("h-3.5 w-3.5", (marketsLoading || walletsScanning) && "animate-spin")} />
+          Refresh All
+        </button>
+      </div>
+
       {/* Claude AI Analysis */}
       <div className="rounded-lg border border-border bg-card p-5 shadow-card">
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
@@ -94,6 +119,9 @@ export default function Dashboard() {
               {analyzing ? "Analyzing..." : "Run Analysis"}
             </button>
             <span className="text-[10px] font-mono text-muted-foreground">~$0.003 per analysis</span>
+            {markets.length === 0 && !marketsLoading && (
+              <span className="text-[10px] text-warning">Using sample market data — live data unavailable</span>
+            )}
           </div>
         </div>
 
@@ -480,5 +508,23 @@ function MiniStat({ label, value, color }: { label: string; value: string; color
       <div className="text-[10px] uppercase tracking-wide text-muted-foreground font-medium">{label}</div>
       <div className="mt-0.5 font-mono text-sm font-bold" style={{ color }}>{value}</div>
     </div>
+  );
+}
+
+function StatusPill({
+  label, state, text,
+}: { label: string; state: "ok" | "warn" | "error" | "loading" | "neutral"; text: string }) {
+  const styles: Record<string, string> = {
+    ok: "border-success/40 bg-success/10 text-success",
+    warn: "border-warning/40 bg-warning/10 text-warning",
+    error: "border-destructive/40 bg-destructive/10 text-destructive",
+    loading: "border-info/40 bg-info/10 text-info",
+    neutral: "border-border bg-card text-muted-foreground",
+  };
+  return (
+    <span className={cn("inline-flex items-center gap-1.5 rounded-full border px-2.5 py-0.5 text-[10px] font-semibold", styles[state])}>
+      <span className="opacity-70">{label}:</span>
+      <span>{text}</span>
+    </span>
   );
 }

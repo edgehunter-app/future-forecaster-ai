@@ -12,21 +12,30 @@ import {
   fetchFullOdds,
   isSportsMarket,
   type OddsGame,
-  type SportsMispricing,
   type SportsScanDebug,
-  type FullGame,
 } from "@/lib/oddsApi";
 import { useAppStore } from "@/store/useAppStore";
 import { SPORTS } from "@/lib/oddsApi";
 
-const CACHE_KEY = "eh_sports_cache";
-const CACHE_TTL = 30 * 60 * 1000;
+const STALE_MS = 30 * 60 * 1000;
 
 export function useSportsOdds(polymarkets: Market[]) {
   const settings = useAppStore((s) => s.settings);
   const threshold = settings.sportsGapThreshold ?? 0.02;
 
-  const [mispricings, setMispricings] = useState<SportsMispricing[]>([]);
+  // Store-backed state (survives navigation)
+  const fullGames = useAppStore((s) => s.fullGames);
+  const lastScanned = useAppStore((s) => s.sportsLastScanned);
+  const loading = useAppStore((s) => s.sportsLoading);
+  const error = useAppStore((s) => s.sportsError);
+  const mispricings = useAppStore((s) => s.sportsMispricings);
+  const setFullGames = useAppStore((s) => s.setFullGames);
+  const setSportsLastScanned = useAppStore((s) => s.setSportsLastScanned);
+  const setSportsLoading = useAppStore((s) => s.setSportsLoading);
+  const setSportsError = useAppStore((s) => s.setSportsError);
+  const setMispricings = useAppStore((s) => s.setSportsMispricings);
+
+  // Local UI state
   const [games, setGames] = useState<OddsGame[]>([]);
   const [sportsMarkets, setSportsMarkets] = useState<Market[]>([]);
   const [debug, setDebug] = useState<SportsScanDebug | null>(null);
@@ -35,38 +44,17 @@ export function useSportsOdds(polymarkets: Market[]) {
   const [matchesCount, setMatchesCount] = useState(0);
   const [edgeResponse, setEdgeResponse] = useState<any>(null);
   const [edgeError, setEdgeError] = useState<any>(null);
-  const [fullGames, setFullGames] = useState<FullGame[]>([]);
-  const [selectedSports, setSelectedSports] = useState<string[]>(
-    SPORTS.map((s) => s.key),
-  );
-  const [loading, setLoading] = useState(false);
-  const [lastScanned, setLastScanned] = useState<Date | null>(null);
+  const [selectedSports, setSelectedSports] = useState<string[]>(SPORTS.map((s) => s.key));
+  const [remainingRequests, setRemainingRequests] = useState<number | null>(getRemainingRequests());
   const [fromCache, setFromCache] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const [remainingRequests, setRemainingRequests] = useState<number | null>(null);
   const fetchingRef = useRef(false);
-
-  useEffect(() => {
-    try {
-      const raw = localStorage.getItem(CACHE_KEY);
-      if (raw) {
-        const { data, timestamp } = JSON.parse(raw);
-        if (Date.now() - timestamp < CACHE_TTL) {
-          setMispricings(data);
-          setLastScanned(new Date(timestamp));
-          setFromCache(true);
-        }
-      }
-    } catch {}
-  }, []);
 
   const scan = useCallback(async () => {
     if (fetchingRef.current) return;
     if (remainingRequests !== null && remainingRequests <= 0) return;
-    localStorage.removeItem(CACHE_KEY);
     fetchingRef.current = true;
-    setLoading(true);
-    setError(null);
+    setSportsLoading(true);
+    setSportsError(null);
     try {
       const results = await findSportsMispricings(polymarkets, "server-managed", threshold);
       setMispricings(results);
@@ -81,15 +69,13 @@ export function useSportsOdds(polymarkets: Market[]) {
       setEdgeError(getLastEdgeError());
       setGames(getLastGames());
 
-      // Fetch full odds (h2h+spreads+totals) for selected sports
       const fullResults = await Promise.allSettled(
         selectedSports.map((s) => fetchFullOdds(s)),
       );
       const allFull = fullResults
         .filter((r) => r.status === "fulfilled")
-        .flatMap((r) => (r as PromiseFulfilledResult<FullGame[]>).value);
+        .flatMap((r) => (r as PromiseFulfilledResult<any>).value);
 
-      // Try matching to a Polymarket market by team words
       const polySports = polymarkets.filter((m) => isSportsMarket(m));
       for (const game of allFull) {
         const homeWord = game.homeTeam.split(" ").pop()?.toLowerCase() ?? "";
@@ -105,35 +91,50 @@ export function useSportsOdds(polymarkets: Market[]) {
         }
       }
       setFullGames(allFull);
-      setLastScanned(new Date());
+      setSportsLastScanned(new Date());
       setFromCache(false);
       setRemainingRequests(getRemainingRequests());
-      localStorage.setItem(CACHE_KEY, JSON.stringify({ data: results, timestamp: Date.now() }));
     } catch {
-      setError("Sports odds unavailable right now. Try again shortly.");
+      setSportsError("Sports odds unavailable right now. Try again shortly.");
     } finally {
-      setLoading(false);
+      setSportsLoading(false);
       fetchingRef.current = false;
     }
-  }, [polymarkets, threshold, remainingRequests, selectedSports]);
+  }, [
+    polymarkets,
+    threshold,
+    remainingRequests,
+    selectedSports,
+    setFullGames,
+    setMispricings,
+    setSportsError,
+    setSportsLastScanned,
+    setSportsLoading,
+  ]);
 
-  const loadGamesForSport = useCallback(
-    async (sportKey: string) => {
-      setLoading(true);
-      try {
-        const data = await fetchOdds(sportKey);
-        setGames(data);
-        setRemainingRequests(getRemainingRequests());
-      } finally {
-        setLoading(false);
-      }
-    },
-    [],
-  );
+  const loadGamesForSport = useCallback(async (sportKey: string) => {
+    setSportsLoading(true);
+    try {
+      const data = await fetchOdds(sportKey);
+      setGames(data);
+      setRemainingRequests(getRemainingRequests());
+    } finally {
+      setSportsLoading(false);
+    }
+  }, [setSportsLoading]);
 
   useEffect(() => {
-    if (polymarkets.length > 0) void scan();
-    const interval = setInterval(() => { void scan(); }, 30 * 60 * 1000);
+    const isStale =
+      !lastScanned ||
+      Date.now() - new Date(lastScanned).getTime() > STALE_MS;
+    if (fullGames.length > 0 && !isStale) {
+      // fresh — skip
+      return;
+    }
+    if (polymarkets.length > 0 || fullGames.length === 0) {
+      void scan();
+    }
+    const interval = setInterval(() => { void scan(); }, STALE_MS);
     return () => clearInterval(interval);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
@@ -153,7 +154,7 @@ export function useSportsOdds(polymarkets: Market[]) {
     edgeError,
     threshold,
     loading,
-    lastScanned,
+    lastScanned: lastScanned ? new Date(lastScanned) : null,
     fromCache,
     error,
     remainingRequests,

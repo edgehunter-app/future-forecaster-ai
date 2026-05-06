@@ -1,6 +1,7 @@
 import { create } from "zustand";
 import { persist, createJSONStorage } from "zustand/middleware";
 import type { Wallet, Suggestion, Market, CrossMarketOpp } from "@/types";
+import type { FullGame, GameProps, SportsMispricing } from "@/lib/oddsApi";
 
 export interface AlertChannelTelegram { enabled: boolean; chatId: string; }
 export interface AlertChannelDiscord { enabled: boolean; webhookUrl: string; }
@@ -61,6 +62,30 @@ export interface AppState {
   setDemoMode: (val: boolean) => void;
   setCrossMarketOpps: (opps: CrossMarketOpp[]) => void;
 
+  // Live data caches (NOT persisted — survive navigation, reset on full reload)
+  cachedMarkets: Market[];
+  marketsLastUpdated: Date | null;
+  marketsIsLive: boolean;
+  fullGames: FullGame[];
+  sportsLastScanned: Date | null;
+  sportsLoading: boolean;
+  sportsError: string | null;
+  sportsMispricings: SportsMispricing[];
+  crossMarketLastScanned: Date | null;
+  crossMarketLoading: boolean;
+  propsCache: Record<string, GameProps>;
+
+  setCachedMarkets: (m: Market[], isLive: boolean) => void;
+  setMarketsLastUpdated: (d: Date) => void;
+  setFullGames: (g: FullGame[]) => void;
+  setSportsLastScanned: (d: Date) => void;
+  setSportsLoading: (b: boolean) => void;
+  setSportsError: (e: string | null) => void;
+  setSportsMispricings: (m: SportsMispricing[]) => void;
+  setCrossMarketLastScanned: (d: Date) => void;
+  setCrossMarketLoading: (b: boolean) => void;
+  setPropsCache: (c: Record<string, GameProps>) => void;
+
   updateSettings: (partial: Partial<SettingsState>) => void;
   updateAlerts: (
     channel: "telegram" | "discord" | "email",
@@ -116,6 +141,30 @@ export const useAppStore = create<AppState>()(
       isDemoMode: false,
       setDemoMode: (val) => set({ isDemoMode: val }),
       setCrossMarketOpps: (opps) => set({ crossMarketOpps: opps }),
+
+      cachedMarkets: [],
+      marketsLastUpdated: null,
+      marketsIsLive: false,
+      fullGames: [],
+      sportsLastScanned: null,
+      sportsLoading: false,
+      sportsError: null,
+      sportsMispricings: [],
+      crossMarketLastScanned: null,
+      crossMarketLoading: false,
+      propsCache: {},
+
+      setCachedMarkets: (m, isLive) =>
+        set({ cachedMarkets: m, marketsIsLive: isLive, marketsLastUpdated: new Date() }),
+      setMarketsLastUpdated: (d) => set({ marketsLastUpdated: d }),
+      setFullGames: (g) => set({ fullGames: g }),
+      setSportsLastScanned: (d) => set({ sportsLastScanned: d }),
+      setSportsLoading: (b) => set({ sportsLoading: b }),
+      setSportsError: (e) => set({ sportsError: e }),
+      setSportsMispricings: (m) => set({ sportsMispricings: m }),
+      setCrossMarketLastScanned: (d) => set({ crossMarketLastScanned: d }),
+      setCrossMarketLoading: (b) => set({ crossMarketLoading: b }),
+      setPropsCache: (c) => set({ propsCache: c }),
 
       updateSettings: (partial) => set((s) => ({ settings: { ...s.settings, ...partial } })),
       updateAlerts: (channel, partial) =>
