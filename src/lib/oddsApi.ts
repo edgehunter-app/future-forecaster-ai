@@ -78,6 +78,221 @@ export function getLastEdgeError() { return lastEdgeError; }
 let lastGames: OddsGame[] = [];
 export function getLastGames(): OddsGame[] { return lastGames; }
 
+// ============= Full odds (h2h + spreads + totals) =============
+
+export interface FullBookmakerLine {
+  name: string;
+  key: string;
+  homeMoneyline: number;
+  awayMoneyline: number;
+  homeSpread: number;     // e.g. -3.5
+  spreadHomeOdds: number; // juice e.g. -110
+  spreadAwayOdds: number;
+  totalLine: number;      // e.g. 47.5
+  overOdds: number;
+  underOdds: number;
+}
+
+export interface FullGame {
+  id: string;
+  sport: string;
+  league: string;
+  homeTeam: string;
+  awayTeam: string;
+  commenceTime: string;
+  isLive: boolean;
+  moneyline: {
+    home: number;
+    away: number;
+    homeImplied: number;
+    awayImplied: number;
+    bestHomeBook: string;
+    bestAwayBook: string;
+    bestHomeOdds: number;
+    bestAwayOdds: number;
+  };
+  spread: {
+    homeSpread: number;
+    awaySpread: number;
+    homeOdds: number;
+    awayOdds: number;
+    bestBook: string;
+  } | null;
+  total: {
+    line: number;
+    overOdds: number;
+    underOdds: number;
+    bestBook: string;
+  } | null;
+  bookmakers: FullBookmakerLine[];
+  polymarketMatch: Market | null;
+  polymarketImplied: number | null;
+  mispricingGap: number | null;
+}
+
+function median(nums: number[]): number {
+  if (nums.length === 0) return 0;
+  const sorted = [...nums].sort((a, b) => a - b);
+  const mid = Math.floor(sorted.length / 2);
+  return sorted.length % 2 === 0 ? (sorted[mid - 1] + sorted[mid]) / 2 : sorted[mid];
+}
+
+export async function fetchFullOdds(sportKey: string): Promise<FullGame[]> {
+  const { data: resp, error } = await supabase.functions.invoke("fetch-sports-odds", {
+    body: { sportKey, regions: "us", markets: "h2h,spreads,totals", oddsFormat: "american" },
+  });
+  if (error) {
+    console.warn("fetch-sports-odds error:", error);
+    return [];
+  }
+  if (resp && typeof resp.remainingRequests === "number") {
+    lastRemaining = resp.remainingRequests;
+  }
+  const data = resp?.data;
+  if (!Array.isArray(data)) return [];
+
+  return data.map((g: any): FullGame => {
+    const home = g.home_team ?? "Home";
+    const away = g.away_team ?? "Away";
+    const books: FullBookmakerLine[] = (g.bookmakers ?? []).map((b: any) => {
+      const h2h = b.markets?.find((m: any) => m.key === "h2h");
+      const sp = b.markets?.find((m: any) => m.key === "spreads");
+      const tot = b.markets?.find((m: any) => m.key === "totals");
+      const homeML = h2h?.outcomes?.find((o: any) => o.name === home)?.price ?? 0;
+      const awayML = h2h?.outcomes?.find((o: any) => o.name === away)?.price ?? 0;
+      const homeSpOut = sp?.outcomes?.find((o: any) => o.name === home);
+      const awaySpOut = sp?.outcomes?.find((o: any) => o.name === away);
+      const overOut = tot?.outcomes?.find((o: any) => o.name === "Over");
+      const underOut = tot?.outcomes?.find((o: any) => o.name === "Under");
+      return {
+        name: b.title ?? b.key,
+        key: b.key,
+        homeMoneyline: homeML,
+        awayMoneyline: awayML,
+        homeSpread: homeSpOut?.point ?? 0,
+        spreadHomeOdds: homeSpOut?.price ?? 0,
+        spreadAwayOdds: awaySpOut?.price ?? 0,
+        totalLine: overOut?.point ?? 0,
+        overOdds: overOut?.price ?? 0,
+        underOdds: underOut?.price ?? 0,
+      };
+    });
+
+    const homeBest = books.reduce(
+      (best, b) => (b.homeMoneyline > best.odds ? { odds: b.homeMoneyline, book: b.name } : best),
+      { odds: -99999, book: "" },
+    );
+    const awayBest = books.reduce(
+      (best, b) => (b.awayMoneyline > best.odds ? { odds: b.awayMoneyline, book: b.name } : best),
+      { odds: -99999, book: "" },
+    );
+    const homeImpliedRaw = books.length
+      ? books.reduce((s, b) => s + toImplied(b.homeMoneyline), 0) / books.length
+      : 0.5;
+    const awayImpliedRaw = books.length
+      ? books.reduce((s, b) => s + toImplied(b.awayMoneyline), 0) / books.length
+      : 0.5;
+    const consensus = removeVig(homeImpliedRaw, awayImpliedRaw);
+
+    const spreadBooks = books.filter((b) => b.homeSpread !== 0 || b.spreadHomeOdds !== 0);
+    const spread = spreadBooks.length
+      ? {
+          homeSpread: median(spreadBooks.map((b) => b.homeSpread)),
+          awaySpread: -median(spreadBooks.map((b) => b.homeSpread)),
+          homeOdds: median(spreadBooks.map((b) => b.spreadHomeOdds)),
+          awayOdds: median(spreadBooks.map((b) => b.spreadAwayOdds)),
+          bestBook: spreadBooks[0]?.name ?? "",
+        }
+      : null;
+
+    const totalBooks = books.filter((b) => b.totalLine !== 0);
+    const total = totalBooks.length
+      ? {
+          line: median(totalBooks.map((b) => b.totalLine)),
+          overOdds: median(totalBooks.map((b) => b.overOdds)),
+          underOdds: median(totalBooks.map((b) => b.underOdds)),
+          bestBook: totalBooks[0]?.name ?? "",
+        }
+      : null;
+
+    const commenceTime = g.commence_time ?? "";
+    const isLive = commenceTime ? new Date(commenceTime).getTime() <= Date.now() : false;
+
+    return {
+      id: g.id,
+      sport: sportKey,
+      league: g.sport_title ?? sportKey,
+      homeTeam: home,
+      awayTeam: away,
+      commenceTime,
+      isLive,
+      moneyline: {
+        home: books[0]?.homeMoneyline ?? 0,
+        away: books[0]?.awayMoneyline ?? 0,
+        homeImplied: consensus.home,
+        awayImplied: consensus.away,
+        bestHomeBook: homeBest.book,
+        bestAwayBook: awayBest.book,
+        bestHomeOdds: homeBest.odds,
+        bestAwayOdds: awayBest.odds,
+      },
+      spread,
+      total,
+      bookmakers: books,
+      polymarketMatch: null,
+      polymarketImplied: null,
+      mispricingGap: null,
+    };
+  });
+}
+
+let lastFullGames: FullGame[] = [];
+export function getLastFullGames(): FullGame[] { return lastFullGames; }
+export function setLastFullGames(g: FullGame[]) { lastFullGames = g; }
+
+// ============= Formatting helpers =============
+
+export function formatOdds(american: number): string {
+  if (!american || american === 0) return "N/A";
+  return american > 0 ? `+${american}` : `${american}`;
+}
+
+export function formatSpread(spread: number): string {
+  if (spread === 0) return "PK";
+  return spread > 0 ? `+${spread}` : `${spread}`;
+}
+
+export function formatGameTime(iso: string): string {
+  if (!iso) return "TBD";
+  const date = new Date(iso);
+  const now = new Date();
+  const tomorrow = new Date(now);
+  tomorrow.setDate(tomorrow.getDate() + 1);
+  const timeStr = date.toLocaleTimeString("en-US", {
+    hour: "numeric",
+    minute: "2-digit",
+    timeZoneName: "short",
+  });
+  if (date.toDateString() === now.toDateString()) return `Today · ${timeStr}`;
+  if (date.toDateString() === tomorrow.toDateString()) return `Tomorrow · ${timeStr}`;
+  return (
+    date.toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric" }) +
+    ` · ${timeStr}`
+  );
+}
+
+export function getBestMoneyline(
+  bookmakers: FullBookmakerLine[],
+  side: "home" | "away",
+): { odds: number; book: string } {
+  let best = { odds: -99999, book: "" };
+  for (const b of bookmakers) {
+    const odds = side === "home" ? b.homeMoneyline : b.awayMoneyline;
+    if (odds > best.odds) best = { odds, book: b.name };
+  }
+  return best;
+}
+
 export async function fetchOdds(sportKey: string): Promise<OddsGame[]> {
   const { data: resp, error } = await supabase.functions.invoke("fetch-sports-odds", {
     body: { sportKey, regions: "us", markets: "h2h", oddsFormat: "american" },

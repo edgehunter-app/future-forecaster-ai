@@ -9,11 +9,15 @@ import {
   getLastEdgeResponse,
   getLastEdgeError,
   getLastGames,
+  fetchFullOdds,
+  isSportsMarket,
   type OddsGame,
   type SportsMispricing,
   type SportsScanDebug,
+  type FullGame,
 } from "@/lib/oddsApi";
 import { useAppStore } from "@/store/useAppStore";
+import { SPORTS } from "@/lib/oddsApi";
 
 const CACHE_KEY = "eh_sports_cache";
 const CACHE_TTL = 30 * 60 * 1000;
@@ -31,6 +35,10 @@ export function useSportsOdds(polymarkets: Market[]) {
   const [matchesCount, setMatchesCount] = useState(0);
   const [edgeResponse, setEdgeResponse] = useState<any>(null);
   const [edgeError, setEdgeError] = useState<any>(null);
+  const [fullGames, setFullGames] = useState<FullGame[]>([]);
+  const [selectedSports, setSelectedSports] = useState<string[]>(
+    SPORTS.slice(0, 4).map((s) => s.key),
+  );
   const [loading, setLoading] = useState(false);
   const [lastScanned, setLastScanned] = useState<Date | null>(null);
   const [fromCache, setFromCache] = useState(false);
@@ -72,6 +80,31 @@ export function useSportsOdds(polymarkets: Market[]) {
       setEdgeResponse(getLastEdgeResponse());
       setEdgeError(getLastEdgeError());
       setGames(getLastGames());
+
+      // Fetch full odds (h2h+spreads+totals) for selected sports
+      const fullResults = await Promise.allSettled(
+        selectedSports.map((s) => fetchFullOdds(s)),
+      );
+      const allFull = fullResults
+        .filter((r) => r.status === "fulfilled")
+        .flatMap((r) => (r as PromiseFulfilledResult<FullGame[]>).value);
+
+      // Try matching to a Polymarket market by team words
+      const polySports = polymarkets.filter((m) => isSportsMarket(m));
+      for (const game of allFull) {
+        const homeWord = game.homeTeam.split(" ").pop()?.toLowerCase() ?? "";
+        const awayWord = game.awayTeam.split(" ").pop()?.toLowerCase() ?? "";
+        const match = polySports.find((m) => {
+          const q = m.question.toLowerCase();
+          return homeWord && awayWord && q.includes(homeWord) && q.includes(awayWord);
+        });
+        if (match) {
+          game.polymarketMatch = match;
+          game.polymarketImplied = match.yesPrice;
+          game.mispricingGap = match.yesPrice - game.moneyline.homeImplied;
+        }
+      }
+      setFullGames(allFull);
       setLastScanned(new Date());
       setFromCache(false);
       setRemainingRequests(getRemainingRequests());
@@ -82,7 +115,7 @@ export function useSportsOdds(polymarkets: Market[]) {
       setLoading(false);
       fetchingRef.current = false;
     }
-  }, [polymarkets, threshold, remainingRequests]);
+  }, [polymarkets, threshold, remainingRequests, selectedSports]);
 
   const loadGamesForSport = useCallback(
     async (sportKey: string) => {
@@ -108,6 +141,9 @@ export function useSportsOdds(polymarkets: Market[]) {
   return {
     mispricings,
     games,
+    fullGames,
+    selectedSports,
+    setSelectedSports,
     sportsMarkets,
     debug,
     polymarketsCount,
