@@ -13,13 +13,12 @@ Deno.serve(async (req) => {
   try {
     const { limit = 20 } = await req.json().catch(() => ({}));
     const endpoints = [
-      `https://data-api.polymarket.com/profiles?limit=${limit}&sortBy=profitLoss&sortDirection=DESC`,
-      `https://data-api.polymarket.com/profiles?limit=${limit}&sortBy=volume&sortDirection=DESC`,
-      `https://data-api.polymarket.com/leaderboard?limit=${limit}&window=allTime`,
-      `https://data-api.polymarket.com/leaderboard?limit=${limit}&window=1m`,
-      `https://data-api.polymarket.com/leaderboard?limit=${limit}&window=1w`,
-      `https://gamma-api.polymarket.com/profiles?limit=${limit}&order=profit`,
-      `https://gamma-api.polymarket.com/users?limit=${limit}&order=volume`,
+      `https://lb-api.polymarket.com/leaderboard?window=Month&type=volume&limit=${limit}`,
+      `https://lb-api.polymarket.com/leaderboard?window=Month&type=profit&limit=${limit}`,
+      `https://data-api.polymarket.com/v1/leaderboard?limit=${limit}`,
+      `https://data-api.polymarket.com/v1/leaderboard?sortBy=volume&limit=${limit}`,
+      `https://data-api.polymarket.com/v1/leaderboard`,
+      `https://data-api.polymarket.com/leaderboard?limit=${limit}`,
     ];
 
     const attempts: { url: string; status: number; preview: string }[] = [];
@@ -43,6 +42,7 @@ Deno.serve(async (req) => {
             : data.profiles ?? data.data ?? data.leaderboard ?? data.users ?? [];
           console.log("Profiles found:", profiles.length);
           if (profiles.length > 0) {
+            console.log("First profile sample:", JSON.stringify(profiles[0]).slice(0, 500));
             return new Response(
               JSON.stringify({ profiles, source: "live", endpoint: url, attempts }),
               { headers: CORS_HEADERS },
