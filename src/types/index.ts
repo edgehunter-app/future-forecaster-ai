@@ -95,13 +95,6 @@ export interface Settings {
   alertEmail: string;
 }
 
-export interface HistoryPoint {
-  date: string;
-  pnl: number;
-  cumulative: number;
-  win: boolean;
-}
-
 export interface CrossMarketOpp {
   question: string;
   polymarket: Market;
