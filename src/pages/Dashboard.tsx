@@ -19,7 +19,7 @@ import { useSuggestionsDB } from "@/hooks/useSuggestionsDB";
 import { useTrackedWallets } from "@/hooks/useTrackedWallets";
 import { useHistory } from "@/hooks/useHistory";
 import { analyzeMarketWithClaude } from "@/lib/claude";
-import type { ClaudeAnalysis, Market, Wallet } from "@/types";
+import type { ClaudeAnalysis, Market } from "@/types";
 import { KNOWN_TOP_WALLETS } from "@/data/knownTopWallets";
 import { usePageTitle } from "@/hooks/usePageTitle";
 
