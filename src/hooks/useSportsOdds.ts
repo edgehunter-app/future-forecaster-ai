@@ -4,8 +4,11 @@ import {
   fetchOdds,
   findSportsMispricings,
   getRemainingRequests,
+  fetchPolymarketSportsMarkets,
+  getLastScanDebug,
   type OddsGame,
   type SportsMispricing,
+  type SportsScanDebug,
 } from "@/lib/oddsApi";
 import { useAppStore } from "@/store/useAppStore";
 
@@ -18,6 +21,8 @@ export function useSportsOdds(polymarkets: Market[]) {
 
   const [mispricings, setMispricings] = useState<SportsMispricing[]>([]);
   const [games, setGames] = useState<OddsGame[]>([]);
+  const [sportsMarkets, setSportsMarkets] = useState<Market[]>([]);
+  const [debug, setDebug] = useState<SportsScanDebug | null>(null);
   const [loading, setLoading] = useState(false);
   const [lastScanned, setLastScanned] = useState<Date | null>(null);
   const [fromCache, setFromCache] = useState(false);
