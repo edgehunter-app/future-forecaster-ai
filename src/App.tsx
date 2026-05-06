@@ -53,13 +53,8 @@ function AppRoutes() {
     }
   }, []);
 
-  // Logged-in users should never be in demo mode
-  useEffect(() => {
-    if (user && isDemoMode) {
-      setDemoMode(false);
-      console.log("Auto-cleared demo mode for logged in user");
-    }
-  }, [user, isDemoMode, setDemoMode]);
+  // Note: demo mode is user-controlled via Settings. We do NOT auto-clear it
+  // for logged-in users — that would make the Settings toggle un-toggleable.
 
   if (loading) return <PageLoadingSkeleton />;
 
