@@ -35,6 +35,8 @@ export default function Settings() {
   const updateAlerts = useAppStore((s) => s.updateAlerts);
   const darkMode = useAppStore((s) => s.ui.darkMode);
   const setDarkMode = useAppStore((s) => s.setDarkMode);
+  const isDemoMode = useAppStore((s) => s.isDemoMode);
+  const setDemoMode = useAppStore((s) => s.setDemoMode);
   const { showToast } = useToast();
   const { saveProfile, saving, saved } = useProfile();
 
@@ -86,6 +88,18 @@ export default function Settings() {
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-5">
         {/* LEFT 60% */}
         <div className="lg:col-span-3 space-y-6">
+          {/* Session */}
+          <Card>
+            <CardHeader icon={Info} title="Session" />
+            <div className="flex items-center justify-between py-2">
+              <div>
+                <div className="text-sm font-semibold text-foreground">Demo Mode</div>
+                <p className="text-xs text-muted-foreground">When on, the app shows mock data instead of your real tracked wallets and live markets.</p>
+              </div>
+              <Toggle checked={isDemoMode} onChange={(v) => setDemoMode(v)} />
+            </div>
+          </Card>
+
           {/* Risk Profile */}
           <Card>
             <CardHeader icon={TrendingUp} title="Risk Profile" />
