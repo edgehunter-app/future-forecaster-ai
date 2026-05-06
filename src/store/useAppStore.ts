@@ -203,7 +203,7 @@ export const useAppStore = create<AppState>()(
     {
       name: "edgehunter-store",
       storage: createJSONStorage(() => localStorage),
-      partialize: (s) => ({ settings: s.settings, ui: { darkMode: s.ui.darkMode }, isDemoMode: s.isDemoMode }),
+      partialize: (s) => ({ settings: s.settings, ui: { darkMode: s.ui.darkMode } }),
       version: 2,
       migrate: (persistedState: any, version: number) => {
         if (persistedState?.settings && version < 2) {
