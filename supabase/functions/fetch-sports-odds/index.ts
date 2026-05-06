@@ -20,6 +20,9 @@ Deno.serve(async (req) => {
     const apiKey = Deno.env.get('ODDS_API_KEY');
     const body: Body = await req.json().catch(() => ({}));
 
+    console.log("ODDS_API_KEY present:", !!apiKey);
+    console.log("Fetching sport:", body.sportKey);
+
     if (body.ping) {
       return new Response(JSON.stringify({ ok: !!apiKey, configured: !!apiKey }), {
         status: apiKey ? 200 : 503,
@@ -28,6 +31,7 @@ Deno.serve(async (req) => {
     }
 
     if (!apiKey) {
+      console.error("ODDS_API_KEY not found in secrets");
       return new Response(JSON.stringify({ error: 'ODDS_API_KEY not configured' }), {
         status: 500,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
@@ -50,6 +54,9 @@ Deno.serve(async (req) => {
       `?apiKey=${apiKey}&regions=${encodeURIComponent(regions)}` +
       `&markets=${encodeURIComponent(markets)}&oddsFormat=${encodeURIComponent(oddsFormat)}`;
 
+    const safeUrl = url.replace(apiKey, "***");
+    console.log("URL:", safeUrl);
+
     const controller = new AbortController();
     const timer = setTimeout(() => controller.abort(), 10000);
     let resp: Response;
@@ -62,8 +69,12 @@ Deno.serve(async (req) => {
     const remaining = resp.headers.get('x-requests-remaining');
     const used = resp.headers.get('x-requests-used');
 
+    console.log("Response status:", resp.status);
+    console.log("Response ok:", resp.ok);
+
     if (!resp.ok) {
       const errText = await resp.text();
+      console.error("Odds API error body:", errText);
       return new Response(JSON.stringify({ error: 'Odds API error', status: resp.status, detail: errText }), {
         status: resp.status,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
@@ -71,10 +82,17 @@ Deno.serve(async (req) => {
     }
 
     const data = await resp.json();
+    console.log("Games found:", Array.isArray(data) ? data.length : 0);
     return new Response(JSON.stringify({
       data,
       remainingRequests: remaining !== null ? Number(remaining) : null,
       usedRequests: used !== null ? Number(used) : null,
+      debug: {
+        hasApiKey: true,
+        url: safeUrl,
+        status: resp.status,
+        gamesFound: Array.isArray(data) ? data.length : 0,
+      },
     }), {
       status: 200,
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
