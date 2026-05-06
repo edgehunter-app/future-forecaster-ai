@@ -6,24 +6,30 @@ import {
   formatSpread,
   formatGameTime,
   getBestMoneyline,
+  findPropEdge,
+  formatPropType,
   type FullGame,
   type FullBookmakerLine,
+  type PlayerProp,
 } from "@/lib/oddsApi";
 import GamblingDisclaimer from "./GamblingDisclaimer";
 import PlayerPropsPanel from "./PlayerPropsPanel";
+import { useGameProps } from "@/hooks/useGameProps";
+import { useState as useStateReact } from "react";
 
 interface Props {
   games: FullGame[];
   loading: boolean;
 }
 
-type Tab = "games" | "best" | "spreads" | "totals";
+type Tab = "games" | "best" | "spreads" | "totals" | "props";
 
 const TABS: { key: Tab; label: string }[] = [
   { key: "games", label: "Games" },
   { key: "best", label: "Best Odds" },
   { key: "spreads", label: "Spreads" },
   { key: "totals", label: "Totals" },
+  { key: "props", label: "Props" },
 ];
 
 function oddsClass(odds: number): string {
@@ -82,6 +88,7 @@ export default function OddsBoard({ games, loading }: Props) {
       {tab === "best" && <BestOddsTable games={games} />}
       {tab === "spreads" && <SpreadsTab games={games} />}
       {tab === "totals" && <TotalsTab games={games} />}
+      {tab === "props" && <PropsTab games={games} />}
     </div>
   );
 }
