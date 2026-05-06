@@ -96,7 +96,7 @@ export default function Settings() {
                 <div className="text-sm font-semibold text-foreground">Demo Mode</div>
                 <p className="text-xs text-muted-foreground">When on, the app shows mock data instead of your real tracked wallets and live markets.</p>
               </div>
-              <Toggle checked={isDemoMode} onChange={(v) => setDemoMode(v)} />
+              <Toggle enabled={isDemoMode} onChange={(v) => setDemoMode(v)} />
             </div>
           </Card>
 
