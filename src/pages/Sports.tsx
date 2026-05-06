@@ -30,9 +30,23 @@ export default function Sports() {
   const [activeSport, setActiveSport] = useState<string>("all");
 
   const filteredGames = useMemo(() => {
-    if (activeSport === "all") return fullGames;
-    return fullGames.filter((g) => g.sport === activeSport);
+    const list = fullGames ?? [];
+    if (!activeSport || activeSport === "all") return list;
+    const sportLabel = SPORTS.find((s) => s.key === activeSport)?.label.toLowerCase() ?? "";
+    return list.filter(
+      (g) =>
+        g.sport === activeSport ||
+        (sportLabel && g.league?.toLowerCase().includes(sportLabel)),
+    );
   }, [fullGames, activeSport]);
+
+  if (typeof window !== "undefined") {
+    console.log("Full games:", fullGames);
+    console.log("Full games length:", fullGames?.length);
+    console.log("Selected sport:", activeSport);
+    console.log("Filtered games:", filteredGames);
+    console.log("Unique sport keys:", [...new Set((fullGames ?? []).map((g) => g.sport))]);
+  }
 
   const counts = useMemo(() => {
     const out: Record<string, number> = { all: fullGames.length };
