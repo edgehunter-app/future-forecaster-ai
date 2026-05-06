@@ -10,6 +10,7 @@ import {
   type FullBookmakerLine,
 } from "@/lib/oddsApi";
 import GamblingDisclaimer from "./GamblingDisclaimer";
+import PlayerPropsPanel from "./PlayerPropsPanel";
 
 interface Props {
   games: FullGame[];
@@ -87,6 +88,7 @@ export default function OddsBoard({ games, loading }: Props) {
 
 function GameCard({ game }: { game: FullGame }) {
   const [expanded, setExpanded] = useState(false);
+  const [showProps, setShowProps] = useState(false);
   const bookmakers = game.bookmakers ?? [];
   const hasBookmakers = bookmakers.length > 0;
   const homeOdds = game.moneyline?.home ?? 0;
@@ -192,6 +194,23 @@ function GameCard({ game }: { game: FullGame }) {
           {expanded && <BookTable books={bookmakers} bestHome={bestHome} bestAway={bestAway} />}
         </div>
       )}
+
+      {/* Player Props toggle */}
+      <div className="rounded-md border border-info/30 bg-info/5">
+        <button
+          onClick={() => setShowProps((v) => !v)}
+          className={cn(
+            "flex w-full items-center justify-between gap-2 px-3 py-2 text-[11px] font-semibold transition-colors",
+            showProps ? "text-info" : "text-muted-foreground hover:text-foreground",
+          )}
+        >
+          <span>{showProps ? "Hide Player Props" : "Show Player Props"}</span>
+          <span className="text-[10px] opacity-70">
+            {showProps ? "▲" : "▼ 1 API request"}
+          </span>
+        </button>
+        {showProps && <PlayerPropsPanel game={game} sportKey={game.sport} />}
+      </div>
 
       <GamblingDisclaimer variant="inline" />
     </div>

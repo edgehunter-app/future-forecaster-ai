@@ -9,6 +9,7 @@ interface Body {
   regions?: string;
   markets?: string;
   oddsFormat?: string;
+  eventId?: string;
 }
 
 Deno.serve(async (req) => {
@@ -49,9 +50,11 @@ Deno.serve(async (req) => {
     const markets = body.markets ?? 'h2h';
     const oddsFormat = body.oddsFormat ?? 'american';
 
+    const base = body.eventId
+      ? `https://api.the-odds-api.com/v4/sports/${encodeURIComponent(body.sportKey)}/events/${encodeURIComponent(body.eventId)}/odds`
+      : `https://api.the-odds-api.com/v4/sports/${encodeURIComponent(body.sportKey)}/odds`;
     const url =
-      `https://api.the-odds-api.com/v4/sports/${encodeURIComponent(body.sportKey)}/odds` +
-      `?apiKey=${apiKey}&regions=${encodeURIComponent(regions)}` +
+      `${base}?apiKey=${apiKey}&regions=${encodeURIComponent(regions)}` +
       `&markets=${encodeURIComponent(markets)}&oddsFormat=${encodeURIComponent(oddsFormat)}`;
 
     const safeUrl = url.replace(apiKey, "***");
