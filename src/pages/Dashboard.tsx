@@ -34,7 +34,7 @@ export default function Dashboard() {
   usePageTitle("Dashboard");
   const bankroll = useAppStore((s) => s.settings.bankroll);
   const settings = useAppStore((s) => s.settings);
-  const { suggestions, dismissSuggestion, markOutcome } = useSuggestionsDB();
+  const { suggestions, dismissSuggestion, markOutcome, saveSuggestion, reload: reloadSuggestions } = useSuggestionsDB();
   const { wallets, addWallet } = useTrackedWallets();
   const { markets, isLive, error: marketsError, loading: marketsLoading, refresh: refreshMarkets } = useMarkets();
   const { scanning: walletsScanning, scanTopWallets } = useWallets();
@@ -92,6 +92,34 @@ export default function Dashboard() {
       if (bestResult) {
         setAiResult(bestResult);
         setAnalyzedMarket(bestMarket);
+        if (bestMarket) {
+          try {
+            await saveSuggestion({
+              id: `claude_${bestMarket.id}_${Date.now()}`,
+              marketId: bestMarket.id,
+              question: bestMarket.question,
+              direction: bestResult.direction,
+              currentOdds:
+                bestResult.direction === "YES" ? bestMarket.yesPrice : bestMarket.noPrice,
+              suggestedAmount: bestResult.suggestedAmount,
+              confidence: bestResult.confidence,
+              edge: bestResult.edge,
+              category: bestMarket.category ?? "General",
+              reasoning: bestResult.reasoning,
+              walletSignals: wallets
+                .filter((w) => w.tier === "S" || w.tier === "A")
+                .map((w) => w.label)
+                .slice(0, 3),
+              keySignals: bestResult.keySignals ?? [],
+              status: "active",
+              createdAt: new Date().toLocaleString(),
+              expiresAt: "48h",
+            });
+            await reloadSuggestions();
+          } catch (err) {
+            console.warn("Failed to save suggestion:", err);
+          }
+        }
       } else {
         setAiError("Could not analyze any markets. Try again.");
       }
