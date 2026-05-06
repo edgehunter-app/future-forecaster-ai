@@ -1,4 +1,4 @@
-import { lazy, Suspense } from "react";
+import { lazy, Suspense, useEffect } from "react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Route, Routes } from "react-router-dom";
 import { Toaster as Sonner } from "@/components/ui/sonner";
@@ -34,6 +34,32 @@ const wrap = (node: React.ReactNode) => (
 function AppRoutes() {
   const { user, loading } = useAuth();
   const isDemoMode = useAppStore((s) => s.isDemoMode);
+  const setDemoMode = useAppStore((s) => s.setDemoMode);
+
+  // One-time clear of any stuck demo mode in legacy localStorage
+  useEffect(() => {
+    try {
+      const stored = localStorage.getItem("edgehunter-store");
+      if (stored) {
+        const parsed = JSON.parse(stored);
+        if (parsed?.state?.isDemoMode === true) {
+          parsed.state.isDemoMode = false;
+          localStorage.setItem("edgehunter-store", JSON.stringify(parsed));
+          console.log("Cleared stuck demo mode from localStorage");
+        }
+      }
+    } catch {
+      // ignore
+    }
+  }, []);
+
+  // Logged-in users should never be in demo mode
+  useEffect(() => {
+    if (user && isDemoMode) {
+      setDemoMode(false);
+      console.log("Auto-cleared demo mode for logged in user");
+    }
+  }, [user, isDemoMode, setDemoMode]);
 
   if (loading) return <PageLoadingSkeleton />;
 
