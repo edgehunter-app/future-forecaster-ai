@@ -84,6 +84,8 @@ export function useSportsOdds(polymarkets: Market[]) {
   return {
     mispricings,
     games,
+    sportsMarkets,
+    debug,
     loading,
     lastScanned,
     fromCache,
