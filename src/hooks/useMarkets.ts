@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { useAppStore } from "@/store/useAppStore";
 import { MOCK_MARKETS } from "@/data/mockData";
+import { fetchPolymarketMarkets } from "@/lib/polymarket";
 import type { Market } from "@/types";
 
 const STALE_MS = 5 * 60 * 1000;
@@ -60,57 +61,19 @@ export function useMarkets() {
       return;
     }
 
-    const endpoints = [
-      "https://gamma-api.polymarket.com/markets?limit=20&active=true&order=volume24hr&ascending=false",
-      "https://gamma-api.polymarket.com/markets?limit=20&closed=false",
-      "https://gamma-api.polymarket.com/markets?limit=20",
-    ];
-    for (const url of endpoints) {
-      try {
-        console.log("Trying:", url);
-        const controller = new AbortController();
-        const timer = setTimeout(() => controller.abort(), 10000);
-        const res = await fetch(url, { signal: controller.signal });
-        clearTimeout(timer);
-        console.log("Status:", res.status);
-        if (res.ok) {
-          const data = await res.json();
-          const raw = Array.isArray(data) ? data : data.markets ?? data.data ?? [];
-          console.log("Markets found:", raw.length);
-          if (raw.length > 0) {
-            const mapped = raw.map(mapMarket).filter((m: Market) => m.question && m.yesPrice > 0);
-            if (mapped.length > 0) {
-              writeMarkets(mapped, true);
-              setLoading(false);
-              return;
-            }
-          }
-        }
-      } catch (err) {
-        console.warn("Endpoint failed:", url, err);
-      }
-    }
-
     try {
-      console.log("Trying CORS proxy...");
-      const proxied =
-        "https://corsproxy.io/?" +
-        encodeURIComponent(
-          "https://gamma-api.polymarket.com/markets?limit=20&active=true",
-        );
-      const res = await fetch(proxied);
-      if (res.ok) {
-        const data = await res.json();
-        const raw = Array.isArray(data) ? data : data.markets ?? [];
-        if (raw.length > 0) {
-          const mapped = raw.map(mapMarket).filter((m: Market) => m.question);
-          writeMarkets(mapped, false);
+      const raw = await fetchPolymarketMarkets(20);
+      console.log("Markets via edge function:", raw.length);
+      if (raw.length > 0) {
+        const mapped = raw.map(mapMarket).filter((m: Market) => m.question && m.yesPrice > 0);
+        if (mapped.length > 0) {
+          writeMarkets(mapped, true);
           setLoading(false);
           return;
         }
       }
     } catch (err) {
-      console.warn("CORS proxy failed:", err);
+      console.warn("Edge function fetch failed:", err);
     }
 
     console.warn("All endpoints failed — using mock data");

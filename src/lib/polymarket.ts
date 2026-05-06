@@ -1,22 +1,19 @@
 import type { Wallet } from "@/types";
 import { scoreWallet, getTier } from "@/lib/walletScorer";
+import { supabase } from "@/integrations/supabase/client";
 
 const GAMMA_API = "https://gamma-api.polymarket.com";
 const DATA_API = "https://data-api.polymarket.com";
-const CORS_PROXY = "https://corsproxy.io/?";
 
 async function apiFetch(url: string): Promise<any | null> {
-  const tries = [url, `${CORS_PROXY}${encodeURIComponent(url)}`];
-  for (const u of tries) {
-    try {
-      const res = await fetch(u, { headers: { Accept: "application/json" } });
-      if (!res.ok) continue;
-      return await res.json();
-    } catch {
-      continue;
-    }
+  // Direct call kept for endpoints that allow CORS (positions/activity rarely do, but try).
+  try {
+    const res = await fetch(url, { headers: { Accept: "application/json" } });
+    if (!res.ok) return null;
+    return await res.json();
+  } catch {
+    return null;
   }
-  return null;
 }
 
 function truncateAddress(addr: string): string {
@@ -52,41 +49,24 @@ function mapProfileToWallet(profile: any): Wallet {
 }
 
 export async function fetchTopWallets(limit = 20): Promise<Wallet[]> {
-  const endpoints = [
-    `${DATA_API}/profiles?limit=${limit}&sortBy=profitLoss&sortDirection=DESC`,
-    `${DATA_API}/leaderboard?limit=${limit}&window=allTime`,
-    `${DATA_API}/leaderboard?limit=${limit}&window=1m`,
-    `${GAMMA_API}/profiles?limit=${limit}&order=profit`,
-  ];
-  for (const url of endpoints) {
-    try {
-      console.log("Wallet scan trying:", url);
-      const controller = new AbortController();
-      const timer = setTimeout(() => controller.abort(), 10000);
-      const res = await fetch(url, { signal: controller.signal });
-      clearTimeout(timer);
-      console.log("Wallet scan status:", res.status);
-      if (res.ok) {
-        const data = await res.json();
-        const list: any[] = Array.isArray(data)
-          ? data
-          : data.profiles ?? data.data ?? data.leaderboard ?? [];
-        console.log("Profiles found:", list.length);
-        if (list.length > 0) {
-          const wallets = list
-            .map(mapProfileToWallet)
-            .filter((w) => w.address && w.winRate >= 0)
-            .slice(0, limit);
-          if (wallets.length > 0) return wallets;
-        }
-      }
-    } catch (err) {
-      console.warn("Wallet endpoint failed:", url, err);
-      continue;
+  try {
+    const { data, error } = await supabase.functions.invoke("fetch-wallets", {
+      body: { limit },
+    });
+    if (error) {
+      console.error("fetch-wallets error:", error);
+      return [];
     }
+    const profiles: any[] = data?.profiles ?? [];
+    console.log("Wallets from edge function:", profiles.length, "source:", data?.source, "endpoint:", data?.endpoint);
+    return profiles
+      .map(mapProfileToWallet)
+      .filter((w) => w.address && w.winRate >= 0)
+      .slice(0, limit);
+  } catch (err) {
+    console.error("fetchTopWallets failed:", err);
+    return [];
   }
-  console.warn("All wallet endpoints failed");
-  return [];
 }
 
 export async function fetchWalletPositions(address: string): Promise<any[]> {
@@ -118,16 +98,19 @@ export async function fetchWalletHistory(address: string, limit = 50): Promise<a
 }
 
 export async function fetchPolymarketMarkets(limit = 20): Promise<any[]> {
-  const endpoints = [
-    `${GAMMA_API}/markets?limit=${limit}&active=true&order=volume24hr&ascending=false`,
-    `${GAMMA_API}/markets?limit=${limit}&closed=false`,
-    `https://clob.polymarket.com/markets?limit=${limit}`,
-  ];
-  for (const url of endpoints) {
-    console.log("Polymarket markets try:", url);
-    const res = await apiFetch(url);
-    if (Array.isArray(res) && res.length > 0) return res;
-    if (res?.data && Array.isArray(res.data) && res.data.length > 0) return res.data;
+  try {
+    const { data, error } = await supabase.functions.invoke("fetch-markets", {
+      body: { limit, active: true },
+    });
+    if (error) {
+      console.error("fetch-markets error:", error);
+      return [];
+    }
+    const markets: any[] = data?.markets ?? [];
+    console.log("Markets from edge function:", markets.length, "source:", data?.source);
+    return markets;
+  } catch (err) {
+    console.error("fetchPolymarketMarkets failed:", err);
+    return [];
   }
-  return [];
 }
