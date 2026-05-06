@@ -93,7 +93,7 @@ const defaultSettings: SettingsState = {
   compactCards: false,
   favoriteCategories: ["Economics", "Crypto"],
   favoriteSports: ["americanfootball_nfl", "basketball_nba"],
-  sportsGapThreshold: 0.04,
+  sportsGapThreshold: 0.03,
   alertOnSportsMispricings: false,
   alerts: {
     telegram: { enabled: true, chatId: "" },
