@@ -471,10 +471,20 @@ export default function Dashboard() {
               <div className="rounded-md border border-dashed border-border bg-background/40 p-4 text-center">
                 <WalletIcon className="mx-auto h-6 w-6 text-muted-foreground" />
                 <div className="mt-2 text-sm font-semibold text-foreground">No wallets tracked yet</div>
-                <p className="mt-1 text-xs text-muted-foreground">Add a wallet on the Wallets page to track smart money signals</p>
-                <Link to="/wallets" className="mt-3 inline-flex items-center gap-1 text-xs font-semibold text-info hover:text-info/80">
-                  Go to Wallets <ArrowRight className="h-3 w-3" />
-                </Link>
+                <p className="mt-1 text-xs text-muted-foreground">Seed with known top traders to get started</p>
+                <div className="mt-3 flex flex-col items-center gap-2">
+                  <button
+                    onClick={handleSeedWallets}
+                    disabled={seeding}
+                    className="inline-flex items-center gap-1.5 rounded-md bg-info px-3 py-1.5 text-xs font-semibold text-white hover:bg-info/90 disabled:opacity-50"
+                  >
+                    {seeding ? <Loader2 className="h-3 w-3 animate-spin" /> : <Star className="h-3 w-3" />}
+                    Add Known Top Traders
+                  </button>
+                  <Link to="/wallets" className="inline-flex items-center gap-1 text-xs font-semibold text-info hover:text-info/80">
+                    Go to Wallets <ArrowRight className="h-3 w-3" />
+                  </Link>
+                </div>
               </div>
             ) : (
             <ul className="space-y-2">
