@@ -7,7 +7,6 @@ import Tooltip from "@/components/ui/AppTooltip";
 import { useToast } from "@/components/ui/AppToast";
 import { useAppStore } from "@/store/useAppStore";
 import { cn, fmtUSD } from "@/lib/utils";
-import { MOCK_SUGGESTIONS } from "@/data/mockData";
 import { useProfile } from "@/hooks/useProfile";
 import { supabase } from "@/integrations/supabase/client";
 import { usePageTitle } from "@/hooks/usePageTitle";
@@ -49,7 +48,8 @@ export default function Settings() {
   const maxPosColor =
     maxPosPct <= 5 ? "text-success" : maxPosPct <= 10 ? "text-warning" : "text-destructive";
 
-  const passing = MOCK_SUGGESTIONS.filter((s) => s.confidence >= settings.minConfidence).length;
+  const passing = 0;
+  const totalSuggestions = 0;
 
   const scenarios = [
     { name: "Strong signal", edge: 0.15, odds: 0.40 },
@@ -171,7 +171,7 @@ export default function Settings() {
               </div>
               <p className="mt-1 text-xs text-muted-foreground">
                 Only show suggestions scoring {settings.minConfidence}% or above ·{" "}
-                <span className="font-mono text-foreground">{passing} of {MOCK_SUGGESTIONS.length}</span> would be shown
+                <span className="font-mono text-foreground">{passing} of {totalSuggestions}</span> would be shown
               </p>
             </Field>
           </Card>
