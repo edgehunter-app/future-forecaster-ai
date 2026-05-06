@@ -24,7 +24,7 @@ const CACHE_TTL = 30 * 60 * 1000;
 
 export function useSportsOdds(polymarkets: Market[]) {
   const settings = useAppStore((s) => s.settings);
-  const threshold = settings.sportsGapThreshold ?? 0.03;
+  const threshold = settings.sportsGapThreshold ?? 0.02;
 
   const [mispricings, setMispricings] = useState<SportsMispricing[]>([]);
   const [games, setGames] = useState<OddsGame[]>([]);
@@ -68,7 +68,7 @@ export function useSportsOdds(polymarkets: Market[]) {
     setLoading(true);
     setError(null);
     try {
-      const results = await findSportsMispricings(polymarkets, "server-managed", 0.02);
+      const results = await findSportsMispricings(polymarkets, "server-managed", threshold);
       setMispricings(results);
       const dbg = getLastScanDebug();
       setDebug(dbg);
