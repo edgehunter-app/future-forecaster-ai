@@ -227,7 +227,7 @@ export async function fetchFullOdds(sportKey: string): Promise<FullGame[]> {
       commenceTime,
       isLive,
       moneyline: {
-        home: Math.round(homeImpliedRaw && consensus.home > 0 ? 0 : 0) || (books[0]?.homeMoneyline ?? 0),
+        home: books[0]?.homeMoneyline ?? 0,
         away: books[0]?.awayMoneyline ?? 0,
         homeImplied: consensus.home,
         awayImplied: consensus.away,
