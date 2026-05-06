@@ -1,4 +1,4 @@
-import type { Market, Wallet, Suggestion, HistoryPoint } from "@/types";
+import type { Market, Wallet, Suggestion } from "@/types";
 
 export const MOCK_MARKETS: Market[] = [
   { id: "m1", question: "Will the Fed cut rates in June 2025?", category: "Economics", yesPrice: 0.62, noPrice: 0.38, volume24h: 847320, totalVolume: 4200000, endDate: "2025-06-30", trend: "up", change24h: 0.04 },
@@ -20,13 +20,4 @@ export const MOCK_SUGGESTIONS: Suggestion[] = [
   { id: "s2", marketId: "m3", question: "Will there be a US recession in 2025?", direction: "YES", currentOdds: 0.31, suggestedAmount: 280, confidence: 71, edge: 0.14, category: "Economics", reasoning: "Contrarian play. Smart wallet cluster buying YES at discount. GDP growth data revision expected next week. Risk/reward favorable at current 31% pricing.", walletSignals: ["MarketSage", "AlphaSeeker"], status: "active", createdAt: "5h ago", expiresAt: "41h" },
   { id: "s3", marketId: "m4", question: "Will SpaceX Starship reach orbit in Q2 2025?", direction: "YES", currentOdds: 0.71, suggestedAmount: 190, confidence: 65, edge: 0.07, category: "Science", reasoning: "Moderate confidence. High-performing wallet (CryptoWhale_01) increased position by 40%. FAA approval rumors circulating. Lower size due to moderate edge.", walletSignals: ["CryptoWhale_01"], status: "active", createdAt: "8h ago", expiresAt: "28h" },
   { id: "s4", marketId: "m2", question: "Will Bitcoin exceed $100k before July?", direction: "NO", currentOdds: 0.56, suggestedAmount: 320, confidence: 74, edge: 0.09, category: "Crypto", reasoning: "Smart money shifting to NO. Exchange outflows declining. Macro headwinds from rate uncertainty. Multiple S/A-tier wallets reducing YES exposure this week.", walletSignals: ["PredictionPro", "CryptoWhale_01"], status: "active", createdAt: "12h ago", expiresAt: "55h" },
-];
-
-export const MOCK_HISTORY: HistoryPoint[] = [
-  { date: "Apr 28", pnl: 220, cumulative: 220, win: true },
-  { date: "Apr 29", pnl: -80, cumulative: 140, win: false },
-  { date: "Apr 30", pnl: 340, cumulative: 480, win: true },
-  { date: "May 1", pnl: 180, cumulative: 660, win: true },
-  { date: "May 2", pnl: -120, cumulative: 540, win: false },
-  { date: "May 3", pnl: 290, cumulative: 830, win: true },
 ];

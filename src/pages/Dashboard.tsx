@@ -5,7 +5,7 @@ import StatCard from "@/components/ui/StatCard";
 import SuggestionCard from "@/components/suggestions/SuggestionCard";
 import SafetyBanner from "@/components/ui/SafetyBanner";
 import ConfidenceBar from "@/components/ui/ConfidenceBar";
-import { MOCK_MARKETS, MOCK_HISTORY } from "@/data/mockData";
+import { MOCK_MARKETS } from "@/data/mockData";
 import { useAppStore } from "@/store/useAppStore";
 import { fmtUSD, cn } from "@/lib/utils";
 import { useCrossMarket } from "@/hooks/useCrossMarket";
@@ -14,6 +14,7 @@ import GamblingDisclaimer from "@/components/sports/GamblingDisclaimer";
 import { getConfidenceColor, getConfidenceTier } from "@/lib/confidenceColor";
 import { useSuggestionsDB } from "@/hooks/useSuggestionsDB";
 import { useTrackedWallets } from "@/hooks/useTrackedWallets";
+import { useHistory } from "@/hooks/useHistory";
 import { analyzeMarketWithClaude } from "@/lib/claude";
 import type { ClaudeAnalysis } from "@/types";
 import { usePageTitle } from "@/hooks/usePageTitle";
@@ -32,6 +33,7 @@ export default function Dashboard() {
   const { suggestions, dismissSuggestion, markOutcome } = useSuggestionsDB();
   const { wallets } = useTrackedWallets();
   const markets = useAppStore((s) => s.markets);
+  const { stats: histStats } = useHistory();
 
   const [analyzing, setAnalyzing] = useState(false);
   const [aiResult, setAiResult] = useState<ClaudeAnalysis | null>(null);
@@ -62,11 +64,13 @@ export default function Dashboard() {
     }
   };
 
-  const totalPnl = MOCK_HISTORY.reduce((acc, h) => acc + h.pnl, 0);
-  const wins = MOCK_HISTORY.filter((h) => h.win).length;
-  const losses = MOCK_HISTORY.length - wins;
-  const winRate = (wins / MOCK_HISTORY.length) * 100;
-  const maxAbs = Math.max(...MOCK_HISTORY.map((h) => Math.abs(h.pnl)));
+  const totalPnl = histStats.totalPnL;
+  const wins = histStats.wins;
+  const losses = histStats.losses;
+  const winRate = histStats.winRate * 100;
+  const byMonth = histStats.byMonth;
+  const maxAbs = byMonth.length ? Math.max(...byMonth.map((m) => Math.abs(m.pnl))) || 1 : 1;
+  const hasResolved = histStats.totalTrades > 0;
 
   return (
     <div className="space-y-6">
@@ -173,7 +177,14 @@ export default function Dashboard() {
         <StatCard label="Active Suggestions" value={suggestions.length} icon={Lightbulb} color="#8b5cf6" sub="Ready to review" />
         <StatCard label="Tracked Wallets" value={wallets.length} icon={WalletIcon} color="#3b82f6" sub="Smart money" />
         <StatCard label="Monitored Markets" value={MOCK_MARKETS.length} icon={BarChart2} color="#06b6d4" sub="Live polling" />
-        <StatCard label="7-Day P&L" value={fmtUSD(totalPnl, { compact: true })} icon={TrendingUp} color="#10b981" trend="up" sub={`+${(totalPnl / bankroll * 100).toFixed(1)}% of bankroll`} />
+        <StatCard
+          label="Total P&L"
+          value={hasResolved ? fmtUSD(totalPnl, { compact: true }) : "--"}
+          icon={TrendingUp}
+          color={totalPnl >= 0 ? "#10b981" : "#ef4444"}
+          trend={totalPnl >= 0 ? "up" : "down"}
+          sub={hasResolved ? `${(totalPnl / bankroll * 100).toFixed(1)}% of bankroll` : "No resolved trades yet"}
+        />
       </div>
 
       {/* Two-column row */}
@@ -210,43 +221,78 @@ export default function Dashboard() {
           <div className="rounded-lg border border-border bg-card p-5 shadow-card">
             <div className="flex items-center gap-2 mb-4">
               <LineChart className="h-4 w-4 text-success" />
-              <h2 className="text-sm font-semibold uppercase tracking-wide text-foreground">7-Day Performance</h2>
+              <h2 className="text-sm font-semibold uppercase tracking-wide text-foreground">Performance</h2>
             </div>
-            <div className="font-mono text-3xl font-bold text-success">{fmtUSD(totalPnl)}</div>
-            <div className="mt-1 text-xs text-muted-foreground">
-              <span className="text-success font-medium">{wins} wins</span> · <span className="text-destructive font-medium">{losses} losses</span>
-            </div>
-
-            {/* Mini bar chart */}
-            <div className="mt-5">
-              <svg viewBox="0 0 240 80" className="w-full h-20" preserveAspectRatio="none">
-                {MOCK_HISTORY.map((h, i) => {
-                  const colW = 240 / MOCK_HISTORY.length;
-                  const barW = colW * 0.55;
-                  const x = i * colW + (colW - barW) / 2;
-                  const maxBarH = 36;
-                  const barH = (Math.abs(h.pnl) / maxAbs) * maxBarH;
-                  const midY = 40;
-                  const y = h.pnl >= 0 ? midY - barH : midY;
-                  return (
-                    <g key={h.date}>
-                      <rect x={x} y={y} width={barW} height={barH} rx={2}
-                        fill={h.win ? "hsl(var(--success))" : "hsl(var(--destructive))"} />
-                      <text x={x + barW / 2} y={76} textAnchor="middle" fontSize="8"
-                        fill="hsl(var(--muted-foreground))" fontFamily="JetBrains Mono">{h.date}</text>
-                    </g>
-                  );
-                })}
-                <line x1="0" y1="40" x2="240" y2="40" stroke="hsl(var(--border))" strokeDasharray="2 2" />
-              </svg>
-            </div>
-
-            {/* Bottom stats */}
-            <div className="mt-4 grid grid-cols-3 gap-3 border-t border-border pt-4">
-              <MiniStat label="Win Rate" value={`${winRate.toFixed(1)}%`} color="hsl(var(--success))" />
-              <MiniStat label="Avg Edge" value="+10.3%" color="hsl(var(--success))" />
-              <MiniStat label="Sharpe" value="1.84" color="hsl(var(--info))" />
-            </div>
+            {hasResolved ? (
+              <>
+                <div className={cn("font-mono text-3xl font-bold", totalPnl >= 0 ? "text-success" : "text-destructive")}>
+                  {fmtUSD(totalPnl)}
+                </div>
+                <div className="mt-1 text-xs text-muted-foreground">
+                  <span className="text-success font-medium">{wins} wins</span> · <span className="text-destructive font-medium">{losses} losses</span>
+                  {histStats.activeTrades > 0 && (
+                    <> · <span className="inline-flex items-center gap-1 text-info font-medium"><span className="h-1.5 w-1.5 rounded-full bg-info animate-pulse" />{histStats.activeTrades} active</span></>
+                  )}
+                </div>
+                <div className="mt-5">
+                  <svg viewBox="0 0 240 80" className="w-full h-20" preserveAspectRatio="none">
+                    {byMonth.length > 0 ? byMonth.map((h, i) => {
+                      const colW = 240 / Math.max(1, byMonth.length);
+                      const barW = colW * 0.55;
+                      const x = i * colW + (colW - barW) / 2;
+                      const maxBarH = 36;
+                      const barH = (Math.abs(h.pnl) / maxAbs) * maxBarH;
+                      const midY = 40;
+                      const y = h.pnl >= 0 ? midY - barH : midY;
+                      return (
+                        <g key={h.month}>
+                          <rect x={x} y={y} width={barW} height={barH} rx={2}
+                            fill={h.pnl >= 0 ? "hsl(var(--success))" : "hsl(var(--destructive))"} />
+                          <text x={x + barW / 2} y={76} textAnchor="middle" fontSize="8"
+                            fill="hsl(var(--muted-foreground))" fontFamily="JetBrains Mono">{h.month}</text>
+                        </g>
+                      );
+                    }) : null}
+                    <line x1="0" y1="40" x2="240" y2="40" stroke="hsl(var(--border))" strokeDasharray="2 2" />
+                  </svg>
+                </div>
+                <div className="mt-4 grid grid-cols-3 gap-3 border-t border-border pt-4">
+                  <MiniStat label="Win Rate" value={`${winRate.toFixed(1)}%`} color="hsl(var(--success))" />
+                  <MiniStat label="Avg Edge" value={`${(histStats.avgEdge * 100).toFixed(1)}%`} color="hsl(var(--success))" />
+                  <MiniStat label="Sharpe" value={histStats.sharpe.toFixed(2)} color="hsl(var(--info))" />
+                </div>
+              </>
+            ) : (
+              <>
+                <div className="rounded-md border border-dashed border-border bg-background/40 p-4 text-center">
+                  <div className="text-sm font-semibold text-foreground">No resolved trades yet</div>
+                  <p className="mt-1 text-xs text-muted-foreground">
+                    Mark suggestions as won or lost in History to track your performance.
+                  </p>
+                  <Link to="/history" className="mt-3 inline-flex items-center gap-1 text-xs font-semibold text-info hover:text-info/80">
+                    Go to History <ArrowRight className="h-3 w-3" />
+                  </Link>
+                </div>
+                <div className="mt-4">
+                  <svg viewBox="0 0 240 80" className="w-full h-20" preserveAspectRatio="none">
+                    {Array.from({ length: 6 }).map((_, i) => {
+                      const colW = 240 / 6;
+                      const barW = colW * 0.55;
+                      const x = i * colW + (colW - barW) / 2;
+                      const barH = 7.2; // 20% of 36
+                      return <rect key={i} x={x} y={40 - barH} width={barW} height={barH} rx={2} fill="hsl(var(--border))" />;
+                    })}
+                  </svg>
+                  <div className="mt-1 text-center text-[10px] font-mono text-muted-foreground">No data yet</div>
+                </div>
+                {histStats.activeTrades > 0 && (
+                  <div className="mt-3 inline-flex items-center gap-1.5 text-xs text-info">
+                    <span className="h-1.5 w-1.5 rounded-full bg-info animate-pulse" />
+                    {histStats.activeTrades} active position{histStats.activeTrades === 1 ? "" : "s"}
+                  </div>
+                )}
+              </>
+            )}
           </div>
 
           {/* Top wallets */}
