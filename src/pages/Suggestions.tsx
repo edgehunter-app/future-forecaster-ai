@@ -1,5 +1,4 @@
 import { RotateCw, SearchX, Lightbulb } from "lucide-react";
-import { Link } from "react-router-dom";
 import { useAppStore } from "@/store/useAppStore";
 import SuggestionCard from "@/components/suggestions/SuggestionCard";
 import EmptyState from "@/components/ui/EmptyState";
