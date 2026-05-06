@@ -398,7 +398,7 @@ function TotalsTab({ games }: { games: FullGame[] }) {
 
 function PropsTab({ games }: { games: FullGame[] }) {
   const { propsCache } = useGameProps();
-  const [search, setSearch] = useStateReact("");
+  const [search, setSearch] = useState("");
 
   const cachedEntries = Object.entries(propsCache);
   const allProps: { game: FullGame; prop: PlayerProp }[] = [];
