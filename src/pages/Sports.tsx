@@ -19,7 +19,8 @@ const TIERS = [
 export default function Sports() {
   usePageTitle("Sports");
   const markets = useAppStore((s) => s.markets);
-  const { mispricings, sportsMarkets, debug, loading, lastScanned, fromCache, error, remainingRequests, hasApiKey, scan } =
+  const settings = useAppStore((s) => s.settings);
+  const { mispricings, sportsMarkets, debug, polymarketsCount, vegasGamesCount, matchesCount, threshold, loading, lastScanned, fromCache, error, remainingRequests, hasApiKey, scan } =
     useSportsOdds(markets);
 
   const [activeSport, setActiveSport] = useState<string>("all");
@@ -212,6 +213,18 @@ export default function Sports() {
         <Pill color="#ef4444">{tierCounts.weak} weak</Pill>
       </div>
 
+      {/* Diagnostic box (always on) */}
+      <div className="rounded-lg border border-info/30 bg-background/60 p-4 font-mono text-[11px] text-muted-foreground space-y-1">
+        <div className="text-foreground font-semibold uppercase tracking-wide text-[10px] mb-1">Pipeline diagnostics</div>
+        <div>Last scan: {lastScanned ? lastScanned.toLocaleString() : "never"}</div>
+        <div>Threshold: {(threshold * 100).toFixed(0)}% (hardcoded scan: 2%)</div>
+        <div>API key: server-managed (ODDS_API_KEY)</div>
+        <div>Polymarket sports markets found: {polymarketsCount}</div>
+        <div>Vegas games fetched: {vegasGamesCount}</div>
+        <div>Matches found: {matchesCount}</div>
+        {debug && <div>Gaps above threshold: {debug.gapsAboveThreshold}</div>}
+      </div>
+
       {error && (
         <div className="rounded-lg border border-destructive/40 bg-destructive/10 px-4 py-3 text-sm text-destructive">
           {error}
@@ -229,7 +242,7 @@ export default function Sports() {
           <div className="rounded-lg border border-dashed border-border bg-card/40 p-6 text-center">
             <Trophy className="mx-auto h-10 w-10 text-muted-foreground/60" />
             <h3 className="mt-3 text-base font-semibold text-foreground">
-              No gaps above {((useAppStore.getState().settings.sportsGapThreshold ?? 0.04) * 100).toFixed(0)}% detected
+              No gaps above {(settings.sportsGapThreshold * 100).toFixed(0)}% detected
             </h3>
             <ul className="mx-auto mt-3 max-w-md text-left text-sm text-muted-foreground space-y-1.5 list-disc list-inside">
               <li>Vegas and Polymarket agree on current sports events — this is common outside major game weeks</li>
