@@ -1,27 +1,29 @@
-import { useCallback, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { fetchGameProps, type GameProps } from "@/lib/oddsApi";
+import { useAppStore } from "@/store/useAppStore";
 
 const PROPS_CACHE_KEY = "eh_props_cache";
-const PROPS_CACHE_TTL = 2 * 60 * 60 * 1000; // 2 hours
-
-function loadCache(): Record<string, GameProps> {
-  try {
-    const raw = localStorage.getItem(PROPS_CACHE_KEY);
-    return raw ? JSON.parse(raw) : {};
-  } catch {
-    return {};
-  }
-}
+const PROPS_CACHE_TTL = 2 * 60 * 60 * 1000;
 
 function saveCache(cache: Record<string, GameProps>) {
-  try {
-    localStorage.setItem(PROPS_CACHE_KEY, JSON.stringify(cache));
-  } catch {}
+  try { localStorage.setItem(PROPS_CACHE_KEY, JSON.stringify(cache)); } catch {}
 }
 
 export function useGameProps() {
+  const propsCache = useAppStore((s) => s.propsCache);
+  const setPropsCache = useAppStore((s) => s.setPropsCache);
   const [loadingGames, setLoadingGames] = useState<Set<string>>(new Set());
-  const [propsCache, setPropsCache] = useState<Record<string, GameProps>>(loadCache);
+
+  // Hydrate from localStorage on first mount if store is empty
+  useEffect(() => {
+    if (Object.keys(propsCache).length === 0) {
+      try {
+        const raw = localStorage.getItem(PROPS_CACHE_KEY);
+        if (raw) setPropsCache(JSON.parse(raw));
+      } catch {}
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const isCached = useCallback(
     (gameId: string) => {
@@ -46,16 +48,13 @@ export function useGameProps() {
       const cached = propsCache[gameId];
       if (cached && Date.now() - cached.fetchedAt < PROPS_CACHE_TTL) return cached;
       if (loadingGames.has(gameId)) return null;
-
       setLoadingGames((prev) => new Set([...prev, gameId]));
       try {
         const result = await fetchGameProps(sportKey, gameId);
         if (result) {
-          setPropsCache((prev) => {
-            const next = { ...prev, [gameId]: result };
-            saveCache(next);
-            return next;
-          });
+          const next = { ...propsCache, [gameId]: result };
+          setPropsCache(next);
+          saveCache(next);
         }
         return result;
       } finally {
@@ -66,13 +65,13 @@ export function useGameProps() {
         });
       }
     },
-    [propsCache, loadingGames],
+    [propsCache, loadingGames, setPropsCache],
   );
 
   const clearCache = useCallback(() => {
     setPropsCache({});
     localStorage.removeItem(PROPS_CACHE_KEY);
-  }, []);
+  }, [setPropsCache]);
 
   return { fetchProps, isLoading, isCached, getCached, clearCache, propsCache };
 }
