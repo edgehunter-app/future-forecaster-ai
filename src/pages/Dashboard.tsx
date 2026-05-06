@@ -510,3 +510,21 @@ function MiniStat({ label, value, color }: { label: string; value: string; color
     </div>
   );
 }
+
+function StatusPill({
+  label, state, text,
+}: { label: string; state: "ok" | "warn" | "error" | "loading" | "neutral"; text: string }) {
+  const styles: Record<string, string> = {
+    ok: "border-success/40 bg-success/10 text-success",
+    warn: "border-warning/40 bg-warning/10 text-warning",
+    error: "border-destructive/40 bg-destructive/10 text-destructive",
+    loading: "border-info/40 bg-info/10 text-info",
+    neutral: "border-border bg-card text-muted-foreground",
+  };
+  return (
+    <span className={cn("inline-flex items-center gap-1.5 rounded-full border px-2.5 py-0.5 text-[10px] font-semibold", styles[state])}>
+      <span className="opacity-70">{label}:</span>
+      <span>{text}</span>
+    </span>
+  );
+}
