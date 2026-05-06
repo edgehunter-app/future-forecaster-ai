@@ -20,7 +20,7 @@ export default function Sports() {
   usePageTitle("Sports");
   const markets = useAppStore((s) => s.markets);
   const settings = useAppStore((s) => s.settings);
-  const { mispricings, sportsMarkets, debug, polymarketsCount, vegasGamesCount, matchesCount, threshold, loading, lastScanned, fromCache, error, remainingRequests, hasApiKey, scan } =
+  const { mispricings, sportsMarkets, debug, polymarketsCount, vegasGamesCount, matchesCount, edgeResponse, edgeError, threshold, loading, lastScanned, fromCache, error, remainingRequests, hasApiKey, scan } =
     useSportsOdds(markets);
 
   const [activeSport, setActiveSport] = useState<string>("all");
@@ -223,6 +223,11 @@ export default function Sports() {
         <div>Vegas games fetched: {vegasGamesCount}</div>
         <div>Matches found: {matchesCount}</div>
         {debug && <div>Gaps above threshold: {debug.gapsAboveThreshold}</div>}
+        <div className="pt-2 mt-2 border-t border-border/50">
+          <div className="text-foreground font-semibold text-[10px] uppercase tracking-wide mb-1">Edge function</div>
+          <div className="break-all whitespace-pre-wrap">Response: {edgeResponse ? JSON.stringify(edgeResponse?.debug ?? edgeResponse, null, 2) : "—"}</div>
+          <div className="break-all whitespace-pre-wrap mt-1">Error: {edgeError ? JSON.stringify(edgeError) : "none"}</div>
+        </div>
       </div>
 
       {error && (
