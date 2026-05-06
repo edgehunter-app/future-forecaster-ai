@@ -14,39 +14,50 @@ Deno.serve(async (req) => {
     const { limit = 20 } = await req.json().catch(() => ({}));
     const endpoints = [
       `https://data-api.polymarket.com/profiles?limit=${limit}&sortBy=profitLoss&sortDirection=DESC`,
+      `https://data-api.polymarket.com/profiles?limit=${limit}&sortBy=volume&sortDirection=DESC`,
       `https://data-api.polymarket.com/leaderboard?limit=${limit}&window=allTime`,
       `https://data-api.polymarket.com/leaderboard?limit=${limit}&window=1m`,
+      `https://data-api.polymarket.com/leaderboard?limit=${limit}&window=1w`,
       `https://gamma-api.polymarket.com/profiles?limit=${limit}&order=profit`,
+      `https://gamma-api.polymarket.com/users?limit=${limit}&order=volume`,
     ];
 
+    const attempts: { url: string; status: number; preview: string }[] = [];
     for (const url of endpoints) {
       try {
+        console.log("Trying:", url);
         const res = await fetch(url, {
           headers: { "User-Agent": "EdgeHunter/1.0", Accept: "application/json" },
           signal: AbortSignal.timeout(10000),
         });
-        console.log("Wallet endpoint:", url, "status:", res.status);
+        console.log("Status:", res.status);
+        const text = await res.text();
+        const preview = text.slice(0, 300);
+        console.log("Response preview:", preview);
+        attempts.push({ url, status: res.status, preview });
         if (res.ok) {
-          const data = await res.json();
+          let data: any;
+          try { data = JSON.parse(text); } catch { continue; }
           const profiles = Array.isArray(data)
             ? data
-            : data.profiles ?? data.data ?? data.leaderboard ?? [];
+            : data.profiles ?? data.data ?? data.leaderboard ?? data.users ?? [];
           console.log("Profiles found:", profiles.length);
           if (profiles.length > 0) {
             return new Response(
-              JSON.stringify({ profiles, source: "live", endpoint: url }),
+              JSON.stringify({ profiles, source: "live", endpoint: url, attempts }),
               { headers: CORS_HEADERS },
             );
           }
         }
       } catch (err) {
         console.warn("Wallet endpoint failed:", url, String(err));
+        attempts.push({ url, status: 0, preview: String(err).slice(0, 300) });
         continue;
       }
     }
 
     return new Response(
-      JSON.stringify({ profiles: [], source: "empty" }),
+      JSON.stringify({ profiles: [], source: "empty", attempts }),
       { headers: CORS_HEADERS },
     );
   } catch (err) {
