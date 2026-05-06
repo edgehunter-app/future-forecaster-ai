@@ -5,8 +5,9 @@ import StatCard from "@/components/ui/StatCard";
 import SuggestionCard from "@/components/suggestions/SuggestionCard";
 import SafetyBanner from "@/components/ui/SafetyBanner";
 import ConfidenceBar from "@/components/ui/ConfidenceBar";
-import { MOCK_MARKETS } from "@/data/mockData";
 import { useAppStore } from "@/store/useAppStore";
+import EmptyState from "@/components/ui/EmptyState";
+import { useMarkets } from "@/hooks/useMarkets";
 import { fmtUSD, cn } from "@/lib/utils";
 import { useCrossMarket } from "@/hooks/useCrossMarket";
 import { useSportsOdds } from "@/hooks/useSportsOdds";
@@ -32,7 +33,7 @@ export default function Dashboard() {
   const settings = useAppStore((s) => s.settings);
   const { suggestions, dismissSuggestion, markOutcome } = useSuggestionsDB();
   const { wallets } = useTrackedWallets();
-  const markets = useAppStore((s) => s.markets);
+  const { markets } = useMarkets();
   const { stats: histStats } = useHistory();
 
   const [analyzing, setAnalyzing] = useState(false);
@@ -176,7 +177,7 @@ export default function Dashboard() {
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
         <StatCard label="Active Suggestions" value={suggestions.length} icon={Lightbulb} color="#8b5cf6" sub="Ready to review" />
         <StatCard label="Tracked Wallets" value={wallets.length} icon={WalletIcon} color="#3b82f6" sub="Smart money" />
-        <StatCard label="Monitored Markets" value={MOCK_MARKETS.length} icon={BarChart2} color="#06b6d4" sub="Live polling" />
+        <StatCard label="Monitored Markets" value={markets.length} icon={BarChart2} color="#06b6d4" sub="Live polling" />
         <StatCard
           label="Total P&L"
           value={hasResolved ? fmtUSD(totalPnl, { compact: true }) : "--"}
@@ -203,15 +204,23 @@ export default function Dashboard() {
             <span style={{ color: "#ef4444" }}>{suggestions.filter((s) => s.confidence < 50).length} weak</span>
           </div>
           <div className="space-y-4">
-            {suggestions.slice(0, 2).map((s) => (
-              <SuggestionCard
-                key={s.id}
-                suggestion={s}
-                bankroll={bankroll}
-                onDismiss={() => dismissSuggestion(s.id)}
-                onMarkOutcome={(o) => markOutcome(s.id, o)}
+            {suggestions.length === 0 ? (
+              <EmptyState
+                icon={Lightbulb}
+                title="No suggestions yet"
+                subtitle="Click Run Analysis above to generate your first AI-powered suggestions"
               />
-            ))}
+            ) : (
+              suggestions.slice(0, 2).map((s) => (
+                <SuggestionCard
+                  key={s.id}
+                  suggestion={s}
+                  bankroll={bankroll}
+                  onDismiss={() => dismissSuggestion(s.id)}
+                  onMarkOutcome={(o) => markOutcome(s.id, o)}
+                />
+              ))
+            )}
           </div>
         </div>
 
@@ -301,6 +310,16 @@ export default function Dashboard() {
               <Star className="h-4 w-4 text-warning" />
               <h2 className="text-sm font-semibold uppercase tracking-wide text-foreground">Top Wallets</h2>
             </div>
+            {wallets.length === 0 ? (
+              <div className="rounded-md border border-dashed border-border bg-background/40 p-4 text-center">
+                <WalletIcon className="mx-auto h-6 w-6 text-muted-foreground" />
+                <div className="mt-2 text-sm font-semibold text-foreground">No wallets tracked yet</div>
+                <p className="mt-1 text-xs text-muted-foreground">Add a wallet on the Wallets page to track smart money signals</p>
+                <Link to="/wallets" className="mt-3 inline-flex items-center gap-1 text-xs font-semibold text-info hover:text-info/80">
+                  Go to Wallets <ArrowRight className="h-3 w-3" />
+                </Link>
+              </div>
+            ) : (
             <ul className="space-y-2">
               {wallets.slice(0, 3).map((w) => {
                 const c = TIER_COLORS[w.tier];
@@ -324,6 +343,7 @@ export default function Dashboard() {
                 );
               })}
             </ul>
+            )}
           </div>
         </div>
       </div>

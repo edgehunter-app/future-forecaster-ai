@@ -1,7 +1,8 @@
-import { Search, X } from "lucide-react";
+import { Search, X, BarChart2 } from "lucide-react";
 import { useAppStore } from "@/store/useAppStore";
-import { MOCK_MARKETS } from "@/data/mockData";
 import MarketRow from "@/components/markets/MarketRow";
+import EmptyState from "@/components/ui/EmptyState";
+import { useMarkets } from "@/hooks/useMarkets";
 import { cn, fmtUSD } from "@/lib/utils";
 import { usePageTitle } from "@/hooks/usePageTitle";
 
@@ -15,12 +16,13 @@ const LEGEND = [
 
 export default function Markets() {
   usePageTitle("Markets");
+  const { markets, loading, error } = useMarkets();
   const { searchQuery: search, category: cat } = useAppStore((s) => s.marketFilters);
   const setMarketFilters = useAppStore((s) => s.setMarketFilters);
   const setSearch = (q: string) => setMarketFilters({ searchQuery: q });
   const setCat = (c: string) => setMarketFilters({ category: c });
 
-  const filtered = MOCK_MARKETS.filter((m) => {
+  const filtered = markets.filter((m) => {
     const okCat = cat === "All" || m.category === cat;
     const okSearch = !search || m.question.toLowerCase().includes(search.toLowerCase());
     return okCat && okSearch;
@@ -79,7 +81,14 @@ export default function Markets() {
             </div>
           ))}
         </div>
-        {filtered.length === 0 && (
+        {markets.length === 0 && !loading && (
+          <EmptyState
+            icon={BarChart2}
+            title="No markets available"
+            subtitle={error ?? "Markets will appear here once data loads from Polymarket."}
+          />
+        )}
+        {markets.length > 0 && filtered.length === 0 && (
           <div className="rounded-lg border border-dashed border-border bg-card/40 p-8 text-center text-sm text-muted-foreground">
             No markets match your filters.
           </div>
@@ -88,10 +97,10 @@ export default function Markets() {
       </div>
 
       {/* Activity */}
-      <div className="pt-2">
+      {markets.length > 0 && <div className="pt-2">
         <h2 className="text-sm font-semibold uppercase tracking-wide text-foreground mb-3">Market Activity</h2>
         <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
-          {MOCK_MARKETS.map((m) => {
+          {markets.map((m) => {
             const pct = (m.volume24h / m.totalVolume) * 100;
             return (
               <div key={m.id} className="rounded-lg border border-border bg-card p-4">
@@ -109,7 +118,7 @@ export default function Markets() {
             );
           })}
         </div>
-      </div>
+      </div>}
     </div>
   );
 }

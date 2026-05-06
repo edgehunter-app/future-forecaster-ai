@@ -31,12 +31,19 @@ function mapSuggestionRow(row: any): Suggestion {
 export function useSuggestionsDB(statuses: string[] = ["active"]) {
   const { user } = useAuth();
   const isDemoMode = useAppStore((s) => s.isDemoMode);
-  const [suggestions, setSuggestions] = useState<Suggestion[]>(MOCK_SUGGESTIONS);
+  const [suggestions, setSuggestions] = useState<Suggestion[]>(
+    isDemoMode ? MOCK_SUGGESTIONS : [],
+  );
   const [loading, setLoading] = useState(true);
 
   const load = useCallback(async () => {
-    if (isDemoMode || !user) {
+    if (isDemoMode) {
       setSuggestions(MOCK_SUGGESTIONS);
+      setLoading(false);
+      return;
+    }
+    if (!user) {
+      setSuggestions([]);
       setLoading(false);
       return;
     }
@@ -47,7 +54,7 @@ export function useSuggestionsDB(statuses: string[] = ["active"]) {
       .in("status", statuses)
       .order("created_at", { ascending: false })
       .limit(50);
-    setSuggestions(data && data.length ? data.map(mapSuggestionRow) : MOCK_SUGGESTIONS);
+    setSuggestions(data ? data.map(mapSuggestionRow) : []);
     setLoading(false);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isDemoMode, user, statuses.join(",")]);

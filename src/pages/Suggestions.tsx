@@ -1,4 +1,4 @@
-import { RotateCw, SearchX } from "lucide-react";
+import { RotateCw, SearchX, Lightbulb } from "lucide-react";
 import { useAppStore } from "@/store/useAppStore";
 import SuggestionCard from "@/components/suggestions/SuggestionCard";
 import EmptyState from "@/components/ui/EmptyState";
@@ -148,7 +148,14 @@ export default function Suggestions() {
       </div>
 
       {/* Grid */}
-      {filtered.length === 0 ? (
+      {suggestions.length === 0 ? (
+        <EmptyState
+          icon={Lightbulb}
+          title="No suggestions yet"
+          subtitle="Click Run Analysis on the Dashboard to generate your first AI-powered suggestions"
+          action={{ label: "Go to Dashboard", onClick: () => { window.location.href = "/"; } }}
+        />
+      ) : filtered.length === 0 ? (
         <EmptyState
           icon={SearchX}
           title="No suggestions match your filters"

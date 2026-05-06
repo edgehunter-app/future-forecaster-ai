@@ -22,12 +22,17 @@ function mapWalletRow(row: any): Wallet {
 export function useTrackedWallets() {
   const { user } = useAuth();
   const isDemoMode = useAppStore((s) => s.isDemoMode);
-  const [wallets, setWallets] = useState<Wallet[]>(MOCK_WALLETS);
+  const [wallets, setWallets] = useState<Wallet[]>(isDemoMode ? MOCK_WALLETS : []);
   const [loading, setLoading] = useState(true);
 
   const load = useCallback(async () => {
-    if (isDemoMode || !user) {
+    if (isDemoMode) {
       setWallets(MOCK_WALLETS);
+      setLoading(false);
+      return;
+    }
+    if (!user) {
+      setWallets([]);
       setLoading(false);
       return;
     }
@@ -36,12 +41,16 @@ export function useTrackedWallets() {
       .select("*")
       .eq("user_id", user.id)
       .order("created_at", { ascending: false });
-    setWallets(data && data.length ? data.map(mapWalletRow) : MOCK_WALLETS);
+    setWallets(data ? data.map(mapWalletRow) : []);
     setLoading(false);
   }, [isDemoMode, user]);
 
   const addWallet = async (w: Wallet) => {
-    if (isDemoMode || !user) {
+    if (isDemoMode) {
+      setWallets((prev) => prev.some((x) => x.address === w.address) ? prev : [w, ...prev]);
+      return;
+    }
+    if (!user) {
       setWallets((prev) => prev.some((x) => x.address === w.address) ? prev : [w, ...prev]);
       return;
     }
