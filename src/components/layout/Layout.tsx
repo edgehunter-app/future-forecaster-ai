@@ -4,12 +4,17 @@ import Sidebar from "./Sidebar";
 import TopBar from "./TopBar";
 import PageTransition from "./PageTransition";
 import IconUpdateBanner from "@/components/IconUpdateBanner";
+import TopLoadingBar from "@/components/ui/TopLoadingBar";
+import { useAppStore } from "@/store/useAppStore";
 
 export function Layout({ children }: { children: ReactNode }) {
   const [mobileOpen, setMobileOpen] = useState(false);
   const { pathname } = useLocation();
+  const sportsLoading = useAppStore((s) => s.sportsLoading);
+  const crossLoading = useAppStore((s) => s.crossMarketLoading);
   return (
     <div className="flex h-screen w-full overflow-hidden bg-background text-foreground">
+      <TopLoadingBar loading={sportsLoading || crossLoading} />
       <Sidebar mobileOpen={mobileOpen} onMobileClose={() => setMobileOpen(false)} />
       <div className="flex flex-1 flex-col overflow-hidden min-w-0">
         <TopBar onMenuClick={() => setMobileOpen(true)} />
