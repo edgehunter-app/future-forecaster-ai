@@ -1,7 +1,6 @@
 import { create } from "zustand";
 import { persist, createJSONStorage } from "zustand/middleware";
 import type { Wallet, Suggestion, Market, CrossMarketOpp } from "@/types";
-import { MOCK_WALLETS, MOCK_SUGGESTIONS, MOCK_MARKETS } from "@/data/mockData";
 
 export interface AlertChannelTelegram { enabled: boolean; chatId: string; }
 export interface AlertChannelDiscord { enabled: boolean; webhookUrl: string; }
@@ -108,9 +107,9 @@ export const useAppStore = create<AppState>()(
     (set) => ({
       settings: defaultSettings,
       ui: { darkMode: true, sidebarOpen: true, activePage: "dashboard" },
-      suggestions: MOCK_SUGGESTIONS,
-      trackedWallets: MOCK_WALLETS,
-      markets: MOCK_MARKETS,
+      suggestions: [],
+      trackedWallets: [],
+      markets: [],
       suggestionFilters: { category: "All", direction: "all", status: "active", sortBy: "confidence" },
       marketFilters: { searchQuery: "", category: "All" },
       crossMarketOpps: [],
