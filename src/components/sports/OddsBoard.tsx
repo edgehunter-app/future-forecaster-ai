@@ -87,8 +87,14 @@ export default function OddsBoard({ games, loading }: Props) {
 
 function GameCard({ game }: { game: FullGame }) {
   const [expanded, setExpanded] = useState(false);
-  const bestHome = getBestMoneyline(game.bookmakers, "home");
-  const bestAway = getBestMoneyline(game.bookmakers, "away");
+  const bookmakers = game.bookmakers ?? [];
+  const hasBookmakers = bookmakers.length > 0;
+  const homeOdds = game.moneyline?.home ?? 0;
+  const awayOdds = game.moneyline?.away ?? 0;
+  const homeImplied = game.moneyline?.homeImplied ?? 0;
+  const awayImplied = game.moneyline?.awayImplied ?? 0;
+  const bestHome = hasBookmakers ? getBestMoneyline(bookmakers, "home") : { odds: homeOdds, book: "" };
+  const bestAway = hasBookmakers ? getBestMoneyline(bookmakers, "away") : { odds: awayOdds, book: "" };
 
   return (
     <div className="rounded-lg border border-border bg-card p-4 space-y-3">
