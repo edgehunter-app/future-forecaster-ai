@@ -100,12 +100,25 @@ Deno.serve(async (req) => {
       const errText = await resp.text();
       console.error("Odds API error body:", errText);
       // On rate limit, serve stale cache if available.
-      if (resp.status === 429 && cached) {
-        console.log("Serving stale cache due to 429");
-        return new Response(JSON.stringify(cached.payload), {
-          status: 200,
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-        });
+      if (resp.status === 429) {
+        if (cached) {
+          console.log("Serving stale cache due to 429");
+          return new Response(JSON.stringify(cached.payload), {
+            status: 200,
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+          });
+        }
+        // No cache — return empty success so the UI doesn't blank-screen.
+        return new Response(
+          JSON.stringify({
+            data: [],
+            remainingRequests: remaining !== null ? Number(remaining) : null,
+            usedRequests: used !== null ? Number(used) : null,
+            rateLimited: true,
+            debug: { hasApiKey: true, url: safeUrl, status: 429, gamesFound: 0 },
+          }),
+          { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } },
+        );
       }
       return new Response(JSON.stringify({ error: 'Odds API error', status: resp.status, detail: errText }), {
         status: resp.status,
