@@ -99,9 +99,13 @@ export default function Sports() {
             </span>
           )}
           <span className="text-xs font-mono text-muted-foreground">
-            {lastScanned
-              ? `${fromCache ? "cache · " : ""}${lastScanned.toLocaleTimeString()}`
-              : "—"}
+            {(() => {
+              if (!lastScanned) return loading ? "Loading..." : "—";
+              const minutesAgo = Math.floor((Date.now() - lastScanned.getTime()) / 60000);
+              const refreshing = loading ? " — refreshing..." : "";
+              if (minutesAgo === 0) return `Updated just now${refreshing}`;
+              return `Updated ${minutesAgo}m ago${refreshing}`;
+            })()}
           </span>
           <button
             onClick={() => void scan()}
