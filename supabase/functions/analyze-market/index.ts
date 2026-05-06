@@ -79,15 +79,15 @@ Deno.serve(async (req) => {
     }
 
     if (!apiKey) {
-      return new Response(JSON.stringify({ error: 'ANTHROPIC_API_KEY not configured' }), {
-        status: 500,
+      return new Response(JSON.stringify({ error: 'ANTHROPIC_API_KEY not configured', code: 'NO_API_KEY' }), {
+        status: 200,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
     }
 
     if (!body.market || typeof body.market.question !== 'string') {
-      return new Response(JSON.stringify({ error: 'market is required' }), {
-        status: 400,
+      return new Response(JSON.stringify({ error: 'market is required', code: 'BAD_REQUEST' }), {
+        status: 200,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
     }
@@ -98,8 +98,13 @@ Deno.serve(async (req) => {
       const maxAttempts = 4;
       let lastResp: Response | null = null;
       for (let attempt = 0; attempt < maxAttempts; attempt++) {
-        const r = await fetch('https://api.anthropic.com/v1/messages', {
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 25000);
+        let r: Response;
+        try {
+          r = await fetch('https://api.anthropic.com/v1/messages', {
           method: 'POST',
+          signal: controller.signal,
           headers: {
             'x-api-key': apiKey,
             'anthropic-version': '2023-06-01',
@@ -110,7 +115,22 @@ Deno.serve(async (req) => {
             max_tokens: 1000,
             messages: [{ role: 'user', content: prompt }],
           }),
-        });
+          });
+        } catch (fetchErr) {
+          clearTimeout(timeoutId);
+          if (attempt < maxAttempts - 1) {
+            const delay = 800 * Math.pow(2, attempt) + Math.random() * 300;
+            console.warn(`Anthropic fetch error (${(fetchErr as Error).message}) — retry in ${Math.round(delay)}ms`);
+            await new Promise((res) => setTimeout(res, delay));
+            continue;
+          }
+          return new Response(JSON.stringify({
+            error: 'Network error reaching AI provider',
+            code: 'NETWORK_ERROR',
+            detail: (fetchErr as Error).message,
+          }), { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+        }
+        clearTimeout(timeoutId);
         if (r.ok) return r;
         // Retry on overload/rate-limit/transient errors
         if ([429, 503, 504, 529].includes(r.status) && attempt < maxAttempts - 1) {
@@ -127,20 +147,43 @@ Deno.serve(async (req) => {
 
     const resp = await callAnthropic();
 
+    // If the helper already returned a JSON error response (network failure), pass it through.
+    if (resp.headers.get('content-type')?.includes('application/json') && !('status' in resp && resp.status >= 200 && resp.status < 300 && resp.headers.get('x-anthropic'))) {
+      // No-op — fall through to .ok check below.
+    }
+
     if (!resp.ok) {
       const errText = await resp.text();
       const friendly =
         resp.status === 529 || resp.status === 503
           ? 'AI provider is temporarily overloaded. Please try again in a moment.'
+          : resp.status === 429
+          ? 'AI provider rate limit reached. Please try again shortly.'
+          : resp.status === 401 || resp.status === 403
+          ? 'AI provider authentication failed.'
           : 'Anthropic API error';
-      return new Response(JSON.stringify({ error: friendly, detail: errText }), {
-        status: resp.status === 529 ? 503 : resp.status,
+      return new Response(JSON.stringify({
+        error: friendly,
+        code: 'UPSTREAM_ERROR',
+        upstreamStatus: resp.status,
+        detail: errText,
+      }), {
+        status: 200,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
     }
 
-    const data = await resp.json();
-    const text = (data.content as { type: string; text?: string }[])?.find((b) => b.type === 'text')?.text ?? '';
+    let data: { content?: { type: string; text?: string }[] };
+    try {
+      data = await resp.json();
+    } catch (err) {
+      return new Response(JSON.stringify({
+        error: 'Invalid response from AI provider',
+        code: 'PARSE_ERROR',
+        detail: (err as Error).message,
+      }), { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+    }
+    const text = data.content?.find((b) => b.type === 'text')?.text ?? '';
 
     // Parse JSON from Claude response
     const cleaned = text.replace(/```json|```/g, '').trim();
@@ -148,10 +191,11 @@ Deno.serve(async (req) => {
     try {
       parsed = JSON.parse(cleaned);
     } catch {
-      return new Response(JSON.stringify({ error: 'Failed to parse model response', raw: text }), {
-        status: 502,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      });
+      return new Response(JSON.stringify({
+        error: 'Failed to parse model response',
+        code: 'MODEL_PARSE_ERROR',
+        raw: text,
+      }), { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
     }
 
     return new Response(JSON.stringify(parsed), {
@@ -159,8 +203,13 @@ Deno.serve(async (req) => {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     });
   } catch (err) {
-    return new Response(JSON.stringify({ error: (err as Error).message }), {
-      status: 500,
+    console.error('analyze-market unexpected error:', err);
+    return new Response(JSON.stringify({
+      error: 'Unexpected server error',
+      code: 'UNCAUGHT',
+      detail: (err as Error).message,
+    }), {
+      status: 200,
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     });
   }
