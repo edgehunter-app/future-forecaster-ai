@@ -93,7 +93,7 @@ const defaultSettings: SettingsState = {
   compactCards: false,
   favoriteCategories: ["Economics", "Crypto"],
   favoriteSports: ["americanfootball_nfl", "basketball_nba"],
-  sportsGapThreshold: 0.03,
+  sportsGapThreshold: 0.02,
   alertOnSportsMispricings: false,
   alerts: {
     telegram: { enabled: true, chatId: "" },
@@ -155,6 +155,13 @@ export const useAppStore = create<AppState>()(
       name: "edgehunter-store",
       storage: createJSONStorage(() => localStorage),
       partialize: (s) => ({ settings: s.settings, ui: { darkMode: s.ui.darkMode }, isDemoMode: s.isDemoMode }),
+      version: 2,
+      migrate: (persistedState: any, version: number) => {
+        if (persistedState?.settings && version < 2) {
+          persistedState.settings.sportsGapThreshold = 0.02;
+        }
+        return persistedState;
+      },
     },
   ),
 );
