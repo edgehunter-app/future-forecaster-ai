@@ -227,8 +227,10 @@ export function getLastScanDebug(): SportsScanDebug {
 
 export async function findSportsMispricings(
   polymarkets: Market[],
-  minGap = 0.04,
+  apiKey: string,
+  minGap = 0.02,
 ): Promise<SportsMispricing[]> {
+  void apiKey;
   const results = await Promise.allSettled(SPORTS.slice(0, 4).map((s) => fetchOdds(s.key)));
   const allGames = results
     .filter((r) => r.status === "fulfilled")

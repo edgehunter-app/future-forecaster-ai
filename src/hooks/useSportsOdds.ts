@@ -17,12 +17,15 @@ const CACHE_TTL = 30 * 60 * 1000;
 
 export function useSportsOdds(polymarkets: Market[]) {
   const settings = useAppStore((s) => s.settings);
-  const threshold = settings.sportsGapThreshold ?? 0.05;
+  const threshold = settings.sportsGapThreshold ?? 0.03;
 
   const [mispricings, setMispricings] = useState<SportsMispricing[]>([]);
   const [games, setGames] = useState<OddsGame[]>([]);
   const [sportsMarkets, setSportsMarkets] = useState<Market[]>([]);
   const [debug, setDebug] = useState<SportsScanDebug | null>(null);
+  const [polymarketsCount, setPolymarketsCount] = useState(0);
+  const [vegasGamesCount, setVegasGamesCount] = useState(0);
+  const [matchesCount, setMatchesCount] = useState(0);
   const [loading, setLoading] = useState(false);
   const [lastScanned, setLastScanned] = useState<Date | null>(null);
   const [fromCache, setFromCache] = useState(false);
@@ -47,12 +50,18 @@ export function useSportsOdds(polymarkets: Market[]) {
   const scan = useCallback(async () => {
     if (fetchingRef.current) return;
     if (remainingRequests !== null && remainingRequests <= 0) return;
+    localStorage.removeItem(CACHE_KEY);
     fetchingRef.current = true;
     setLoading(true);
     setError(null);
     try {
-      const results = await findSportsMispricings(polymarkets, threshold);
+      const results = await findSportsMispricings(polymarkets, "server-managed", 0.02);
       setMispricings(results);
+      const dbg = getLastScanDebug();
+      setDebug(dbg);
+      setVegasGamesCount(dbg.vegasGamesFetched);
+      setMatchesCount(dbg.matchesFound);
+      setPolymarketsCount(dbg.polymarketSportsMarkets);
       setLastScanned(new Date());
       setFromCache(false);
       setRemainingRequests(getRemainingRequests());
@@ -91,6 +100,10 @@ export function useSportsOdds(polymarkets: Market[]) {
     games,
     sportsMarkets,
     debug,
+    polymarketsCount,
+    vegasGamesCount,
+    matchesCount,
+    threshold,
     loading,
     lastScanned,
     fromCache,
