@@ -10,6 +10,7 @@ import {
   type FullBookmakerLine,
 } from "@/lib/oddsApi";
 import GamblingDisclaimer from "./GamblingDisclaimer";
+import PlayerPropsPanel from "./PlayerPropsPanel";
 
 interface Props {
   games: FullGame[];
@@ -87,6 +88,7 @@ export default function OddsBoard({ games, loading }: Props) {
 
 function GameCard({ game }: { game: FullGame }) {
   const [expanded, setExpanded] = useState(false);
+  const [showProps, setShowProps] = useState(false);
   const bookmakers = game.bookmakers ?? [];
   const hasBookmakers = bookmakers.length > 0;
   const homeOdds = game.moneyline?.home ?? 0;
