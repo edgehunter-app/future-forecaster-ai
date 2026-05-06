@@ -22,9 +22,8 @@ function mapMarketRow(row: any): Market {
 
 export function useMarkets() {
   const isDemoMode = useAppStore((s) => s.isDemoMode);
-  const setStoreMarkets = useAppStore((s) => (s as unknown as { markets: Market[] }).markets) as unknown;
   const updateStore = (markets: Market[]) =>
-    useAppStore.setState({ markets } as Partial<ReturnType<typeof useAppStore.getState>>);
+    useAppStore.setState({ markets });
   const [markets, setMarkets] = useState<Market[]>(isDemoMode ? MOCK_MARKETS : []);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -56,7 +55,6 @@ export function useMarkets() {
     } finally {
       setLoading(false);
     }
-    void setStoreMarkets;
   }, [isDemoMode]);
 
   useEffect(() => {
