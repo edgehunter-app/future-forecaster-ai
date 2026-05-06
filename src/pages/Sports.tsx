@@ -19,7 +19,7 @@ const TIERS = [
 export default function Sports() {
   usePageTitle("Sports");
   const markets = useAppStore((s) => s.markets);
-  const { mispricings, loading, lastScanned, fromCache, error, remainingRequests, hasApiKey, scan } =
+  const { mispricings, sportsMarkets, debug, loading, lastScanned, fromCache, error, remainingRequests, hasApiKey, scan } =
     useSportsOdds(markets);
 
   const [activeSport, setActiveSport] = useState<string>("all");
@@ -225,26 +225,70 @@ export default function Sports() {
           ))}
         </div>
       ) : filtered.length === 0 ? (
-        <div className="rounded-lg border border-dashed border-border bg-card/40 p-8 text-center">
-          <Trophy className="mx-auto h-10 w-10 text-muted-foreground/60" />
-          <h3 className="mt-3 text-base font-semibold text-foreground">Markets are aligned right now</h3>
-          <p className="mt-1 text-sm text-muted-foreground">
-            No gaps above {((useAppStore.getState().settings.sportsGapThreshold ?? 0.05) * 100).toFixed(0)}% detected
-            between Vegas and Polymarket on current sports markets.
-          </p>
-          {lastScanned && (
-            <p className="mt-2 text-xs font-mono text-muted-foreground">Last scanned: {lastScanned.toLocaleTimeString()}</p>
+        <div className="space-y-4">
+          <div className="rounded-lg border border-dashed border-border bg-card/40 p-6 text-center">
+            <Trophy className="mx-auto h-10 w-10 text-muted-foreground/60" />
+            <h3 className="mt-3 text-base font-semibold text-foreground">
+              No gaps above {((useAppStore.getState().settings.sportsGapThreshold ?? 0.04) * 100).toFixed(0)}% detected
+            </h3>
+            <ul className="mx-auto mt-3 max-w-md text-left text-sm text-muted-foreground space-y-1.5 list-disc list-inside">
+              <li>Vegas and Polymarket agree on current sports events — this is common outside major game weeks</li>
+              <li>Polymarket may not have active markets for current Vegas games</li>
+            </ul>
+            {debug && (
+              <p className="mt-3 text-[11px] font-mono text-muted-foreground">
+                Vegas games tracked: {debug.vegasGamesFetched}
+              </p>
+            )}
+            {lastScanned && (
+              <p className="mt-1 text-xs font-mono text-muted-foreground">Last scanned: {lastScanned.toLocaleTimeString()}</p>
+            )}
+            <button onClick={() => void scan()} disabled={loading}
+              className="mt-4 inline-flex items-center gap-1.5 rounded-md bg-info px-3 py-1.5 text-xs font-semibold text-white hover:bg-info/90">
+              <RotateCw className={cn("h-3.5 w-3.5", loading && "animate-spin")} />
+              Scan Now
+            </button>
+          </div>
+
+          {sportsMarkets.length > 0 && (
+            <div className="rounded-lg border border-border bg-card p-5">
+              <h3 className="text-sm font-semibold uppercase tracking-wide text-foreground">
+                Active Sports Markets on Polymarket
+              </h3>
+              <p className="mt-1 text-xs text-muted-foreground">
+                {sportsMarkets.length} sports market{sportsMarkets.length === 1 ? "" : "s"} found — no Vegas match yet
+              </p>
+              <div className="mt-3 grid grid-cols-1 md:grid-cols-2 gap-2">
+                {sportsMarkets.slice(0, 12).map((m) => (
+                  <div key={m.id} className="rounded-md border border-border/60 bg-background/40 p-3">
+                    <div className="text-sm font-semibold text-foreground line-clamp-2">{m.question}</div>
+                    <div className="mt-1.5 flex items-center gap-3 text-[11px] font-mono">
+                      <span className="text-success">YES {(m.yesPrice * 100).toFixed(0)}%</span>
+                      <span className="text-destructive">NO {(m.noPrice * 100).toFixed(0)}%</span>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
           )}
-          <button onClick={() => void scan()} disabled={loading}
-            className="mt-4 inline-flex items-center gap-1.5 rounded-md bg-info px-3 py-1.5 text-xs font-semibold text-white hover:bg-info/90">
-            <RotateCw className={cn("h-3.5 w-3.5", loading && "animate-spin")} />
-            Scan Now
-          </button>
         </div>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           {filtered.map((m) => <SportsMispricingCard key={m.id} mispricing={m} />)}
         </div>
+      )}
+
+      {import.meta.env.DEV && debug && (
+        <details className="rounded-lg border border-border bg-card/40 p-3 text-xs">
+          <summary className="cursor-pointer font-semibold text-muted-foreground">Debug info (dev only)</summary>
+          <ul className="mt-2 space-y-1 font-mono text-muted-foreground">
+            <li>Vegas games fetched: {debug.vegasGamesFetched}</li>
+            <li>Polymarket sports markets found: {debug.polymarketSportsMarkets}</li>
+            <li>Matches attempted: {debug.matchesAttempted}</li>
+            <li>Matches found: {debug.matchesFound}</li>
+            <li>Gaps above threshold: {debug.gapsAboveThreshold}</li>
+          </ul>
+        </details>
       )}
 
       <GamblingDisclaimer variant="full" className="-mx-4 sm:-mx-6 lg:-mx-8 mt-8" />
