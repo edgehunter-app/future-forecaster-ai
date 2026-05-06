@@ -19,7 +19,8 @@ import { useSuggestionsDB } from "@/hooks/useSuggestionsDB";
 import { useTrackedWallets } from "@/hooks/useTrackedWallets";
 import { useHistory } from "@/hooks/useHistory";
 import { analyzeMarketWithClaude } from "@/lib/claude";
-import type { ClaudeAnalysis } from "@/types";
+import type { ClaudeAnalysis, Market, Wallet } from "@/types";
+import { KNOWN_TOP_WALLETS } from "@/data/knownTopWallets";
 import { usePageTitle } from "@/hooks/usePageTitle";
 
 const TIER_COLORS: Record<string, string> = {
@@ -34,7 +35,7 @@ export default function Dashboard() {
   const bankroll = useAppStore((s) => s.settings.bankroll);
   const settings = useAppStore((s) => s.settings);
   const { suggestions, dismissSuggestion, markOutcome } = useSuggestionsDB();
-  const { wallets } = useTrackedWallets();
+  const { wallets, addWallet } = useTrackedWallets();
   const { markets, isLive, error: marketsError, loading: marketsLoading, refresh: refreshMarkets } = useMarkets();
   const { scanning: walletsScanning, scanTopWallets } = useWallets();
   const { stats: histStats } = useHistory();
@@ -43,6 +44,10 @@ export default function Dashboard() {
   const [aiResult, setAiResult] = useState<ClaudeAnalysis | null>(null);
   const [aiError, setAiError] = useState<string | null>(null);
   const [showTopMarkets, setShowTopMarkets] = useState(false);
+  const [analyzingMarket, setAnalyzingMarket] = useState("");
+  const [analyzeProgress, setAnalyzeProgress] = useState<{ current: number; total: number }>({ current: 0, total: 0 });
+  const [analyzedMarket, setAnalyzedMarket] = useState<Market | null>(null);
+  const [seeding, setSeeding] = useState(false);
 
   const aiTier = useMemo(() => {
     if (!aiResult) return null;
@@ -52,24 +57,60 @@ export default function Dashboard() {
   }, [aiResult]);
 
   const handleAnalyze = async () => {
-    const marketsForAnalysis = markets && markets.length > 0 ? markets : MOCK_MARKETS;
+    const source = markets && markets.length > 0 ? markets : MOCK_MARKETS;
+    const topMarkets = [...source].sort((a, b) => b.volume24h - a.volume24h).slice(0, 5);
     setAnalyzing(true);
     setAiError(null);
     setAiResult(null);
+    setAnalyzedMarket(null);
+    setAnalyzeProgress({ current: 0, total: topMarkets.length });
+    let bestResult: ClaudeAnalysis | null = null;
+    let bestMarket: Market | null = null;
     try {
-      const result = await analyzeMarketWithClaude({
-        market: marketsForAnalysis[0],
-        wallets,
-        bankroll: settings.bankroll,
-        kellyMultiplier: settings.kellyMultiplier,
-        maxPositionPct: settings.maxPosition * 100,
-      });
-      if (result) setAiResult(result);
-      else setAiError("Analysis returned no data. Try again in a moment.");
-    } catch {
-      setAiError("Analysis failed. Try again in a moment.");
+      for (let i = 0; i < topMarkets.length; i++) {
+        const market = topMarkets[i];
+        setAnalyzingMarket(market.question);
+        setAnalyzeProgress({ current: i + 1, total: topMarkets.length });
+        try {
+          const result = await analyzeMarketWithClaude({
+            market,
+            wallets,
+            bankroll: settings.bankroll,
+            kellyMultiplier: settings.kellyMultiplier,
+            maxPositionPct: settings.maxPosition * 100,
+          });
+          if (result && (!bestResult || result.confidence > bestResult.confidence)) {
+            bestResult = result;
+            bestMarket = market;
+          }
+          await new Promise((r) => setTimeout(r, 500));
+        } catch (err) {
+          console.warn("Market analysis failed:", err);
+          continue;
+        }
+      }
+      if (bestResult) {
+        setAiResult(bestResult);
+        setAnalyzedMarket(bestMarket);
+      } else {
+        setAiError("Could not analyze any markets. Try again.");
+      }
+    } catch (err) {
+      setAiError(err instanceof Error ? err.message : "Analysis failed");
     } finally {
       setAnalyzing(false);
+      setAnalyzingMarket("");
+    }
+  };
+
+  const handleSeedWallets = async () => {
+    setSeeding(true);
+    try {
+      for (const w of KNOWN_TOP_WALLETS) {
+        await addWallet(w);
+      }
+    } finally {
+      setSeeding(false);
     }
   };
 
@@ -138,7 +179,7 @@ export default function Dashboard() {
               {analyzing ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Zap className="h-3.5 w-3.5" />}
               {analyzing ? "Analyzing..." : "Run Analysis"}
             </button>
-            <span className="text-[10px] font-mono text-muted-foreground">~$0.003 per analysis</span>
+            <span className="text-[10px] font-mono text-muted-foreground">~$0.015 per analysis (5 markets)</span>
             {markets.length === 0 && !marketsLoading && (
               <span className="text-[10px] text-warning">Using sample market data — live data unavailable</span>
             )}
@@ -147,6 +188,11 @@ export default function Dashboard() {
 
         {analyzing && (
           <div className="mt-4 space-y-3 animate-pulse">
+            {analyzingMarket && (
+              <div className="text-xs text-muted-foreground font-mono">
+                Analyzing ({analyzeProgress.current} of {analyzeProgress.total}): <span className="text-foreground">{analyzingMarket.slice(0, 80)}{analyzingMarket.length > 80 ? "..." : ""}</span>
+              </div>
+            )}
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <div className="h-24 rounded-md bg-muted/40" />
               <div className="h-24 rounded-md bg-muted/40" />
@@ -164,6 +210,13 @@ export default function Dashboard() {
 
         {aiResult && !analyzing && (
           <div className="mt-4 space-y-3">
+            {analyzedMarket && (
+              <div className="rounded-md border border-info/30 bg-info/5 px-3 py-2">
+                <div className="text-[10px] uppercase tracking-wide text-muted-foreground font-semibold">Best signal found in</div>
+                <div className="mt-0.5 text-sm font-bold text-foreground">{analyzedMarket.question}</div>
+                <span className="mt-1 inline-block rounded-full border border-border bg-background/60 px-2 py-0.5 text-[10px] font-mono text-muted-foreground">{analyzedMarket.category}</span>
+              </div>
+            )}
             {aiTier !== "strong" && (
               <div className={cn(
                 "rounded-md border px-3 py-2 text-xs font-semibold flex items-center justify-between gap-2",
