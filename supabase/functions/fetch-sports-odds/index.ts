@@ -12,6 +12,16 @@ interface Body {
   eventId?: string;
 }
 
+// In-memory cache (per edge worker instance) to avoid hitting upstream rate limits.
+interface CacheEntry {
+  expires: number;
+  payload: unknown;
+}
+const cache = new Map<string, CacheEntry>();
+// Game odds change slowly; props slightly faster. Use 60s for game lines, 120s for events.
+const TTL_MS = 60_000;
+const EVENT_TTL_MS = 120_000;
+
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
@@ -60,6 +70,17 @@ Deno.serve(async (req) => {
     const safeUrl = url.replace(apiKey, "***");
     console.log("URL:", safeUrl);
 
+    const cacheKey = `${body.sportKey}|${body.eventId ?? ''}|${regions}|${markets}|${oddsFormat}`;
+    const now = Date.now();
+    const cached = cache.get(cacheKey);
+    if (cached && cached.expires > now) {
+      console.log("Cache hit:", cacheKey);
+      return new Response(JSON.stringify(cached.payload), {
+        status: 200,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+
     const controller = new AbortController();
     const timer = setTimeout(() => controller.abort(), 10000);
     let resp: Response;
@@ -78,6 +99,14 @@ Deno.serve(async (req) => {
     if (!resp.ok) {
       const errText = await resp.text();
       console.error("Odds API error body:", errText);
+      // On rate limit, serve stale cache if available.
+      if (resp.status === 429 && cached) {
+        console.log("Serving stale cache due to 429");
+        return new Response(JSON.stringify(cached.payload), {
+          status: 200,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        });
+      }
       return new Response(JSON.stringify({ error: 'Odds API error', status: resp.status, detail: errText }), {
         status: resp.status,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
@@ -86,7 +115,7 @@ Deno.serve(async (req) => {
 
     const data = await resp.json();
     console.log("Games found:", Array.isArray(data) ? data.length : 0);
-    return new Response(JSON.stringify({
+    const payload = {
       data,
       remainingRequests: remaining !== null ? Number(remaining) : null,
       usedRequests: used !== null ? Number(used) : null,
@@ -96,7 +125,12 @@ Deno.serve(async (req) => {
         status: resp.status,
         gamesFound: Array.isArray(data) ? data.length : 0,
       },
-    }), {
+    };
+    cache.set(cacheKey, {
+      expires: now + (body.eventId ? EVENT_TTL_MS : TTL_MS),
+      payload,
+    });
+    return new Response(JSON.stringify(payload), {
       status: 200,
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     });
