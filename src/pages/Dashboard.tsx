@@ -1,6 +1,6 @@
-import { useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
-import { Lightbulb, Wallet as WalletIcon, BarChart2, TrendingUp, Zap, LineChart, Star, GitCompare, ArrowRight, Loader2, Brain, ShieldAlert, Trophy, RotateCw } from "lucide-react";
+import { Lightbulb, Wallet as WalletIcon, BarChart2, TrendingUp, Zap, LineChart, Star, GitCompare, ArrowRight, Loader2, Brain, ShieldAlert, Trophy, RotateCw, ChevronDown, ChevronUp } from "lucide-react";
 import StatCard from "@/components/ui/StatCard";
 import SuggestionCard from "@/components/suggestions/SuggestionCard";
 import SafetyBanner from "@/components/ui/SafetyBanner";
@@ -42,6 +42,14 @@ export default function Dashboard() {
   const [analyzing, setAnalyzing] = useState(false);
   const [aiResult, setAiResult] = useState<ClaudeAnalysis | null>(null);
   const [aiError, setAiError] = useState<string | null>(null);
+  const [showTopMarkets, setShowTopMarkets] = useState(false);
+
+  const aiTier = useMemo(() => {
+    if (!aiResult) return null;
+    if (aiResult.confidence >= 65) return "strong" as const;
+    if (aiResult.confidence >= 50) return "moderate" as const;
+    return "weak" as const;
+  }, [aiResult]);
 
   const handleAnalyze = async () => {
     const marketsForAnalysis = markets && markets.length > 0 ? markets : MOCK_MARKETS;
@@ -57,13 +65,25 @@ export default function Dashboard() {
         maxPositionPct: settings.maxPosition * 100,
       });
       if (result) setAiResult(result);
-      else setAiError("No strong signal detected on current top market.");
+      else setAiError("Analysis returned no data. Try again in a moment.");
     } catch {
       setAiError("Analysis failed. Try again in a moment.");
     } finally {
       setAnalyzing(false);
     }
   };
+
+  // Auto-run analysis once when the user lands with markets but no suggestions yet.
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    if (analyzing || aiResult) return;
+    if (suggestions.length > 0) return;
+    if (markets.length === 0) return;
+    if (localStorage.getItem("eh_auto_analyzed") === "true") return;
+    localStorage.setItem("eh_auto_analyzed", "true");
+    void handleAnalyze();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [markets.length, suggestions.length]);
 
   const totalPnl = histStats.totalPnL;
   const wins = histStats.wins;
@@ -144,6 +164,23 @@ export default function Dashboard() {
 
         {aiResult && !analyzing && (
           <div className="mt-4 space-y-3">
+            {aiTier !== "strong" && (
+              <div className={cn(
+                "rounded-md border px-3 py-2 text-xs font-semibold flex items-center justify-between gap-2",
+                aiTier === "weak"
+                  ? "border-destructive/40 bg-destructive/10 text-destructive"
+                  : "border-warning/40 bg-warning/10 text-warning",
+              )}>
+                <span className="uppercase tracking-wide">
+                  {aiTier === "weak" ? "Weak Signal" : "Moderate Signal"}
+                </span>
+                <span className="font-normal normal-case opacity-90">
+                  {aiTier === "weak"
+                    ? "Below your confidence threshold — shown for reference only"
+                    : "Position sized at 50% of calculated amount"}
+                </span>
+              </div>
+            )}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
               <div className="rounded-md border border-border bg-background/60 p-4 space-y-2">
                 <div className="text-[10px] uppercase tracking-wide text-muted-foreground font-semibold">Recommendation</div>
@@ -159,7 +196,13 @@ export default function Dashboard() {
                     {aiResult.riskLevel} risk
                   </span>
                 </div>
-                <div className="font-mono text-2xl font-bold text-foreground">{fmtUSD(aiResult.suggestedAmount)}</div>
+                <div className="font-mono text-2xl font-bold text-foreground">
+                  {aiTier === "weak"
+                    ? "--"
+                    : fmtUSD(aiTier === "moderate"
+                        ? Math.max(1, Math.round(aiResult.suggestedAmount * 0.5))
+                        : aiResult.suggestedAmount)}
+                </div>
                 <div className="font-mono text-xs text-success font-semibold">+{(aiResult.edge * 100).toFixed(1)}% edge</div>
               </div>
               <div className="rounded-md border border-border bg-background/60 p-4 space-y-2">
@@ -215,6 +258,39 @@ export default function Dashboard() {
           sub={hasResolved ? `${(totalPnl / bankroll * 100).toFixed(1)}% of bankroll` : "No resolved trades yet"}
         />
       </div>
+
+      {/* Top markets preview */}
+      {markets.length > 0 && (
+        <div className="rounded-lg border border-border bg-card shadow-card">
+          <button
+            onClick={() => setShowTopMarkets((v) => !v)}
+            className="flex w-full items-center justify-between px-5 py-3 text-left"
+          >
+            <div className="flex items-center gap-2">
+              <BarChart2 className="h-4 w-4 text-info" />
+              <span className="text-sm font-semibold uppercase tracking-wide text-foreground">Top Markets</span>
+              <span className="text-[11px] font-mono text-muted-foreground">({markets.length} loaded)</span>
+            </div>
+            {showTopMarkets ? <ChevronUp className="h-4 w-4 text-muted-foreground" /> : <ChevronDown className="h-4 w-4 text-muted-foreground" />}
+          </button>
+          {showTopMarkets && (
+            <ul className="divide-y divide-border border-t border-border">
+              {markets.slice(0, 5).map((m) => (
+                <li key={m.id} className="flex items-center gap-3 px-5 py-2.5">
+                  <div className="flex-1 min-w-0">
+                    <div className="text-sm font-medium text-foreground truncate">{m.question}</div>
+                    <div className="text-[11px] font-mono text-muted-foreground">{m.category}</div>
+                  </div>
+                  <div className="flex items-center gap-2 text-xs font-mono">
+                    <span className="rounded bg-success/15 px-1.5 py-0.5 text-success font-semibold">YES {(m.yesPrice * 100).toFixed(0)}%</span>
+                    <span className="rounded bg-destructive/15 px-1.5 py-0.5 text-destructive font-semibold">NO {(m.noPrice * 100).toFixed(0)}%</span>
+                  </div>
+                </li>
+              ))}
+            </ul>
+          )}
+        </div>
+      )}
 
       {/* Two-column row */}
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-5">
