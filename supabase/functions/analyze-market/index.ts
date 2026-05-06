@@ -58,7 +58,12 @@ Respond with ONLY valid JSON, no markdown:
   "riskLevel": "low" | "medium" | "high",
   "keySignals": ["s1","s2","s3"],
   "crossMarketEdge": "one sentence or null"
-}`;
+}
+
+IMPORTANT: Even if the signal is weak, always return a valid JSON object.
+Use low confidence (30-50) and low edge (0.03-0.05) for weak signals,
+and set riskLevel to "high". Never return null, an empty object, or refuse
+to answer. The user wants to see something to evaluate.`;
 }
 
 Deno.serve(async (req) => {
