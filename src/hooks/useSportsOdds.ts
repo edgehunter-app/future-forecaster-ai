@@ -8,6 +8,7 @@ import {
   getLastScanDebug,
   getLastEdgeResponse,
   getLastEdgeError,
+  getLastGames,
   type OddsGame,
   type SportsMispricing,
   type SportsScanDebug,
@@ -70,6 +71,7 @@ export function useSportsOdds(polymarkets: Market[]) {
       setSportsMarkets(sm);
       setEdgeResponse(getLastEdgeResponse());
       setEdgeError(getLastEdgeError());
+      setGames(getLastGames());
       setLastScanned(new Date());
       setFromCache(false);
       setRemainingRequests(getRemainingRequests());
