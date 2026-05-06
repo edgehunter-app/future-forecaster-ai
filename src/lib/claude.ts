@@ -27,10 +27,10 @@ export async function analyzeMarketWithClaude(
 
     const result = data as ClaudeAnalysis;
     const maxPosition = (params.bankroll * params.maxPositionPct) / 100;
-    result.suggestedAmount = Math.min(
-      Math.round(result.suggestedAmount ?? 0),
-      Math.floor(maxPosition),
-    );
+    const raw = Math.round(result.suggestedAmount ?? 0);
+    const capped = Math.min(raw, Math.floor(Math.max(maxPosition, 1)));
+    // Always at least $1 so suggestions remain actionable on tiny bankrolls.
+    result.suggestedAmount = Math.max(1, capped);
     result.confidence = Math.max(0, Math.min(100, result.confidence ?? 0));
     result.edge = Math.max(0, Math.min(0.5, result.edge ?? 0));
     return result;
@@ -50,6 +50,9 @@ export async function analyzeAllMarkets(params: {
   maxPositionPct?: number;
 }): Promise<Suggestion[]> {
   const { markets, wallets, crossMarketOpps, bankroll, kellyMultiplier, minConfidence, maxPositionPct = 5 } = params;
+  // Lower threshold floor so weak signals still surface for the user to review.
+  const effectiveMinConfidence = Math.min(minConfidence, 50);
+  const minEdge = 0.03;
   const out: Suggestion[] = [];
   const top = markets.slice(0, 5);
   for (const m of top) {
@@ -64,7 +67,7 @@ export async function analyzeAllMarkets(params: {
       kellyMultiplier,
       maxPositionPct,
     });
-    if (r && r.confidence >= minConfidence) {
+    if (r && r.confidence >= effectiveMinConfidence && r.edge >= minEdge) {
       out.push({
         id: `claude_${m.id}_${Date.now()}`,
         marketId: m.id,
