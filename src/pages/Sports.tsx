@@ -213,6 +213,18 @@ export default function Sports() {
         <Pill color="#ef4444">{tierCounts.weak} weak</Pill>
       </div>
 
+      {/* Diagnostic box (always on) */}
+      <div className="rounded-lg border border-info/30 bg-background/60 p-4 font-mono text-[11px] text-muted-foreground space-y-1">
+        <div className="text-foreground font-semibold uppercase tracking-wide text-[10px] mb-1">Pipeline diagnostics</div>
+        <div>Last scan: {lastScanned ? lastScanned.toLocaleString() : "never"}</div>
+        <div>Threshold: {(threshold * 100).toFixed(0)}% (hardcoded scan: 2%)</div>
+        <div>API key: server-managed (ODDS_API_KEY)</div>
+        <div>Polymarket sports markets found: {polymarketsCount}</div>
+        <div>Vegas games fetched: {vegasGamesCount}</div>
+        <div>Matches found: {matchesCount}</div>
+        {debug && <div>Gaps above threshold: {debug.gapsAboveThreshold}</div>}
+      </div>
+
       {error && (
         <div className="rounded-lg border border-destructive/40 bg-destructive/10 px-4 py-3 text-sm text-destructive">
           {error}
