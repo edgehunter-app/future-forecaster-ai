@@ -37,7 +37,7 @@ export function useSportsOdds(polymarkets: Market[]) {
   const [edgeError, setEdgeError] = useState<any>(null);
   const [fullGames, setFullGames] = useState<FullGame[]>([]);
   const [selectedSports, setSelectedSports] = useState<string[]>(
-    SPORTS.slice(0, 4).map((s) => s.key),
+    SPORTS.map((s) => s.key),
   );
   const [loading, setLoading] = useState(false);
   const [lastScanned, setLastScanned] = useState<Date | null>(null);

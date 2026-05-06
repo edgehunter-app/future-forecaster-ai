@@ -87,8 +87,14 @@ export default function OddsBoard({ games, loading }: Props) {
 
 function GameCard({ game }: { game: FullGame }) {
   const [expanded, setExpanded] = useState(false);
-  const bestHome = getBestMoneyline(game.bookmakers, "home");
-  const bestAway = getBestMoneyline(game.bookmakers, "away");
+  const bookmakers = game.bookmakers ?? [];
+  const hasBookmakers = bookmakers.length > 0;
+  const homeOdds = game.moneyline?.home ?? 0;
+  const awayOdds = game.moneyline?.away ?? 0;
+  const homeImplied = game.moneyline?.homeImplied ?? 0;
+  const awayImplied = game.moneyline?.awayImplied ?? 0;
+  const bestHome = hasBookmakers ? getBestMoneyline(bookmakers, "home") : { odds: homeOdds, book: "" };
+  const bestAway = hasBookmakers ? getBestMoneyline(bookmakers, "away") : { odds: awayOdds, book: "" };
 
   return (
     <div className="rounded-lg border border-border bg-card p-4 space-y-3">
@@ -112,11 +118,11 @@ function GameCard({ game }: { game: FullGame }) {
       <div className="grid grid-cols-[1fr_auto_1fr] items-center gap-3">
         <div className="text-center">
           <div className="text-sm font-bold text-foreground line-clamp-1">{game.awayTeam}</div>
-          <div className={cn("text-xl font-extrabold mt-1", oddsClass(game.moneyline.away))}>
-            {formatOdds(game.moneyline.away)}
+          <div className={cn("text-xl font-extrabold mt-1", oddsClass(awayOdds))}>
+            {formatOdds(awayOdds)}
           </div>
           <div className="text-[10px] font-mono text-muted-foreground">
-            {(game.moneyline.awayImplied * 100).toFixed(0)}%
+            {(awayImplied * 100).toFixed(0)}%
           </div>
         </div>
         <div className="text-center">
@@ -130,11 +136,11 @@ function GameCard({ game }: { game: FullGame }) {
         </div>
         <div className="text-center">
           <div className="text-sm font-bold text-foreground line-clamp-1">{game.homeTeam}</div>
-          <div className={cn("text-xl font-extrabold mt-1", oddsClass(game.moneyline.home))}>
-            {formatOdds(game.moneyline.home)}
+          <div className={cn("text-xl font-extrabold mt-1", oddsClass(homeOdds))}>
+            {formatOdds(homeOdds)}
           </div>
           <div className="text-[10px] font-mono text-muted-foreground">
-            {(game.moneyline.homeImplied * 100).toFixed(0)}%
+            {(homeImplied * 100).toFixed(0)}%
           </div>
         </div>
       </div>
@@ -142,8 +148,8 @@ function GameCard({ game }: { game: FullGame }) {
       {/* Markets row */}
       <div className="grid grid-cols-3 gap-2 text-[11px]">
         <Market label="Moneyline">
-          <div className={oddsClass(game.moneyline.away)}>A {formatOdds(game.moneyline.away)}</div>
-          <div className={oddsClass(game.moneyline.home)}>H {formatOdds(game.moneyline.home)}</div>
+          <div className={oddsClass(awayOdds)}>A {formatOdds(awayOdds)}</div>
+          <div className={oddsClass(homeOdds)}>H {formatOdds(homeOdds)}</div>
         </Market>
         <Market label="Spread">
           {game.spread ? (
@@ -174,16 +180,16 @@ function GameCard({ game }: { game: FullGame }) {
       )}
 
       {/* Compare books */}
-      {game.bookmakers.length > 0 && (
+      {bookmakers.length > 0 && (
         <div className="rounded-md border border-border/60">
           <button
             onClick={() => setExpanded((v) => !v)}
             className="flex w-full items-center justify-between gap-2 px-3 py-2 text-[11px] font-semibold text-muted-foreground hover:text-foreground"
           >
-            <span>Compare {game.bookmakers.length} books</span>
+            <span>Compare {bookmakers.length} books</span>
             {expanded ? <ChevronUp className="h-3 w-3" /> : <ChevronDown className="h-3 w-3" />}
           </button>
-          {expanded && <BookTable books={game.bookmakers} bestHome={bestHome} bestAway={bestAway} />}
+          {expanded && <BookTable books={bookmakers} bestHome={bestHome} bestAway={bestAway} />}
         </div>
       )}
 
