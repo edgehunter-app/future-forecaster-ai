@@ -15,7 +15,6 @@ import {
 import GamblingDisclaimer from "./GamblingDisclaimer";
 import PlayerPropsPanel from "./PlayerPropsPanel";
 import { useGameProps } from "@/hooks/useGameProps";
-import { useState as useStateReact } from "react";
 
 interface Props {
   games: FullGame[];
