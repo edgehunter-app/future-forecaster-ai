@@ -23,6 +23,9 @@ function buildPrompt(b: AnalyzeBody): string {
   const kelly = b.kellyMultiplier ?? 0.25;
   const maxPct = b.maxPositionPct ?? 5;
   const xm = b.crossMarketData;
+  const walletGuidance = wallets.length === 0
+    ? `\nNOTE: No smart wallet data available for this analysis. Base your assessment solely on:\n1. Market pricing vs fundamental probability\n2. Volume and momentum signals\n3. Time to resolution and liquidity\nAdjust confidence down by 10-15 points to reflect the absence of wallet signals.\n`
+    : `\nSmart wallet signals are the primary driver. Weight them heavily in your confidence score.\n3+ S/A tier wallets on same side = +25 confidence\n1-2 S/A tier wallets = +15 confidence\n`;
   return `You are a quantitative prediction market analyst.
 
 MARKET: "${m.question}"
@@ -37,6 +40,7 @@ CURRENT PRICING:
 
 SMART WALLET SIGNALS:
 ${wallets.map((w) => `- ${w.label}: ${(w.winRate * 100).toFixed(0)}% win, Sharpe ${w.sharpe}, Tier ${w.tier}`).join("\n") || "- (none)"}
+${walletGuidance}
 ${xm ? `
 CROSS-MARKET DATA:
 - Kalshi YES: ${(xm.kalshiYes * 100).toFixed(1)}%

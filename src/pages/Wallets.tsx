@@ -1,11 +1,12 @@
 import { useEffect, useState } from "react";
-import { Plus, Zap, X, Wallet as WalletIcon, Loader2, RefreshCw } from "lucide-react";
+import { Plus, Zap, X, Wallet as WalletIcon, Loader2, RefreshCw, Star } from "lucide-react";
 import WalletCard from "@/components/wallets/WalletCard";
 import EmptyState from "@/components/ui/EmptyState";
 import type { Wallet } from "@/types";
 import { scoreWallet, getTier } from "@/lib/walletScorer";
 import { useWallets } from "@/hooks/useWallets";
 import { fetchWalletPositions, fetchWalletHistory } from "@/lib/polymarket";
+import { KNOWN_TOP_WALLETS } from "@/data/knownTopWallets";
 import { usePageTitle } from "@/hooks/usePageTitle";
 
 export default function Wallets() {
@@ -29,6 +30,7 @@ export default function Wallets() {
   const [positions, setPositions] = useState<any[]>([]);
   const [history, setHistory] = useState<any[]>([]);
   const [detailLoading, setDetailLoading] = useState(false);
+  const [seeding, setSeeding] = useState(false);
 
   useEffect(() => {
     if (!activeAddr) return;
@@ -57,6 +59,17 @@ export default function Wallets() {
   const handleAddAuto = (w: Wallet) => {
     void addWallet(w);
     setAddedAddrs((prev) => new Set(prev).add(w.address));
+  };
+
+  const handleSeed = async () => {
+    setSeeding(true);
+    try {
+      for (const w of KNOWN_TOP_WALLETS) {
+        await addWallet(w);
+      }
+    } finally {
+      setSeeding(false);
+    }
   };
 
   const lastScannedLabel = lastScanned
@@ -174,12 +187,27 @@ export default function Wallets() {
 
       {/* Tracked grid */}
       {tracked.length === 0 ? (
-        <EmptyState
-          icon={WalletIcon}
-          title="No wallets tracked yet"
-          subtitle="Add a wallet address above to start tracking smart money signals"
-          action={{ label: "Add Wallet", onClick: () => setOpen(true) }}
-        />
+        <div className="rounded-lg border border-dashed border-border bg-card/40 p-8 text-center">
+          <WalletIcon className="mx-auto h-8 w-8 text-muted-foreground" />
+          <div className="mt-3 text-base font-semibold text-foreground">No wallets tracked yet</div>
+          <p className="mt-1 text-sm text-muted-foreground">Seed with known top traders to get started</p>
+          <div className="mt-4 flex items-center justify-center gap-2">
+            <button
+              onClick={handleSeed}
+              disabled={seeding}
+              className="inline-flex items-center gap-2 rounded-md bg-info px-4 py-2 text-sm font-semibold text-white hover:bg-info/90 disabled:opacity-50"
+            >
+              {seeding ? <Loader2 className="h-4 w-4 animate-spin" /> : <Star className="h-4 w-4" />}
+              Add Known Top Traders
+            </button>
+            <button
+              onClick={() => setOpen(true)}
+              className="inline-flex items-center gap-2 rounded-md border border-border bg-background px-4 py-2 text-sm font-semibold text-foreground hover:bg-muted/30"
+            >
+              <Plus className="h-4 w-4" /> Add Manually
+            </button>
+          </div>
+        </div>
       ) : (
         <section className="space-y-3">
           <h2 className="text-sm font-bold text-foreground">Tracked wallets</h2>
