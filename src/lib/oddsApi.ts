@@ -293,6 +293,231 @@ export function getBestMoneyline(
   return best;
 }
 
+// ============= Player Props =============
+
+export interface PropBookmakerLine {
+  name: string;
+  overOdds: number;
+  underOdds: number;
+  line: number;
+}
+
+export interface PlayerProp {
+  playerName: string;
+  propType: string;
+  description: string;
+  line: number;
+  overOdds: number;
+  underOdds: number;
+  overImplied: number;
+  underImplied: number;
+  bestOverBook: string;
+  bestUnderBook: string;
+  bestOverOdds: number;
+  bestUnderOdds: number;
+  bookmakers: PropBookmakerLine[];
+}
+
+export interface GameProps {
+  gameId: string;
+  homeTeam: string;
+  awayTeam: string;
+  fetchedAt: number;
+  props: PlayerProp[];
+  propTypes: string[];
+}
+
+const PROP_MARKETS: Record<string, string[]> = {
+  americanfootball_nfl: [
+    "player_pass_yds", "player_pass_tds", "player_pass_interceptions",
+    "player_rush_yds", "player_rush_attempts",
+    "player_receptions", "player_reception_yds", "player_reception_tds",
+    "player_anytime_td",
+  ],
+  basketball_nba: [
+    "player_points", "player_rebounds", "player_assists",
+    "player_threes", "player_blocks", "player_steals",
+    "player_points_rebounds_assists", "player_points_rebounds", "player_points_assists",
+  ],
+  baseball_mlb: [
+    "batter_home_runs", "batter_hits", "batter_rbis", "batter_runs_scored",
+    "batter_total_bases", "pitcher_strikeouts", "pitcher_hits_allowed", "pitcher_walks",
+  ],
+  icehockey_nhl: [
+    "player_goals", "player_assists", "player_points",
+    "player_shots_on_goal", "player_blocked_shots", "goalie_saves",
+  ],
+};
+
+const PROP_NAMES: Record<string, string> = {
+  player_pass_yds: "Passing Yards",
+  player_pass_tds: "Passing TDs",
+  player_pass_interceptions: "Interceptions",
+  player_rush_yds: "Rushing Yards",
+  player_rush_attempts: "Rush Attempts",
+  player_receptions: "Receptions",
+  player_reception_yds: "Receiving Yards",
+  player_reception_tds: "Receiving TDs",
+  player_anytime_td: "Anytime TD",
+  player_points: "Points",
+  player_rebounds: "Rebounds",
+  player_assists: "Assists",
+  player_threes: "3-Pointers Made",
+  player_blocks: "Blocks",
+  player_steals: "Steals",
+  player_points_rebounds_assists: "Pts+Reb+Ast",
+  player_points_rebounds: "Pts+Reb",
+  player_points_assists: "Pts+Ast",
+  batter_home_runs: "Home Runs",
+  batter_hits: "Hits",
+  batter_rbis: "RBIs",
+  batter_runs_scored: "Runs Scored",
+  batter_total_bases: "Total Bases",
+  pitcher_strikeouts: "Strikeouts",
+  pitcher_hits_allowed: "Hits Allowed",
+  pitcher_walks: "Walks",
+  player_goals: "Goals",
+  goalie_saves: "Saves",
+  player_shots_on_goal: "Shots on Goal",
+  player_blocked_shots: "Blocked Shots",
+};
+
+export function formatPropType(key: string): string {
+  if (PROP_NAMES[key]) return PROP_NAMES[key];
+  return key
+    .replace(/^(player_|batter_|pitcher_|goalie_)/, "")
+    .replace(/_/g, " ")
+    .replace(/\b\w/g, (c) => c.toUpperCase());
+}
+
+export function hasPropsSupport(sportKey: string): boolean {
+  return !!PROP_MARKETS[sportKey];
+}
+
+export async function fetchGameProps(
+  sportKey: string,
+  gameId: string,
+): Promise<GameProps | null> {
+  const propMarkets = PROP_MARKETS[sportKey];
+  if (!propMarkets) return null;
+
+  const { data: resp, error } = await supabase.functions.invoke("fetch-sports-odds", {
+    body: {
+      sportKey,
+      eventId: gameId,
+      regions: "us",
+      markets: propMarkets.join(","),
+      oddsFormat: "american",
+    },
+  });
+  if (error) {
+    console.warn("fetchGameProps error:", error);
+    return null;
+  }
+  if (resp && typeof resp.remainingRequests === "number") {
+    lastRemaining = resp.remainingRequests;
+  }
+  const data = resp?.data;
+  if (!data) return null;
+
+  const props: PlayerProp[] = [];
+  const propTypes = new Set<string>();
+
+  for (const bookmaker of data.bookmakers ?? []) {
+    const bookName = bookmaker.title ?? bookmaker.key;
+    for (const market of bookmaker.markets ?? []) {
+      propTypes.add(market.key);
+      const playerGroups: Record<string, any[]> = {};
+      for (const outcome of market.outcomes ?? []) {
+        const key = outcome.description ?? outcome.name;
+        if (!key) continue;
+        if (!playerGroups[key]) playerGroups[key] = [];
+        playerGroups[key].push(outcome);
+      }
+      for (const [player, outcomes] of Object.entries(playerGroups)) {
+        const over = outcomes.find((o) => o.name === "Over");
+        const under = outcomes.find((o) => o.name === "Under");
+        if (!over && !under) continue;
+        const line = over?.point ?? under?.point ?? 0;
+        const overPrice = over?.price ?? 0;
+        const underPrice = under?.price ?? 0;
+
+        const existing = props.find(
+          (p) => p.playerName === player && p.propType === market.key && p.line === line,
+        );
+        if (existing) {
+          existing.bookmakers.push({ name: bookName, overOdds: overPrice, underOdds: underPrice, line });
+          if (overPrice > existing.bestOverOdds) {
+            existing.bestOverOdds = overPrice;
+            existing.bestOverBook = bookName;
+          }
+          if (underPrice > existing.bestUnderOdds) {
+            existing.bestUnderOdds = underPrice;
+            existing.bestUnderBook = bookName;
+          }
+        } else {
+          props.push({
+            playerName: player,
+            propType: market.key,
+            description: formatPropType(market.key),
+            line,
+            overOdds: overPrice,
+            underOdds: underPrice,
+            overImplied: toImplied(overPrice),
+            underImplied: toImplied(underPrice),
+            bestOverBook: bookName,
+            bestUnderBook: bookName,
+            bestOverOdds: overPrice,
+            bestUnderOdds: underPrice,
+            bookmakers: [{ name: bookName, overOdds: overPrice, underOdds: underPrice, line }],
+          });
+        }
+      }
+    }
+  }
+
+  return {
+    gameId,
+    homeTeam: data.home_team ?? "",
+    awayTeam: data.away_team ?? "",
+    fetchedAt: Date.now(),
+    props: props.sort(
+      (a, b) => a.propType.localeCompare(b.propType) || a.playerName.localeCompare(b.playerName),
+    ),
+    propTypes: [...propTypes],
+  };
+}
+
+export function findPropEdge(prop: PlayerProp): {
+  side: "over" | "under";
+  odds: number;
+  book: string;
+  edge: number;
+} | null {
+  if (prop.bookmakers.length < 2) return null;
+  const overOdds = prop.bookmakers.map((b) => b.overOdds).filter((o) => o !== 0);
+  const underOdds = prop.bookmakers.map((b) => b.underOdds).filter((o) => o !== 0);
+  if (overOdds.length < 2 && underOdds.length < 2) return null;
+
+  const bestOver = overOdds.length ? Math.max(...overOdds) : 0;
+  const worstOver = overOdds.length ? Math.min(...overOdds) : 0;
+  const bestUnder = underOdds.length ? Math.max(...underOdds) : 0;
+  const worstUnder = underOdds.length ? Math.min(...underOdds) : 0;
+
+  const overSpread = overOdds.length >= 2 ? Math.abs(toImplied(worstOver) - toImplied(bestOver)) : 0;
+  const underSpread = underOdds.length >= 2 ? Math.abs(toImplied(worstUnder) - toImplied(bestUnder)) : 0;
+
+  if (overSpread > underSpread && overSpread > 0.03) {
+    const book = prop.bookmakers.find((b) => b.overOdds === bestOver)?.name ?? "";
+    return { side: "over", odds: bestOver, book, edge: overSpread };
+  }
+  if (underSpread > 0.03) {
+    const book = prop.bookmakers.find((b) => b.underOdds === bestUnder)?.name ?? "";
+    return { side: "under", odds: bestUnder, book, edge: underSpread };
+  }
+  return null;
+}
+
 export async function fetchOdds(sportKey: string): Promise<OddsGame[]> {
   const { data: resp, error } = await supabase.functions.invoke("fetch-sports-odds", {
     body: { sportKey, regions: "us", markets: "h2h", oddsFormat: "american" },
