@@ -94,24 +94,47 @@ Deno.serve(async (req) => {
 
     const prompt = buildPrompt(body);
 
-    const resp = await fetch('https://api.anthropic.com/v1/messages', {
-      method: 'POST',
-      headers: {
-        'x-api-key': apiKey,
-        'anthropic-version': '2023-06-01',
-        'content-type': 'application/json',
-      },
-      body: JSON.stringify({
-        model: 'claude-sonnet-4-5',
-        max_tokens: 1000,
-        messages: [{ role: 'user', content: prompt }],
-      }),
-    });
+    const callAnthropic = async (): Promise<Response> => {
+      const maxAttempts = 4;
+      let lastResp: Response | null = null;
+      for (let attempt = 0; attempt < maxAttempts; attempt++) {
+        const r = await fetch('https://api.anthropic.com/v1/messages', {
+          method: 'POST',
+          headers: {
+            'x-api-key': apiKey,
+            'anthropic-version': '2023-06-01',
+            'content-type': 'application/json',
+          },
+          body: JSON.stringify({
+            model: 'claude-sonnet-4-5',
+            max_tokens: 1000,
+            messages: [{ role: 'user', content: prompt }],
+          }),
+        });
+        if (r.ok) return r;
+        // Retry on overload/rate-limit/transient errors
+        if ([429, 503, 504, 529].includes(r.status) && attempt < maxAttempts - 1) {
+          const delay = 800 * Math.pow(2, attempt) + Math.random() * 300;
+          console.warn(`Anthropic ${r.status} — retry in ${Math.round(delay)}ms`);
+          await new Promise((res) => setTimeout(res, delay));
+          lastResp = r;
+          continue;
+        }
+        return r;
+      }
+      return lastResp!;
+    };
+
+    const resp = await callAnthropic();
 
     if (!resp.ok) {
       const errText = await resp.text();
-      return new Response(JSON.stringify({ error: 'Anthropic API error', detail: errText }), {
-        status: resp.status,
+      const friendly =
+        resp.status === 529 || resp.status === 503
+          ? 'AI provider is temporarily overloaded. Please try again in a moment.'
+          : 'Anthropic API error';
+      return new Response(JSON.stringify({ error: friendly, detail: errText }), {
+        status: resp.status === 529 ? 503 : resp.status,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
     }
