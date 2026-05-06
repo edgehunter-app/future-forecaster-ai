@@ -110,42 +110,152 @@ export async function fetchOdds(sportKey: string): Promise<OddsGame[]> {
   });
 }
 
+const SPORTS_KEYWORDS = [
+  "nfl", "nba", "mlb", "nhl", "epl", "mls",
+  "ufc", "mma", "super bowl", "championship",
+  "playoff", "finals", "world series",
+  "stanley cup", "march madness",
+];
+
+const NFL_NICKNAMES: Record<string, string[]> = {
+  chiefs: ["kansas", "city", "kc"],
+  patriots: ["new", "england"],
+  cowboys: ["dallas"],
+  eagles: ["philadelphia"],
+  niners: ["san", "francisco", "49ers"],
+  packers: ["green", "bay"],
+  ravens: ["baltimore"],
+  steelers: ["pittsburgh"],
+  bills: ["buffalo"],
+  dolphins: ["miami"],
+  bears: ["chicago"],
+  lions: ["detroit"],
+  vikings: ["minnesota"],
+  giants: ["new", "york"],
+  jets: ["new", "york"],
+};
+
+const NBA_NICKNAMES: Record<string, string[]> = {
+  lakers: ["los", "angeles", "la"],
+  celtics: ["boston"],
+  warriors: ["golden", "state"],
+  bulls: ["chicago"],
+  heat: ["miami"],
+  knicks: ["new", "york"],
+  nets: ["brooklyn"],
+  sixers: ["philadelphia"],
+  bucks: ["milwaukee"],
+  nuggets: ["denver"],
+};
+
+const ALL_NICKNAMES: Record<string, string[]> = { ...NFL_NICKNAMES, ...NBA_NICKNAMES };
+
+export function isSportsMarket(market: Market): boolean {
+  const q = market.question.toLowerCase();
+  return (
+    market.category === "Sports" ||
+    SPORTS_KEYWORDS.some((k) => q.includes(k)) ||
+    /soccer|basketball|football|baseball|hockey|tennis|golf/i.test(q)
+  );
+}
+
 function matchGame(market: Market, games: OddsGame[]): OddsGame | null {
   const q = market.question.toLowerCase().replace(/[^a-z0-9\s]/g, "");
+  if (!isSportsMarket(market)) return null;
+
+  let bestMatch: OddsGame | null = null;
+  let bestScore = 0;
+
   for (const game of games) {
-    const homeWords = game.homeTeam.toLowerCase().split(" ").filter((w) => w.length > 3);
-    const awayWords = game.awayTeam.toLowerCase().split(" ").filter((w) => w.length > 3);
-    if (homeWords.some((w) => q.includes(w)) || awayWords.some((w) => q.includes(w))) {
-      return game;
+    let score = 0;
+    const homeWords = game.homeTeam
+      .toLowerCase()
+      .replace(/[^a-z0-9\s]/g, "")
+      .split(" ")
+      .filter((w) => w.length > 2);
+    const awayWords = game.awayTeam
+      .toLowerCase()
+      .replace(/[^a-z0-9\s]/g, "")
+      .split(" ")
+      .filter((w) => w.length > 2);
+
+    for (const w of homeWords) if (q.includes(w)) score += 2;
+    for (const w of awayWords) if (q.includes(w)) score += 2;
+
+    if (q.includes(game.league.toLowerCase())) score += 3;
+    if (q.includes(game.sport.toLowerCase())) score += 1;
+
+    const teamStr = `${game.homeTeam.toLowerCase()} ${game.awayTeam.toLowerCase()}`;
+    for (const [nickname, aliases] of Object.entries(ALL_NICKNAMES)) {
+      if (teamStr.includes(nickname) && aliases.some((a) => q.includes(a))) score += 4;
+      if (q.includes(nickname) && aliases.some((a) => teamStr.includes(a))) score += 4;
+    }
+
+    if (score > bestScore && score >= 2) {
+      bestScore = score;
+      bestMatch = game;
     }
   }
-  return null;
+  return bestMatch;
+}
+
+export async function fetchPolymarketSportsMarkets(
+  polymarkets: Market[],
+): Promise<Market[]> {
+  return polymarkets.filter((m) => isSportsMarket(m));
+}
+
+export interface SportsScanDebug {
+  vegasGamesFetched: number;
+  polymarketSportsMarkets: number;
+  matchesAttempted: number;
+  matchesFound: number;
+  gapsAboveThreshold: number;
+}
+
+let lastDebug: SportsScanDebug = {
+  vegasGamesFetched: 0,
+  polymarketSportsMarkets: 0,
+  matchesAttempted: 0,
+  matchesFound: 0,
+  gapsAboveThreshold: 0,
+};
+
+export function getLastScanDebug(): SportsScanDebug {
+  return lastDebug;
 }
 
 export async function findSportsMispricings(
   polymarkets: Market[],
-  minGap = 0.05,
+  minGap = 0.04,
 ): Promise<SportsMispricing[]> {
   const results = await Promise.allSettled(SPORTS.slice(0, 4).map((s) => fetchOdds(s.key)));
   const allGames = results
     .filter((r) => r.status === "fulfilled")
     .flatMap((r) => (r as PromiseFulfilledResult<OddsGame[]>).value);
-  if (allGames.length === 0) return [];
 
-  const sportsMarkets = polymarkets.filter(
-    (m) =>
-      m.category === "Sports" ||
-      /nfl|nba|mlb|nhl|epl|mls|ufc|mma|super bowl|championship|playoff|finals|world series|stanley cup/i.test(m.question),
-  );
+  const sportsMarkets = polymarkets.filter((m) => isSportsMarket(m));
+
+  lastDebug = {
+    vegasGamesFetched: allGames.length,
+    polymarketSportsMarkets: sportsMarkets.length,
+    matchesAttempted: sportsMarkets.length,
+    matchesFound: 0,
+    gapsAboveThreshold: 0,
+  };
+
+  if (allGames.length === 0) return [];
 
   const mispricings: SportsMispricing[] = [];
   for (const market of sportsMarkets) {
     const game = matchGame(market, allGames);
     if (!game) continue;
+    lastDebug.matchesFound++;
     const polyProb = market.yesPrice;
     const vegasProb = game.consensusProb.home;
     const spread = Math.abs(polyProb - vegasProb);
     if (spread < minGap) continue;
+    lastDebug.gapsAboveThreshold++;
     const direction: "YES" | "NO" = polyProb < vegasProb ? "YES" : "NO";
     const bestBook = [...game.bookmakers].sort(
       (a, b) => toImplied(b.homeOdds) - toImplied(a.homeOdds),

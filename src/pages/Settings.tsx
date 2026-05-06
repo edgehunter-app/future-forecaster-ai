@@ -525,7 +525,7 @@ function SportsOddsSection() {
     }
   };
 
-  const gapPct = Math.round((settings.sportsGapThreshold ?? 0.08) * 100);
+  const gapPct = Math.round((settings.sportsGapThreshold ?? 0.04) * 100);
 
   return (
     <div className="space-y-4">
@@ -575,7 +575,7 @@ function SportsOddsSection() {
         <label className="text-xs font-medium uppercase tracking-wide text-muted-foreground">Minimum Gap Threshold</label>
         <p className="mt-0.5 mb-2 text-[11px] text-muted-foreground">Only surface mispricings above this %</p>
         <div className="flex items-center gap-3">
-          <input type="range" min={5} max={20} step={1} value={gapPct}
+          <input type="range" min={3} max={20} step={1} value={gapPct}
             onChange={(e) => updateSettings({ sportsGapThreshold: Number(e.target.value) / 100 })}
             className="flex-1 accent-info" />
           <span className="font-mono font-bold text-info w-12 text-right">{gapPct}%</span>
