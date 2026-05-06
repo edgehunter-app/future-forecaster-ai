@@ -6,24 +6,29 @@ import {
   formatSpread,
   formatGameTime,
   getBestMoneyline,
+  findPropEdge,
+  formatPropType,
   type FullGame,
   type FullBookmakerLine,
+  type PlayerProp,
 } from "@/lib/oddsApi";
 import GamblingDisclaimer from "./GamblingDisclaimer";
 import PlayerPropsPanel from "./PlayerPropsPanel";
+import { useGameProps } from "@/hooks/useGameProps";
 
 interface Props {
   games: FullGame[];
   loading: boolean;
 }
 
-type Tab = "games" | "best" | "spreads" | "totals";
+type Tab = "games" | "best" | "spreads" | "totals" | "props";
 
 const TABS: { key: Tab; label: string }[] = [
   { key: "games", label: "Games" },
   { key: "best", label: "Best Odds" },
   { key: "spreads", label: "Spreads" },
   { key: "totals", label: "Totals" },
+  { key: "props", label: "Props" },
 ];
 
 function oddsClass(odds: number): string {
@@ -82,6 +87,7 @@ export default function OddsBoard({ games, loading }: Props) {
       {tab === "best" && <BestOddsTable games={games} />}
       {tab === "spreads" && <SpreadsTab games={games} />}
       {tab === "totals" && <TotalsTab games={games} />}
+      {tab === "props" && <PropsTab games={games} />}
     </div>
   );
 }
@@ -386,6 +392,108 @@ function TotalsTab({ games }: { games: FullGame[] }) {
           </div>
         );
       })}
+    </div>
+  );
+}
+
+function PropsTab({ games }: { games: FullGame[] }) {
+  const { propsCache } = useGameProps();
+  const [search, setSearch] = useState("");
+
+  const cachedEntries = Object.entries(propsCache);
+  const allProps: { game: FullGame; prop: PlayerProp }[] = [];
+  for (const [gameId, gp] of cachedEntries) {
+    const game = games.find((g) => g.id === gameId);
+    if (!game) continue;
+    for (const p of gp.props) allProps.push({ game, prop: p });
+  }
+  const filtered = search.trim()
+    ? allProps.filter((x) => x.prop.playerName.toLowerCase().includes(search.toLowerCase()))
+    : allProps;
+
+  const lineShop = allProps
+    .map((x) => ({ ...x, edge: findPropEdge(x.prop) }))
+    .filter((x) => x.edge && x.edge.edge > 0.05);
+
+  if (cachedEntries.length === 0) {
+    return (
+      <div className="rounded-lg border border-dashed border-border bg-card/40 p-8 text-center text-sm text-muted-foreground">
+        Click "Show Player Props" on any game card to load props. Cached for 2 hours per game.
+      </div>
+    );
+  }
+
+  const players = new Set(allProps.map((x) => x.prop.playerName));
+  const propTypes = new Set(allProps.map((x) => x.prop.propType));
+
+  return (
+    <div className="space-y-3">
+      {lineShop.length > 0 && (
+        <div className="rounded-md border border-warning/40 bg-warning/10 px-3 py-2 text-[11px] text-warning space-y-1">
+          <div className="font-bold">Line shopping opportunities</div>
+          {lineShop.slice(0, 5).map((x, i) => (
+            <div key={i}>
+              {x.prop.playerName} {formatPropType(x.prop.propType)} — best{" "}
+              {x.edge!.side.toUpperCase()} {formatOdds(x.edge!.odds)} at {x.edge!.book} (+
+              {(x.edge!.edge * 100).toFixed(1)}%)
+            </div>
+          ))}
+        </div>
+      )}
+
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <div className="text-[11px] text-muted-foreground font-mono">
+          {players.size} players · {propTypes.size} prop types · {cachedEntries.length} games
+        </div>
+        <input
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+          placeholder="Search player name..."
+          className="rounded-md border border-border bg-background px-3 py-1.5 text-xs text-foreground placeholder:text-muted-foreground/60 focus:border-info focus:outline-none"
+        />
+      </div>
+
+      <div className="space-y-3">
+        {Array.from(new Set(filtered.map((x) => x.game.id))).map((gid) => {
+          const game = games.find((g) => g.id === gid);
+          if (!game) return null;
+          const list = filtered.filter((x) => x.game.id === gid);
+          return (
+            <div key={gid} className="rounded-lg border border-border bg-card p-3 space-y-2">
+              <div className="text-sm font-bold text-foreground">
+                {game.awayTeam} @ {game.homeTeam}
+                <span className="ml-2 text-[11px] font-mono text-muted-foreground">
+                  {game.league}
+                </span>
+              </div>
+              <div className="space-y-1.5">
+                {list.slice(0, 30).map((x, i) => (
+                  <div
+                    key={i}
+                    className="flex flex-wrap items-center justify-between gap-2 rounded-md border border-border/40 bg-background/40 px-2.5 py-1.5 text-[11px]"
+                  >
+                    <div>
+                      <span className="font-bold text-foreground">{x.prop.playerName}</span>
+                      <span className="ml-2 text-muted-foreground">
+                        {formatPropType(x.prop.propType)} {x.prop.line}
+                      </span>
+                    </div>
+                    <div className="font-mono">
+                      <span className="text-success mr-2">O {formatOdds(x.prop.bestOverOdds)}</span>
+                      <span className="text-destructive">U {formatOdds(x.prop.bestUnderOdds)}</span>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          );
+        })}
+        {filtered.length === 0 && (
+          <div className="rounded-lg border border-dashed border-border bg-card/40 p-6 text-center text-sm text-muted-foreground">
+            No props match your search.
+          </div>
+        )}
+      </div>
     </div>
   );
 }
