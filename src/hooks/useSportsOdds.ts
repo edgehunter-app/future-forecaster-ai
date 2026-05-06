@@ -62,6 +62,8 @@ export function useSportsOdds(polymarkets: Market[]) {
       setVegasGamesCount(dbg.vegasGamesFetched);
       setMatchesCount(dbg.matchesFound);
       setPolymarketsCount(dbg.polymarketSportsMarkets);
+      const sm = await fetchPolymarketSportsMarkets(polymarkets);
+      setSportsMarkets(sm);
       setLastScanned(new Date());
       setFromCache(false);
       setRemainingRequests(getRemainingRequests());
