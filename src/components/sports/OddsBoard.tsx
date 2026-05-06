@@ -195,6 +195,23 @@ function GameCard({ game }: { game: FullGame }) {
         </div>
       )}
 
+      {/* Player Props toggle */}
+      <div className="rounded-md border border-info/30 bg-info/5">
+        <button
+          onClick={() => setShowProps((v) => !v)}
+          className={cn(
+            "flex w-full items-center justify-between gap-2 px-3 py-2 text-[11px] font-semibold transition-colors",
+            showProps ? "text-info" : "text-muted-foreground hover:text-foreground",
+          )}
+        >
+          <span>{showProps ? "Hide Player Props" : "Show Player Props"}</span>
+          <span className="text-[10px] opacity-70">
+            {showProps ? "▲" : "▼ 1 API request"}
+          </span>
+        </button>
+        {showProps && <PlayerPropsPanel game={game} sportKey={game.sport} />}
+      </div>
+
       <GamblingDisclaimer variant="inline" />
     </div>
   );
