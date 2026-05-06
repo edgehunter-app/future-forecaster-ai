@@ -98,6 +98,23 @@ export default function Settings() {
               </div>
               <Toggle enabled={isDemoMode} onChange={(v) => setDemoMode(v)} />
             </div>
+            <div className="mt-3 flex items-center justify-between border-t border-border pt-3">
+              <div>
+                <div className="text-sm font-semibold text-foreground">Reset App Data</div>
+                <p className="text-xs text-muted-foreground">Clears all cached data and reloads. Your account data is not affected.</p>
+              </div>
+              <button
+                onClick={() => {
+                  if (confirm("Clear all local app data and reload?")) {
+                    localStorage.clear();
+                    window.location.reload();
+                  }
+                }}
+                className="rounded-md border border-destructive/40 px-3 py-1.5 text-xs font-semibold text-destructive hover:bg-destructive/10"
+              >
+                Reset App Data
+              </button>
+            </div>
           </Card>
 
           {/* Risk Profile */}
