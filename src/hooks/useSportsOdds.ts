@@ -69,12 +69,17 @@ export function useSportsOdds(polymarkets: Market[]) {
       setEdgeError(getLastEdgeError());
       setGames(getLastGames());
 
-      const fullResults = await Promise.allSettled(
-        selectedSports.map((s) => fetchFullOdds(s)),
-      );
-      const allFull = fullResults
-        .filter((r) => r.status === "fulfilled")
-        .flatMap((r) => (r as PromiseFulfilledResult<any>).value);
+      // Serialize sport fetches with a small delay to avoid Odds API freq limit (429).
+      const allFull: any[] = [];
+      for (const s of selectedSports) {
+        try {
+          const games = await fetchFullOdds(s);
+          if (games?.length) allFull.push(...games);
+        } catch (e) {
+          console.warn("fetchFullOdds failed for", s, e);
+        }
+        await new Promise((r) => setTimeout(r, 250));
+      }
 
       const polySports = polymarkets.filter((m) => isSportsMarket(m));
       for (const game of allFull) {
