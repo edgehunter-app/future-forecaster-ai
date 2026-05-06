@@ -20,7 +20,7 @@ export default function Sports() {
   usePageTitle("Sports");
   const markets = useAppStore((s) => s.markets);
   const settings = useAppStore((s) => s.settings);
-  const { mispricings, sportsMarkets, debug, polymarketsCount, vegasGamesCount, matchesCount, edgeResponse, edgeError, threshold, loading, lastScanned, fromCache, error, remainingRequests, hasApiKey, scan } =
+  const { mispricings, sportsMarkets, games, debug, polymarketsCount, vegasGamesCount, matchesCount, edgeResponse, edgeError, threshold, loading, lastScanned, fromCache, error, remainingRequests, hasApiKey, scan } =
     useSportsOdds(markets);
 
   const [activeSport, setActiveSport] = useState<string>("all");
@@ -293,6 +293,44 @@ export default function Sports() {
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           {filtered.map((m) => <SportsMispricingCard key={m.id} mispricing={m} />)}
+        </div>
+      )}
+
+      {games.length > 0 && (
+        <div className="rounded-lg border border-border bg-card p-5">
+          <h3 className="text-sm font-semibold uppercase tracking-wide text-foreground">
+            Live Vegas Lines ({games.length} games)
+          </h3>
+          <p className="mt-1 text-xs text-muted-foreground">
+            No matching Polymarket markets found — showing raw Vegas data
+          </p>
+          <div className="mt-3 grid grid-cols-1 md:grid-cols-2 gap-2">
+            {games.map((g) => {
+              const bestBook = g.bookmakers[0];
+              const time = g.commenceTime ? new Date(g.commenceTime).toLocaleString() : "TBD";
+              return (
+                <div key={g.id} className="rounded-md border border-border/60 bg-background/40 p-3">
+                  <div className="flex items-start justify-between gap-2">
+                    <div className="text-sm font-semibold text-foreground">
+                      {g.homeTeam} vs {g.awayTeam}
+                    </div>
+                    <span className="shrink-0 rounded-full border border-border bg-card px-2 py-0.5 text-[10px] font-semibold text-muted-foreground">
+                      {g.league}
+                    </span>
+                  </div>
+                  <div className="mt-1 text-[11px] text-muted-foreground font-mono">{time}</div>
+                  <div className="mt-1.5 flex items-center gap-3 text-[11px] font-mono">
+                    <span className="text-success">HOME {(g.consensusProb.home * 100).toFixed(0)}%</span>
+                    <span className="text-destructive">AWAY {(g.consensusProb.away * 100).toFixed(0)}%</span>
+                  </div>
+                  <div className="mt-1 text-[11px] text-muted-foreground">
+                    Best book: <span className="text-foreground">{bestBook?.title ?? "—"}</span>
+                  </div>
+                  <div className="mt-1 text-[11px] text-muted-foreground italic">No Polymarket market found</div>
+                </div>
+              );
+            })}
+          </div>
         </div>
       )}
 

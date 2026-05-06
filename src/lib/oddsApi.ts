@@ -75,6 +75,9 @@ let lastEdgeError: any = null;
 export function getLastEdgeResponse() { return lastEdgeResponse; }
 export function getLastEdgeError() { return lastEdgeError; }
 
+let lastGames: OddsGame[] = [];
+export function getLastGames(): OddsGame[] { return lastGames; }
+
 export async function fetchOdds(sportKey: string): Promise<OddsGame[]> {
   const { data: resp, error } = await supabase.functions.invoke("fetch-sports-odds", {
     body: { sportKey, regions: "us", markets: "h2h", oddsFormat: "american" },
@@ -258,6 +261,7 @@ export async function findSportsMispricings(
     matchesFound: 0,
     gapsAboveThreshold: 0,
   };
+  lastGames = allGames;
 
   if (allGames.length === 0) return [];
 
