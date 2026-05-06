@@ -55,27 +55,37 @@ export async function fetchTopWallets(limit = 20): Promise<Wallet[]> {
   const endpoints = [
     `${DATA_API}/profiles?limit=${limit}&sortBy=profitLoss&sortDirection=DESC`,
     `${DATA_API}/leaderboard?limit=${limit}&window=allTime`,
+    `${DATA_API}/leaderboard?limit=${limit}&window=1m`,
     `${GAMMA_API}/profiles?limit=${limit}&order=profit`,
   ];
   for (const url of endpoints) {
-    console.log("Polymarket leaderboard try:", url);
-    const res = await apiFetch(url);
-    if (!res) continue;
-    const list: any[] | null = Array.isArray(res)
-      ? res
-      : Array.isArray(res.profiles)
-      ? res.profiles
-      : Array.isArray(res.data)
-      ? res.data
-      : null;
-    if (list && list.length > 0) {
-      const wallets = list
-        .map(mapProfileToWallet)
-        .filter((w) => w.address && w.winRate > 0)
-        .slice(0, limit);
-      if (wallets.length > 0) return wallets;
+    try {
+      console.log("Wallet scan trying:", url);
+      const controller = new AbortController();
+      const timer = setTimeout(() => controller.abort(), 10000);
+      const res = await fetch(url, { signal: controller.signal });
+      clearTimeout(timer);
+      console.log("Wallet scan status:", res.status);
+      if (res.ok) {
+        const data = await res.json();
+        const list: any[] = Array.isArray(data)
+          ? data
+          : data.profiles ?? data.data ?? data.leaderboard ?? [];
+        console.log("Profiles found:", list.length);
+        if (list.length > 0) {
+          const wallets = list
+            .map(mapProfileToWallet)
+            .filter((w) => w.address && w.winRate >= 0)
+            .slice(0, limit);
+          if (wallets.length > 0) return wallets;
+        }
+      }
+    } catch (err) {
+      console.warn("Wallet endpoint failed:", url, err);
+      continue;
     }
   }
+  console.warn("All wallet endpoints failed");
   return [];
 }
 
