@@ -182,8 +182,10 @@ export type Database = {
           id: string
           key_signals: string[]
           market_id: string
+          pnl: number | null
           question: string
           reasoning: string
+          resolved_at: string | null
           source: string
           status: string
           suggested_amount: number | null
@@ -202,8 +204,10 @@ export type Database = {
           id?: string
           key_signals?: string[]
           market_id: string
+          pnl?: number | null
           question: string
           reasoning?: string
+          resolved_at?: string | null
           source?: string
           status?: string
           suggested_amount?: number | null
@@ -222,8 +226,10 @@ export type Database = {
           id?: string
           key_signals?: string[]
           market_id?: string
+          pnl?: number | null
           question?: string
           reasoning?: string
+          resolved_at?: string | null
           source?: string
           status?: string
           suggested_amount?: number | null
