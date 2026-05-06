@@ -34,7 +34,6 @@ const wrap = (node: React.ReactNode) => (
 function AppRoutes() {
   const { user, loading } = useAuth();
   const isDemoMode = useAppStore((s) => s.isDemoMode);
-  const setDemoMode = useAppStore((s) => s.setDemoMode);
 
   // One-time clear of any stuck demo mode in legacy localStorage
   useEffect(() => {
