@@ -24,6 +24,7 @@ export interface SettingsState {
   favoriteSports: string[];
   sportsGapThreshold: number;
   alertOnSportsMispricings: boolean;
+  oddsApiKeySecondary: string;
   alerts: {
     telegram: AlertChannelTelegram;
     discord: AlertChannelDiscord;
