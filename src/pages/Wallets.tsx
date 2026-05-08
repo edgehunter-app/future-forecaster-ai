@@ -261,36 +261,110 @@ export default function Wallets() {
                         <Loader2 className="h-3 w-3 animate-spin" /> Loading wallet activity...
                       </div>
                     ) : (
-                      <>
-                        <div>
-                          <div className="font-bold text-foreground mb-1">Open positions</div>
-                          {positions.length === 0 ? (
-                            <div className="text-muted-foreground">No open positions found</div>
-                          ) : (
-                            <ul className="space-y-1 max-h-40 overflow-y-auto">
-                              {positions.slice(0, 8).map((p, i) => (
-                                <li key={i} className="font-mono text-[11px] text-muted-foreground">
-                                  {p.title ?? p.market ?? p.outcome ?? JSON.stringify(p).slice(0, 80)}
-                                </li>
-                              ))}
-                            </ul>
-                          )}
-                        </div>
-                        <div>
-                          <div className="font-bold text-foreground mb-1">Recent activity</div>
-                          {history.length === 0 ? (
-                            <div className="text-muted-foreground">No recent activity</div>
-                          ) : (
-                            <ul className="space-y-1 max-h-40 overflow-y-auto">
-                              {history.slice(0, 8).map((h, i) => (
-                                <li key={i} className="font-mono text-[11px] text-muted-foreground">
-                                  {h.title ?? h.type ?? h.side ?? JSON.stringify(h).slice(0, 80)}
-                                </li>
-                              ))}
-                            </ul>
-                          )}
-                        </div>
-                      </>
+                       <>
+                         <div>
+                           <div className="font-bold text-foreground mb-1.5">Open positions</div>
+                           {positions.length === 0 ? (
+                             <div className="text-muted-foreground">No open positions found</div>
+                           ) : (
+                             <ul className="space-y-1.5 max-h-64 overflow-y-auto">
+                               {positions.slice(0, 12).map((p, i) => (
+                                 <li
+                                   key={i}
+                                   className="grid grid-cols-[auto_1fr_auto] items-center gap-2.5 rounded-md bg-background/60 px-3 py-2"
+                                 >
+                                   <span
+                                     className={
+                                       "inline-flex items-center rounded px-1.5 py-0.5 text-[10px] font-bold " +
+                                       (p.direction === "YES"
+                                         ? "bg-success/15 text-success border border-success/30"
+                                         : "bg-destructive/15 text-destructive border border-destructive/30")
+                                     }
+                                   >
+                                     {p.direction}
+                                   </span>
+                                   <div className="min-w-0">
+                                     <div className="truncate text-[12px] text-foreground">{p.question}</div>
+                                     <div className="text-[10px] text-muted-foreground font-mono">
+                                       @ {p.entryPrice ? p.entryPrice.toFixed(2) : "--"}
+                                       {p.size ? ` · ${p.size.toFixed(0)} sh` : ""}
+                                     </div>
+                                   </div>
+                                   <div className="text-right">
+                                     <div className="font-mono text-[12px] font-bold text-foreground">
+                                       {p.amount ? fmtUSD(p.amount) : "--"}
+                                     </div>
+                                     <div
+                                       className={
+                                         "font-mono text-[10px] " +
+                                         (p.pnl > 0
+                                           ? "text-success"
+                                           : p.pnl < 0
+                                           ? "text-destructive"
+                                           : "text-muted-foreground")
+                                       }
+                                     >
+                                       {p.pnl
+                                         ? `${p.pnl > 0 ? "+" : ""}${fmtUSD(p.pnl)}`
+                                         : "--"}
+                                     </div>
+                                   </div>
+                                 </li>
+                               ))}
+                             </ul>
+                           )}
+                         </div>
+                         <div>
+                           <div className="font-bold text-foreground mb-1.5">Recent activity</div>
+                           {activity.length === 0 ? (
+                             <div className="text-muted-foreground">No recent activity</div>
+                           ) : (
+                             <ul className="space-y-1.5 max-h-64 overflow-y-auto">
+                               {activity.slice(0, 12).map((a, i) => (
+                                 <li
+                                   key={i}
+                                   className="grid grid-cols-[auto_auto_1fr_auto] items-center gap-2 rounded-md bg-background/60 px-3 py-2"
+                                 >
+                                   <span
+                                     className={
+                                       "inline-flex items-center rounded px-1.5 py-0.5 text-[10px] font-bold " +
+                                       (a.action === "BUY"
+                                         ? "bg-info/15 text-info border border-info/30"
+                                         : "bg-warning/15 text-warning border border-warning/30")
+                                     }
+                                   >
+                                     {a.action}
+                                   </span>
+                                   <span
+                                     className={
+                                       "inline-flex items-center rounded px-1.5 py-0.5 text-[10px] font-bold " +
+                                       (a.direction === "YES"
+                                         ? "bg-success/15 text-success border border-success/30"
+                                         : "bg-destructive/15 text-destructive border border-destructive/30")
+                                     }
+                                   >
+                                     {a.direction}
+                                   </span>
+                                   <div className="min-w-0 truncate text-[12px] text-foreground">{a.question}</div>
+                                   <div className="text-right">
+                                     <div className="font-mono text-[12px] font-bold text-foreground">
+                                       {a.amount ? fmtUSD(a.amount) : "--"}
+                                       {a.price ? (
+                                         <span className="ml-1 text-[10px] font-normal text-muted-foreground">
+                                           @ {a.price.toFixed(2)}
+                                         </span>
+                                       ) : null}
+                                     </div>
+                                     <div className="font-mono text-[10px] text-muted-foreground">
+                                       {timeAgo(a.timestamp)}
+                                     </div>
+                                   </div>
+                                 </li>
+                               ))}
+                             </ul>
+                           )}
+                         </div>
+                       </>
                     )}
                   </div>
                 )}
