@@ -431,9 +431,16 @@ export function hasPropsSupport(sportKey: string): boolean {
 export async function fetchGameProps(
   sportKey: string,
   gameId: string,
+  trigger: string = "unknown",
 ): Promise<GameProps | null> {
   const propMarkets = PROP_MARKETS[sportKey];
   if (!propMarkets) return null;
+  if (isDailyCapReached()) {
+    console.warn(`[oddsApi] Daily cap (${DAILY_CAP}) reached — skipping fetchGameProps(${gameId}) trigger=${trigger}`);
+    return null;
+  }
+  incrementDaily();
+  console.log(`[oddsApi] fetchGameProps gameId=${gameId} trigger=${trigger} daily=${getDailyCount()}/${DAILY_CAP}`);
 
   const { data: resp, error } = await supabase.functions.invoke("fetch-sports-odds", {
     body: {
@@ -442,6 +449,7 @@ export async function fetchGameProps(
       regions: "us",
       markets: propMarkets.join(","),
       oddsFormat: "american",
+      trigger,
     },
   });
   if (error) {
