@@ -22,6 +22,7 @@ import { analyzeMarketWithClaude } from "@/lib/claude";
 import type { ClaudeAnalysis, Market } from "@/types";
 import { KNOWN_TOP_WALLETS } from "@/data/knownTopWallets";
 import { usePageTitle } from "@/hooks/usePageTitle";
+import { useIsAdmin } from "@/hooks/useIsAdmin";
 
 const TIER_COLORS: Record<string, string> = {
   S: "#f59e0b",
@@ -32,6 +33,7 @@ const TIER_COLORS: Record<string, string> = {
 
 export default function Dashboard() {
   usePageTitle("Dashboard");
+  const { isAdmin } = useIsAdmin();
   const bankroll = useAppStore((s) => s.settings.bankroll);
   const settings = useAppStore((s) => s.settings);
   const { suggestions, dismissSuggestion, markOutcome, saveSuggestion, reload: reloadSuggestions } = useSuggestionsDB();
@@ -207,7 +209,12 @@ export default function Dashboard() {
               {analyzing ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Zap className="h-3.5 w-3.5" />}
               {analyzing ? "Analyzing..." : "Run Analysis"}
             </button>
-            {markets.length === 0 && !marketsLoading && (
+            {isAdmin && (
+              <span className="text-[10px] text-muted-foreground font-mono">
+                ~$0.015 per analysis (5 markets)
+              </span>
+            )}
+            {isAdmin && markets.length === 0 && !marketsLoading && (
               <span className="text-[10px] text-warning">Using sample market data — live data unavailable</span>
             )}
           </div>
