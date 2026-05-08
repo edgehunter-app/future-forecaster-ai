@@ -211,9 +211,7 @@ function GameCard({ game }: { game: FullGame }) {
           )}
         >
           <span>{showProps ? "Hide Player Props" : "Show Player Props"}</span>
-          <span className="text-[10px] opacity-70">
-            {showProps ? "▲" : "▼ 1 API request"}
-          </span>
+          <span className="text-[10px] opacity-70">{showProps ? "▲" : "▼"}</span>
         </button>
         {showProps && <PlayerPropsPanel game={game} sportKey={game.sport} />}
       </div>
