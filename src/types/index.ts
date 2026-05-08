@@ -65,6 +65,27 @@ export interface Wallet {
   tier: Tier;
 }
 
+export interface WalletPosition {
+  marketId: string;
+  question: string;
+  direction: "YES" | "NO";
+  amount: number;
+  currentValue: number;
+  entryPrice: number;
+  pnl: number;
+  size: number;
+}
+
+export interface WalletActivity {
+  action: "BUY" | "SELL";
+  direction: "YES" | "NO";
+  question: string;
+  amount: number;
+  price: number;
+  timestamp: string;
+  marketId: string;
+}
+
 export interface Suggestion {
   id: string;
   marketId: string;
