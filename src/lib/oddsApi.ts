@@ -440,6 +440,7 @@ export async function fetchGameProps(
   if (resp && typeof resp.remainingRequests === "number") {
     lastRemaining = resp.remainingRequests;
   }
+  captureKeyResponse(resp);
   const data = resp?.data;
   if (!data) return null;
 
