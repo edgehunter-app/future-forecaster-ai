@@ -7,9 +7,11 @@ interface Props {
   wallet: Wallet;
   action?: React.ReactNode;
   className?: string;
+  onViewPositions?: () => void;
+  positionsOpen?: boolean;
 }
 
-export function WalletCard({ wallet, action, className }: Props) {
+export function WalletCard({ wallet, action, className, onViewPositions, positionsOpen }: Props) {
   const color = TIER_COLORS[wallet.tier];
   const score = scoreWallet(wallet);
 
@@ -52,9 +54,14 @@ export function WalletCard({ wallet, action, className }: Props) {
         <span className="inline-flex items-center gap-1.5 text-xs text-muted-foreground">
           <Activity className="h-3 w-3" /> Last active: 2h ago
         </span>
-        <button className="text-xs font-medium text-info hover:text-info/80 transition-colors">
-          View Positions →
-        </button>
+        {onViewPositions ? (
+          <button
+            onClick={onViewPositions}
+            className="text-xs font-medium text-info hover:text-info/80 transition-colors"
+          >
+            {positionsOpen ? "Hide Positions" : "View Positions →"}
+          </button>
+        ) : null}
       </div>
     </div>
   );

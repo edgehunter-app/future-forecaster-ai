@@ -216,6 +216,10 @@ export default function Wallets() {
               <div key={w.address} className="space-y-2">
                 <WalletCard
                   wallet={w}
+                  positionsOpen={activeAddr === w.address}
+                  onViewPositions={() =>
+                    setActiveAddr((cur) => (cur === w.address ? null : w.address))
+                  }
                   action={
                     <div className="flex shrink-0 items-center gap-1.5">
                       <button
