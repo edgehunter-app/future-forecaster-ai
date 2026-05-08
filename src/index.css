@@ -127,3 +127,35 @@
     font-size: 16px; /* prevent iOS zoom on focus */
   }
 }
+
+/* ---------- Mobile typography pass ----------
+ * Apple HIG / Material baseline: body text ≥ 14px (preferably 15-17px).
+ * We bump body / paragraph copy on small screens, while keeping ultra-small
+ * helper labels (uppercase tracking chips, metric captions) compact but
+ * still legible (≥ 12px). Add `.text-keep` to opt out and preserve a
+ * smaller utility size where layout demands it.
+ */
+@media (max-width: 767px) {
+  body { font-size: 15px; line-height: 1.5; }
+
+  /* Body / readable copy: never below 14px */
+  p:not(.text-keep),
+  li:not(.text-keep),
+  .text-sm:not(.text-keep) { font-size: 14px; line-height: 1.5; }
+
+  /* 12px (text-xs) used for body labels → 13px */
+  .text-xs:not(.text-keep) { font-size: 13px; }
+
+  /* Tiny captions / chips → minimum 11-12px */
+  .text-\[10px\]:not(.text-keep),
+  .text-\[11px\]:not(.text-keep) { font-size: 12px; }
+
+  /* Headings get a small bump for hierarchy */
+  h1 { font-size: 22px; line-height: 1.25; }
+  h2 { font-size: 19px; line-height: 1.3; }
+  h3 { font-size: 16px; line-height: 1.35; }
+
+  /* Card / card-like blocks should breathe — body of a SuggestionCard
+   * has italic reasoning text; force minimum 14px there. */
+  .text-muted-foreground:not(.text-keep) { line-height: 1.5; }
+}
