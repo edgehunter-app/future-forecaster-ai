@@ -1,7 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { Market } from "@/types";
 import {
-  fetchOdds,
   findSportsMispricings,
   getRemainingRequests,
   fetchPolymarketSportsMarkets,
