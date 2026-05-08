@@ -579,6 +579,23 @@ function SportsOddsSection() {
       </div>
 
       <div>
+        <label className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
+          Secondary API Key (backup)
+        </label>
+        <p className="mt-0.5 mb-2 text-[11px] text-muted-foreground">
+          Used automatically when the primary key is exhausted. Stored as a backend secret (ODDS_API_KEY_2).
+        </p>
+        <input
+          type="password"
+          autoComplete="off"
+          placeholder="Configured as backend secret"
+          value={settings.oddsApiKeySecondary}
+          onChange={(e) => updateSettings({ oddsApiKeySecondary: e.target.value })}
+          className="w-full rounded-md border border-border bg-background/40 px-3 py-2 font-mono text-xs text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-info"
+        />
+      </div>
+
+      <div>
         <label className="text-xs font-medium uppercase tracking-wide text-muted-foreground">Favorite Sports</label>
         <p className="mt-0.5 mb-2 text-[11px] text-muted-foreground">These leagues are scanned first</p>
         <div className="flex flex-wrap gap-1.5">
