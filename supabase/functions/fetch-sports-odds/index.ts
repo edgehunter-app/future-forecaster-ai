@@ -11,6 +11,7 @@ interface Body {
   oddsFormat?: string;
   eventId?: string;
   useSecondary?: boolean;
+  trigger?: string;
 }
 
 // In-memory cache (per edge worker instance) to avoid hitting upstream rate limits.
@@ -37,6 +38,13 @@ Deno.serve(async (req) => {
     console.log("ODDS_API_KEY present:", !!apiKey);
     console.log("ODDS_API_KEY_2 present:", !!secondaryKey);
     console.log("Fetching sport:", body.sportKey);
+    console.log("ODDS API CALL", JSON.stringify({
+      timestamp: new Date().toISOString(),
+      sportKey: body.sportKey,
+      eventId: body.eventId ?? null,
+      markets: body.markets ?? null,
+      trigger: body.trigger ?? "unknown",
+    }));
 
     if (body.ping) {
       return new Response(JSON.stringify({ ok: !!apiKey, configured: !!apiKey }), {
