@@ -93,6 +93,31 @@
 }
 .page-fade { animation: fade-in 0.25s ease-out; }
 
+/* ---------- Press animations ----------
+ * Tactile feedback for taps on mobile. Buttons and link-like elements
+ * scale down slightly when actively pressed. Respects reduced-motion.
+ * Add `.no-press` to opt out.
+ */
+@media (hover: none) and (pointer: coarse) {
+  button:not(.no-press):active,
+  a[role="button"]:not(.no-press):active,
+  [role="button"]:not(.no-press):active,
+  .card-action-btn:not(.no-press):active,
+  .press:active {
+    transform: scale(0.96);
+    transition: transform 80ms ease-out;
+  }
+}
+button, a[role="button"], [role="button"], .press {
+  transition: transform 120ms ease-out, background-color 150ms ease, border-color 150ms ease, color 150ms ease;
+  -webkit-tap-highlight-color: transparent;
+}
+@media (prefers-reduced-motion: reduce) {
+  button:active, a[role="button"]:active, [role="button"]:active, .press:active {
+    transform: none !important;
+  }
+}
+
 /* ---------- Mobile tap-target safety net ----------
  * Apple HIG / Material guidelines: interactive elements should be at least
  * 44x44 CSS pixels on touch devices. We enforce a min size for buttons and
