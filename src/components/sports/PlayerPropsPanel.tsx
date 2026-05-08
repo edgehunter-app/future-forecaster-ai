@@ -12,6 +12,7 @@ import {
 } from "@/lib/oddsApi";
 import { useGameProps } from "@/hooks/useGameProps";
 import GamblingDisclaimer from "./GamblingDisclaimer";
+import { useIsAdmin } from "@/hooks/useIsAdmin";
 
 interface Props {
   game: FullGame;
@@ -19,6 +20,7 @@ interface Props {
 }
 
 export default function PlayerPropsPanel({ game, sportKey }: Props) {
+  const { isAdmin } = useIsAdmin();
   const { fetchProps, isLoading, getCached, isCached } = useGameProps();
   const [props, setProps] = useState<GameProps | null>(getCached(game.id));
   const [activeType, setActiveType] = useState<string | null>(null);
@@ -89,9 +91,11 @@ export default function PlayerPropsPanel({ game, sportKey }: Props) {
         <span className="text-[11px] font-bold text-foreground">
           Player Props ({props.props.length})
         </span>
-        <span className="text-[10px] font-mono text-muted-foreground">
-          Cached · refreshes in {refreshIn}m
-        </span>
+        {isAdmin && (
+          <span className="text-[10px] font-mono text-muted-foreground">
+            Cached · refreshes in {refreshIn}m
+          </span>
+        )}
       </div>
 
       <div className="flex gap-1.5 overflow-x-auto pb-1">
