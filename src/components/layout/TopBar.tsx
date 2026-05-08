@@ -8,6 +8,19 @@ import { supabase } from "@/integrations/supabase/client";
 import { useBreakpoint } from "@/hooks/useBreakpoint";
 import { EdgeHunterLogo } from "@/components/brand/EdgeHunterLogo";
 
+const cnHeader = (m: boolean) =>
+  m
+    ? "relative flex h-[52px] items-center justify-between border-b border-border bg-background/80 backdrop-blur px-3 gap-2"
+    : "flex h-16 items-center justify-between border-b border-border bg-background/80 backdrop-blur px-4 sm:px-6 gap-3";
+const cnIconBtn = (m: boolean) =>
+  m
+    ? "relative inline-flex h-11 w-11 items-center justify-center rounded-md text-muted-foreground hover:text-foreground"
+    : "relative inline-flex h-9 w-9 items-center justify-center rounded-md border border-border bg-card text-muted-foreground hover:text-foreground hover:bg-accent transition-colors";
+const cnAvatarBtn = (m: boolean) =>
+  m
+    ? "inline-flex h-11 w-11 items-center justify-center rounded-full bg-info text-xs font-bold text-white"
+    : "inline-flex h-9 w-9 items-center justify-center rounded-full bg-info text-xs font-bold text-white";
+
 const titles: Record<string, { title: string; subtitle?: string }> = {
   "/": { title: "Dashboard", subtitle: "Overview of suggestions and signals" },
   "/suggestions": { title: "Suggestions", subtitle: "Live trade ideas from smart wallet activity" },
