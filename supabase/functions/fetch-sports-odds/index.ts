@@ -10,6 +10,7 @@ interface Body {
   markets?: string;
   oddsFormat?: string;
   eventId?: string;
+  useSecondary?: boolean;
 }
 
 // In-memory cache (per edge worker instance) to avoid hitting upstream rate limits.
@@ -86,8 +87,18 @@ Deno.serve(async (req) => {
 
     const controller = new AbortController();
     const timer = setTimeout(() => controller.abort(), 10000);
-    const keys = [primaryKey, secondaryKey].filter((k): k is string => !!k);
+    // Order keys: prefer secondary if requested, else primary first.
+    const orderedPairs: Array<{ name: 'primary' | 'secondary'; key: string }> = body.useSecondary
+      ? [
+          ...(secondaryKey ? [{ name: 'secondary' as const, key: secondaryKey }] : []),
+          ...(primaryKey ? [{ name: 'primary' as const, key: primaryKey }] : []),
+        ]
+      : [
+          ...(primaryKey ? [{ name: 'primary' as const, key: primaryKey }] : []),
+          ...(secondaryKey ? [{ name: 'secondary' as const, key: secondaryKey }] : []),
+        ];
     let resp: Response | null = null;
+    let keyUsed: 'primary' | 'secondary' | null = null;
     let lastStatus = 0;
     let lastErrText = '';
     let lastErrCode = '';
@@ -98,7 +109,7 @@ Deno.serve(async (req) => {
     let used: string | null = null;
 
     try {
-      for (const key of keys) {
+      for (const { name, key } of orderedPairs) {
         attempts++;
         let r: Response;
         try {
@@ -115,6 +126,7 @@ Deno.serve(async (req) => {
         if (r.ok) {
           if (attempts > 1) usedFallback = true;
           resp = r;
+          keyUsed = name;
           break;
         }
 
@@ -127,7 +139,7 @@ Deno.serve(async (req) => {
         const exhausted =
           r.status === 401 &&
           (lastErrCode === 'OUT_OF_USAGE_CREDITS' || /credits/i.test(text));
-        console.warn(`Key attempt ${attempts} status=${r.status} code=${lastErrCode}`);
+        console.warn(`Key ${name} attempt ${attempts} status=${r.status} code=${lastErrCode}`);
         if (exhausted || r.status === 429) {
           if (exhausted) exhaustedCount++;
           // Try next key
@@ -149,7 +161,7 @@ Deno.serve(async (req) => {
           headers: { ...corsHeaders, 'Content-Type': 'application/json' },
         });
       }
-      const allExhausted = exhaustedCount > 0 && exhaustedCount === keys.length;
+      const allExhausted = exhaustedCount > 0 && exhaustedCount === orderedPairs.length;
       return new Response(
         JSON.stringify({
           data: [],
@@ -161,23 +173,31 @@ Deno.serve(async (req) => {
           resetUrl: 'https://the-odds-api.com',
           remainingRequests: remaining !== null ? Number(remaining) : null,
           usedRequests: used !== null ? Number(used) : null,
+          remaining: remaining !== null ? Number(remaining) : null,
+          used: used !== null ? Number(used) : null,
+          keyUsed,
           debug: { hasApiKey: true, url: safeUrl, status: lastStatus, gamesFound: 0, attempts },
         }),
         { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } },
       );
     }
 
-    console.log('Response status:', resp.status, 'usedFallback:', usedFallback);
+    console.log('Response status:', resp.status, 'usedFallback:', usedFallback, 'keyUsed:', keyUsed);
     const data = await resp.json();
     console.log("Games found:", Array.isArray(data) ? data.length : 0);
     const payload = {
       data,
+      source: 'live',
       remainingRequests: remaining !== null ? Number(remaining) : null,
       usedRequests: used !== null ? Number(used) : null,
+      remaining: remaining !== null ? Number(remaining) : null,
+      used: used !== null ? Number(used) : null,
+      keyUsed,
       usedFallback,
       debug: {
         hasApiKey: true,
         usedFallback,
+        keyUsed,
         url: safeUrl,
         status: resp.status,
         gamesFound: Array.isArray(data) ? data.length : 0,
