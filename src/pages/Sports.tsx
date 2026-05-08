@@ -6,6 +6,7 @@ import { useSportsOdds } from "@/hooks/useSportsOdds";
 import SportsMispricingCard from "@/components/sports/SportsMispricingCard";
 import GamblingDisclaimer from "@/components/sports/GamblingDisclaimer";
 import OddsBoard from "@/components/sports/OddsBoard";
+import UsagePanel from "@/components/sports/UsagePanel";
 import { SPORTS } from "@/lib/oddsApi";
 import { cn } from "@/lib/utils";
 import { usePageTitle } from "@/hooks/usePageTitle";
@@ -22,9 +23,14 @@ export default function Sports() {
     lastScanned,
     fromCache,
     error,
-    remainingRequests,
     hasApiKey,
     scan,
+    loadGamesForSport,
+    loadedSports,
+    activeKey,
+    usageSummary,
+    nextScanAt,
+    scanInterval,
   } = useSportsOdds(markets);
 
   const [activeSport, setActiveSport] = useState<string>("all");
@@ -84,20 +90,6 @@ export default function Sports() {
           </p>
         </div>
         <div className="flex items-center gap-2 flex-wrap">
-          {remainingRequests !== null && (
-            <span
-              className={cn(
-                "rounded-full border px-2 py-0.5 text-[10px] font-semibold",
-                remainingRequests <= 0
-                  ? "border-destructive/40 bg-destructive/15 text-destructive"
-                  : remainingRequests < 100
-                  ? "border-warning/40 bg-warning/15 text-warning"
-                  : "border-border bg-card text-muted-foreground",
-              )}
-            >
-              {remainingRequests <= 0 ? "Limit reached" : `${remainingRequests} requests left`}
-            </span>
-          )}
           <span className="text-xs font-mono text-muted-foreground">
             {(() => {
               if (!lastScanned) return loading ? "Loading..." : "—";
@@ -107,28 +99,33 @@ export default function Sports() {
               return `Updated ${minutesAgo}m ago${refreshing}`;
             })()}
           </span>
-          <button
-            onClick={() => void scan()}
-            disabled={loading || (remainingRequests !== null && remainingRequests <= 0)}
-            className="inline-flex items-center gap-1.5 rounded-md bg-info px-3 py-1.5 text-xs font-semibold text-white hover:bg-info/90 disabled:opacity-50"
-          >
-            <RotateCw className={cn("h-3.5 w-3.5", loading && "animate-spin")} />
-            Refresh
-          </button>
+          <div className="flex flex-col items-end gap-0.5">
+            <button
+              onClick={() => void scan()}
+              disabled={loading || !activeKey}
+              className="inline-flex items-center gap-1.5 rounded-md bg-info px-3 py-1.5 text-xs font-semibold text-white hover:bg-info/90 disabled:opacity-50"
+            >
+              <RotateCw className={cn("h-3.5 w-3.5", loading && "animate-spin")} />
+              Refresh
+            </button>
+            <span className="text-[10px] text-muted-foreground">
+              {!activeKey
+                ? `Auto-scan paused — resets ${usageSummary.resetDate}`
+                : nextScanAt
+                  ? `Next auto-scan: ${nextScanAt.toLocaleTimeString([], { hour: "numeric", minute: "2-digit" })}`
+                  : scanInterval === Infinity
+                    ? "Auto-scan paused"
+                    : "Next auto-scan: pending"}
+            </span>
+          </div>
         </div>
       </div>
 
-      {remainingRequests !== null && remainingRequests > 0 && remainingRequests < 100 && (
-        <div
-          className={cn(
-            "rounded-lg border px-4 py-2 text-sm flex items-start gap-2",
-            remainingRequests < 20
-              ? "border-destructive/40 bg-destructive/10 text-destructive"
-              : "border-warning/40 bg-warning/10 text-warning",
-          )}
-        >
+      <UsagePanel summary={usageSummary} />
+      {!activeKey && (
+        <div className="rounded-lg border border-destructive/40 bg-destructive/10 px-4 py-2 text-sm flex items-start gap-2 text-destructive">
           <AlertTriangle className="h-4 w-4 mt-0.5 shrink-0" />
-          <span>{remainingRequests} API requests remaining this month.</span>
+          <span>All Odds API keys exhausted. Auto-scan paused until reset on {usageSummary.resetDate}.</span>
         </div>
       )}
 
@@ -137,6 +134,7 @@ export default function Sports() {
         {[{ key: "all", label: "All" }, ...SPORTS].map((s) => {
           const active = activeSport === s.key;
           const count = counts[s.key] ?? 0;
+          const isLoaded = s.key === "all" || loadedSports.has(s.key);
           return (
             <button
               key={s.key}
@@ -145,16 +143,30 @@ export default function Sports() {
                 if (s.key !== "all" && !selectedSports.includes(s.key)) {
                   setSelectedSports([...selectedSports, s.key]);
                 }
+                if (s.key !== "all" && !loadedSports.has(s.key) && activeKey) {
+                  void loadGamesForSport(s.key);
+                }
               }}
+              disabled={s.key !== "all" && !isLoaded && !activeKey}
               className={cn(
-                "shrink-0 rounded-full border px-3 py-1 text-xs font-semibold transition-colors",
+                "shrink-0 inline-flex items-center gap-1.5 rounded-full border px-3 py-1 text-xs font-semibold transition-colors disabled:opacity-50",
                 active
                   ? "border-info bg-info text-white"
                   : "border-border bg-card text-muted-foreground hover:text-foreground",
               )}
             >
-              {s.label}
-              {count > 0 && <span className="ml-1.5 opacity-70">{count}</span>}
+              <span>{s.label}</span>
+              {count > 0 && <span className="opacity-70">{count}</span>}
+              {s.key !== "all" && (
+                <span className={cn(
+                  "rounded-full px-1.5 py-px text-[9px] font-bold uppercase",
+                  isLoaded
+                    ? active ? "bg-white/20 text-white" : "bg-success/15 text-success"
+                    : active ? "bg-white/20 text-white" : "bg-warning/15 text-warning",
+                )}>
+                  {isLoaded ? "Cached" : "1 req"}
+                </span>
+              )}
             </button>
           );
         })}
