@@ -9,9 +9,12 @@ import OddsBoard from "@/components/sports/OddsBoard";
 import { SPORTS } from "@/lib/oddsApi";
 import { cn } from "@/lib/utils";
 import { usePageTitle } from "@/hooks/usePageTitle";
+import { useIsAdmin } from "@/hooks/useIsAdmin";
+import UsagePanel from "@/components/sports/UsagePanel";
 
 export default function Sports() {
   usePageTitle("Sports Odds Board");
+  const { isAdmin } = useIsAdmin();
   const markets = useAppStore((s) => s.markets);
   const {
     mispricings,
@@ -108,23 +111,29 @@ export default function Sports() {
               Refresh
             </button>
             <span className="text-[10px] text-muted-foreground">
-              {!activeKey
-                ? `Auto-scan paused — resets ${usageSummary.resetDate}`
-                : nextScanAt
-                  ? `Next auto-scan: ${nextScanAt.toLocaleTimeString([], { hour: "numeric", minute: "2-digit" })}`
-                  : scanInterval === Infinity
-                    ? "Auto-scan paused"
-                    : "Next auto-scan: pending"}
+              {isAdmin
+                ? !activeKey
+                  ? `Auto-scan paused — resets ${usageSummary.resetDate}`
+                  : nextScanAt
+                    ? `Next auto-scan: ${nextScanAt.toLocaleTimeString([], { hour: "numeric", minute: "2-digit" })}`
+                    : scanInterval === Infinity
+                      ? "Auto-scan paused"
+                      : "Next auto-scan: pending"
+                : ""}
             </span>
           </div>
         </div>
       </div>
 
-      {!activeKey && (
+      {isAdmin && !activeKey && (
         <div className="rounded-lg border border-destructive/40 bg-destructive/10 px-4 py-2 text-sm flex items-start gap-2 text-destructive">
           <AlertTriangle className="h-4 w-4 mt-0.5 shrink-0" />
           <span>All Odds API keys exhausted. Auto-scan paused until reset on {usageSummary.resetDate}.</span>
         </div>
+      )}
+
+      {isAdmin && usageSummary && (
+        <UsagePanel summary={usageSummary} />
       )}
 
       {/* Sport selector */}
@@ -155,7 +164,7 @@ export default function Sports() {
             >
               <span>{s.label}</span>
               {count > 0 && <span className="opacity-70">{count}</span>}
-              {s.key !== "all" && (
+              {isAdmin && s.key !== "all" && (
                 <span className={cn(
                   "rounded-full px-1.5 py-px text-[9px] font-bold uppercase",
                   isLoaded
@@ -172,7 +181,7 @@ export default function Sports() {
 
       {error && (
         <div className="rounded-lg border border-destructive/40 bg-destructive/10 px-4 py-3 text-sm text-destructive">
-          {error}
+          {isAdmin ? error : "Couldn't load latest odds. Please try again in a moment."}
         </div>
       )}
 
