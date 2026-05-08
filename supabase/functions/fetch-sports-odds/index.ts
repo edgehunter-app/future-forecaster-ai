@@ -28,10 +28,13 @@ Deno.serve(async (req) => {
   }
 
   try {
-    const apiKey = Deno.env.get('ODDS_API_KEY');
+    const primaryKey = Deno.env.get('ODDS_API_KEY');
+    const secondaryKey = Deno.env.get('ODDS_API_KEY_2');
+    const apiKey = primaryKey;
     const body: Body = await req.json().catch(() => ({}));
 
     console.log("ODDS_API_KEY present:", !!apiKey);
+    console.log("ODDS_API_KEY_2 present:", !!secondaryKey);
     console.log("Fetching sport:", body.sportKey);
 
     if (body.ping) {
@@ -63,11 +66,11 @@ Deno.serve(async (req) => {
     const base = body.eventId
       ? `https://api.the-odds-api.com/v4/sports/${encodeURIComponent(body.sportKey)}/events/${encodeURIComponent(body.eventId)}/odds`
       : `https://api.the-odds-api.com/v4/sports/${encodeURIComponent(body.sportKey)}/odds`;
-    const url =
-      `${base}?apiKey=${apiKey}&regions=${encodeURIComponent(regions)}` +
+    const baseQuery =
+      `${base}?regions=${encodeURIComponent(regions)}` +
       `&markets=${encodeURIComponent(markets)}&oddsFormat=${encodeURIComponent(oddsFormat)}`;
-
-    const safeUrl = url.replace(apiKey, "***");
+    const buildUrl = (key: string) => `${baseQuery}&apiKey=${key}`;
+    const safeUrl = `${baseQuery}&apiKey=***`;
     console.log("URL:", safeUrl);
 
     const cacheKey = `${body.sportKey}|${body.eventId ?? ''}|${regions}|${markets}|${oddsFormat}`;
@@ -84,8 +87,16 @@ Deno.serve(async (req) => {
     const controller = new AbortController();
     const timer = setTimeout(() => controller.abort(), 10000);
     let resp: Response;
+    let usedFallback = false;
     try {
-      resp = await fetch(url, { signal: controller.signal });
+      resp = await fetch(buildUrl(primaryKey), { signal: controller.signal });
+      // If primary is exhausted/invalid (401/429), try secondary key.
+      if (!resp.ok && (resp.status === 401 || resp.status === 429) && secondaryKey) {
+        console.log(`Primary key returned ${resp.status}, falling back to ODDS_API_KEY_2`);
+        try { await resp.body?.cancel(); } catch { /* ignore */ }
+        resp = await fetch(buildUrl(secondaryKey), { signal: controller.signal });
+        usedFallback = true;
+      }
     } finally {
       clearTimeout(timer);
     }
@@ -132,8 +143,10 @@ Deno.serve(async (req) => {
       data,
       remainingRequests: remaining !== null ? Number(remaining) : null,
       usedRequests: used !== null ? Number(used) : null,
+      usedFallback,
       debug: {
         hasApiKey: true,
+        usedFallback,
         url: safeUrl,
         status: resp.status,
         gamesFound: Array.isArray(data) ? data.length : 0,
