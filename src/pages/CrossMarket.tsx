@@ -8,7 +8,6 @@ import ConfidenceBar from "@/components/ui/ConfidenceBar";
 import { cn, fmtUSD } from "@/lib/utils";
 import type { CrossMarketOpp, ClaudeAnalysis } from "@/types";
 import { usePageTitle } from "@/hooks/usePageTitle";
-import { useSportsOdds } from "@/hooks/useSportsOdds";
 import SportsMispricingCard from "@/components/sports/SportsMispricingCard";
 import GamblingDisclaimer from "@/components/sports/GamblingDisclaimer";
 
@@ -16,8 +15,9 @@ export default function CrossMarket() {
   usePageTitle("Cross-Market");
   const { opportunities, loading, lastScanned, kalshiAvailable, scan } = useCrossMarket();
   const setCrossMarketOpps = useAppStore((s) => s.setCrossMarketOpps);
-  const markets = useAppStore((s) => s.markets);
-  const { mispricings: sportsMispricings, hasApiKey: hasOddsKey } = useSportsOdds(markets);
+  // Read-only: never trigger sports/odds API calls from CrossMarket.
+  const sportsMispricings = useAppStore((s) => s.sportsMispricings);
+  const hasOddsKey = true;
   const [howOpen, setHowOpen] = useState(false);
   const [view, setView] = useState<"all" | "prediction" | "sports">("all");
 
