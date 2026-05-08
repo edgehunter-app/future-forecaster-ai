@@ -1,7 +1,7 @@
 import { NavLink } from "react-router-dom";
 import {
-  LayoutDashboard, Lightbulb, Wallet, BarChart2, History, Settings,
-  ChevronLeft, ChevronRight, Moon, Sun, GitCompare, Download, Trophy,
+  House, Zap, Users, TrendingUp, Clock, Settings,
+  ChevronLeft, ChevronRight, Moon, Sun, ArrowLeftRight, Download, Trophy,
 } from "lucide-react";
 import { useAppStore } from "@/store/useAppStore";
 import { usePWA } from "@/hooks/usePWA";
@@ -18,13 +18,13 @@ export function Sidebar({ mobileOpen = false, onMobileClose }: { mobileOpen?: bo
   const { canInstall, isInstalled, install } = usePWA();
 
   const navItems = [
-    { to: "/", label: "Dashboard", icon: LayoutDashboard, end: true } as const,
-    { to: "/suggestions", label: "Suggestions", icon: Lightbulb, badge: suggestionsCount, badgeColor: "info" as const },
-    { to: "/wallets", label: "Wallets", icon: Wallet },
-    { to: "/markets", label: "Markets", icon: BarChart2 },
-    { to: "/cross-market", label: "Cross-Market", icon: GitCompare, badge: xmCount || undefined, badgeColor: "warning" as const },
+    { to: "/", label: "Dashboard", icon: House, end: true } as const,
+    { to: "/suggestions", label: "Suggestions", icon: Zap, badge: suggestionsCount, badgeColor: "info" as const },
+    { to: "/wallets", label: "Wallets", icon: Users },
+    { to: "/markets", label: "Markets", icon: TrendingUp },
+    { to: "/cross-market", label: "Cross-Market", icon: ArrowLeftRight, badge: xmCount || undefined, badgeColor: "warning" as const },
     { to: "/sports", label: "Sports", icon: Trophy, badge: undefined, badgeColor: "info" as const } as const,
-    { to: "/history", label: "History", icon: History },
+    { to: "/history", label: "History", icon: Clock },
     { to: "/settings", label: "Settings", icon: Settings },
   ];
 
