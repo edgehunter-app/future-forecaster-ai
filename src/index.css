@@ -9,6 +9,11 @@
     --background: 230 20% 5%;
     --foreground: 225 18% 93%;
 
+    --safe-top: env(safe-area-inset-top);
+    --safe-bottom: env(safe-area-inset-bottom);
+    --safe-left: env(safe-area-inset-left);
+    --safe-right: env(safe-area-inset-right);
+
     --card: 228 18% 9%;
     --card-foreground: 225 18% 93%;
 
