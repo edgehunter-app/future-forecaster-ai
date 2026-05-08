@@ -54,9 +54,6 @@ export default function PlayerPropsPanel({ game, sportKey }: Props) {
   if (!hasFetched) {
     return (
       <div className="border-t border-border px-3 py-4 text-center space-y-2">
-        <p className="text-[11px] text-muted-foreground">
-          Player props load on demand (1 API request)
-        </p>
         <button
           onClick={load}
           disabled={isLoading(game.id)}

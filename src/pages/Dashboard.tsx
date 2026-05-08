@@ -207,7 +207,6 @@ export default function Dashboard() {
               {analyzing ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Zap className="h-3.5 w-3.5" />}
               {analyzing ? "Analyzing..." : "Run Analysis"}
             </button>
-            <span className="text-[10px] font-mono text-muted-foreground">~$0.015 per analysis (5 markets)</span>
             {markets.length === 0 && !marketsLoading && (
               <span className="text-[10px] text-warning">Using sample market data — live data unavailable</span>
             )}

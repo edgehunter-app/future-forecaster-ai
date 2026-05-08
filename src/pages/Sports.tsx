@@ -6,7 +6,6 @@ import { useSportsOdds } from "@/hooks/useSportsOdds";
 import SportsMispricingCard from "@/components/sports/SportsMispricingCard";
 import GamblingDisclaimer from "@/components/sports/GamblingDisclaimer";
 import OddsBoard from "@/components/sports/OddsBoard";
-import UsagePanel from "@/components/sports/UsagePanel";
 import { SPORTS } from "@/lib/oddsApi";
 import { cn } from "@/lib/utils";
 import { usePageTitle } from "@/hooks/usePageTitle";
@@ -121,7 +120,6 @@ export default function Sports() {
         </div>
       </div>
 
-      <UsagePanel summary={usageSummary} />
       {!activeKey && (
         <div className="rounded-lg border border-destructive/40 bg-destructive/10 px-4 py-2 text-sm flex items-start gap-2 text-destructive">
           <AlertTriangle className="h-4 w-4 mt-0.5 shrink-0" />
