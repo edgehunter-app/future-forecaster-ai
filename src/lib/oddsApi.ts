@@ -561,9 +561,15 @@ export function findPropEdge(prop: PlayerProp): {
   return null;
 }
 
-export async function fetchOdds(sportKey: string): Promise<OddsGame[]> {
+export async function fetchOdds(sportKey: string, trigger: string = "unknown"): Promise<OddsGame[]> {
+  if (isDailyCapReached()) {
+    console.warn(`[oddsApi] Daily cap (${DAILY_CAP}) reached — skipping fetchOdds(${sportKey}) trigger=${trigger}`);
+    return [];
+  }
+  incrementDaily();
+  console.log(`[oddsApi] fetchOdds sport=${sportKey} trigger=${trigger} daily=${getDailyCount()}/${DAILY_CAP}`);
   const { data: resp, error } = await supabase.functions.invoke("fetch-sports-odds", {
-    body: { sportKey, regions: "us", markets: "h2h", oddsFormat: "american" },
+    body: { sportKey, regions: "us", markets: "h2h", oddsFormat: "american", trigger },
   });
   console.log("Edge function response:", resp);
   console.log("Edge function error:", error);
