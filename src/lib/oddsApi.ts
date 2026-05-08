@@ -70,6 +70,28 @@ export function impliedToAmerican(prob: number): string {
 let lastRemaining: number | null = null;
 export function getRemainingRequests(): number | null { return lastRemaining; }
 
+export interface LastKeyResponse {
+  remaining: number | null;
+  used: number | null;
+  keyUsed: "primary" | "secondary" | null;
+  code: string | null;
+  source: "live" | "exhausted" | "error" | null;
+}
+let lastKeyResponse: LastKeyResponse = { remaining: null, used: null, keyUsed: null, code: null, source: null };
+export function getLastKeyResponse(): LastKeyResponse { return lastKeyResponse; }
+function captureKeyResponse(resp: any) {
+  if (!resp || typeof resp !== "object") return;
+  lastKeyResponse = {
+    remaining: typeof resp.remaining === "number" ? resp.remaining
+      : typeof resp.remainingRequests === "number" ? resp.remainingRequests : null,
+    used: typeof resp.used === "number" ? resp.used
+      : typeof resp.usedRequests === "number" ? resp.usedRequests : null,
+    keyUsed: resp.keyUsed ?? null,
+    code: resp.code ?? null,
+    source: resp.source ?? null,
+  };
+}
+
 let lastEdgeResponse: any = null;
 let lastEdgeError: any = null;
 export function getLastEdgeResponse() { return lastEdgeResponse; }
@@ -137,9 +159,9 @@ function median(nums: number[]): number {
   return sorted.length % 2 === 0 ? (sorted[mid - 1] + sorted[mid]) / 2 : sorted[mid];
 }
 
-export async function fetchFullOdds(sportKey: string): Promise<FullGame[]> {
+export async function fetchFullOdds(sportKey: string, useSecondary = false): Promise<FullGame[]> {
   const { data: resp, error } = await supabase.functions.invoke("fetch-sports-odds", {
-    body: { sportKey, regions: "us", markets: "h2h,spreads,totals", oddsFormat: "american" },
+    body: { sportKey, regions: "us", markets: "h2h,spreads,totals", oddsFormat: "american", useSecondary },
   });
   if (error) {
     console.warn("fetch-sports-odds error:", error);
@@ -148,6 +170,7 @@ export async function fetchFullOdds(sportKey: string): Promise<FullGame[]> {
   if (resp && typeof resp.remainingRequests === "number") {
     lastRemaining = resp.remainingRequests;
   }
+  captureKeyResponse(resp);
   const data = resp?.data;
   if (!Array.isArray(data)) return [];
 
@@ -417,6 +440,7 @@ export async function fetchGameProps(
   if (resp && typeof resp.remainingRequests === "number") {
     lastRemaining = resp.remainingRequests;
   }
+  captureKeyResponse(resp);
   const data = resp?.data;
   if (!data) return null;
 
