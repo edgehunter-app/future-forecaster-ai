@@ -92,3 +92,38 @@
   to { opacity: 1; transform: translateY(0); }
 }
 .page-fade { animation: fade-in 0.25s ease-out; }
+
+/* ---------- Mobile tap-target safety net ----------
+ * Apple HIG / Material guidelines: interactive elements should be at least
+ * 44x44 CSS pixels on touch devices. We enforce a min size for buttons and
+ * link-like elements on small screens. Add `tap-compact` to opt out where
+ * the element is purely decorative or layout-bound (e.g. tiny dots, chips
+ * inside a row that would distort if grown).
+ */
+@media (max-width: 767px) {
+  button:not(.tap-compact),
+  a[role="button"]:not(.tap-compact),
+  [role="button"]:not(.tap-compact),
+  a.tap:not(.tap-compact) {
+    min-height: 44px;
+  }
+  button:not(.tap-compact):where(.icon-btn, [aria-label]:not(:has(span))) {
+    min-width: 44px;
+  }
+  /* Larger hit zone for in-card action buttons (Copy / Share / Dismiss etc.) */
+  .card-action-btn {
+    min-height: 44px !important;
+    padding-top: 0.5rem !important;
+    padding-bottom: 0.5rem !important;
+    padding-left: 0.75rem !important;
+    padding-right: 0.75rem !important;
+    font-size: 13px !important;
+  }
+  /* Inputs should also be tall enough to tap accurately */
+  input:not([type="checkbox"]):not([type="radio"]):not(.tap-compact),
+  select:not(.tap-compact),
+  textarea:not(.tap-compact) {
+    min-height: 44px;
+    font-size: 16px; /* prevent iOS zoom on focus */
+  }
+}
