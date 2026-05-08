@@ -103,7 +103,7 @@ export default function Sports() {
           </span>
           <div className="flex flex-col items-end gap-0.5">
             <button
-              onClick={() => void scan()}
+              onClick={() => void scan("manual")}
               disabled={loading || !activeKey}
               className="inline-flex items-center gap-1.5 rounded-md bg-info px-3 py-1.5 text-xs font-semibold text-white hover:bg-info/90 disabled:opacity-50"
             >
