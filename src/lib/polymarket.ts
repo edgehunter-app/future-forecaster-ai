@@ -1,4 +1,4 @@
-import type { Wallet } from "@/types";
+import type { Wallet, WalletPosition, WalletActivity } from "@/types";
 import { scoreWallet, getTier } from "@/lib/walletScorer";
 import { supabase } from "@/integrations/supabase/client";
 
@@ -76,33 +76,42 @@ export async function fetchTopWallets(limit = 20): Promise<Wallet[]> {
   }
 }
 
-export async function fetchWalletPositions(address: string): Promise<any[]> {
+export async function fetchWalletPositions(address: string): Promise<WalletPosition[]> {
   if (!address) return [];
-  const endpoints = [
-    `${DATA_API}/positions?user=${address}&sizeThreshold=1`,
-    `${GAMMA_API}/positions?user=${address}`,
-  ];
-  for (const url of endpoints) {
-    const res = await apiFetch(url);
-    if (Array.isArray(res)) return res;
-    if (res?.positions) return res.positions;
+  try {
+    const { data, error } = await supabase.functions.invoke("fetch-wallet-positions", {
+      body: { address, limit: 50 },
+    });
+    if (error) {
+      console.error("fetch-wallet-positions error:", error);
+      return [];
+    }
+    return (data?.positions ?? []) as WalletPosition[];
+  } catch (err) {
+    console.error("fetchWalletPositions failed:", err);
+    return [];
   }
-  return [];
 }
 
-export async function fetchWalletHistory(address: string, limit = 50): Promise<any[]> {
+export async function fetchWalletActivity(address: string, limit = 20): Promise<WalletActivity[]> {
   if (!address) return [];
-  const endpoints = [
-    `${DATA_API}/activity?user=${address}&limit=${limit}`,
-    `${GAMMA_API}/activity?user=${address}&limit=${limit}`,
-  ];
-  for (const url of endpoints) {
-    const res = await apiFetch(url);
-    if (Array.isArray(res)) return res;
-    if (res?.activity) return res.activity;
+  try {
+    const { data, error } = await supabase.functions.invoke("fetch-wallet-activity", {
+      body: { address, limit },
+    });
+    if (error) {
+      console.error("fetch-wallet-activity error:", error);
+      return [];
+    }
+    return (data?.activity ?? []) as WalletActivity[];
+  } catch (err) {
+    console.error("fetchWalletActivity failed:", err);
+    return [];
   }
-  return [];
 }
+
+// Backwards-compat alias
+export const fetchWalletHistory = fetchWalletActivity;
 
 export async function fetchPolymarketMarkets(limit = 20): Promise<any[]> {
   try {
