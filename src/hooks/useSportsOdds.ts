@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { Market } from "@/types";
 import {
   fetchOdds,
@@ -10,20 +10,32 @@ import {
   getLastEdgeError,
   getLastGames,
   fetchFullOdds,
+  getLastKeyResponse,
   isSportsMarket,
   type OddsGame,
   type SportsScanDebug,
+  type FullGame,
 } from "@/lib/oddsApi";
 import { useAppStore } from "@/store/useAppStore";
 import { SPORTS } from "@/lib/oddsApi";
+import {
+  loadKeyUsage,
+  saveKeyUsage,
+  getActiveKey,
+  markKeyExhausted,
+  updateKeyUsage,
+  getOptimalInterval,
+  getUsageSummary,
+  type KeyManager,
+} from "@/lib/oddsApiKeyManager";
 
-const STALE_MS = 30 * 60 * 1000;
+const DEFAULT_AUTO_SPORTS = ["americanfootball_nfl", "basketball_nba"];
 
 export function useSportsOdds(polymarkets: Market[]) {
   const settings = useAppStore((s) => s.settings);
   const threshold = settings.sportsGapThreshold ?? 0.02;
 
-  // Store-backed state (survives navigation)
+  // Store-backed
   const fullGames = useAppStore((s) => s.fullGames);
   const lastScanned = useAppStore((s) => s.sportsLastScanned);
   const loading = useAppStore((s) => s.sportsLoading);
@@ -47,38 +59,87 @@ export function useSportsOdds(polymarkets: Market[]) {
   const [selectedSports, setSelectedSports] = useState<string[]>(SPORTS.map((s) => s.key));
   const [remainingRequests, setRemainingRequests] = useState<number | null>(getRemainingRequests());
   const [fromCache, setFromCache] = useState(false);
+  const [loadedSports, setLoadedSports] = useState<Set<string>>(new Set(DEFAULT_AUTO_SPORTS));
+  const [keyUsage, setKeyUsage] = useState<KeyManager>(loadKeyUsage);
   const fetchingRef = useRef(false);
+  const keyUsageRef = useRef<KeyManager>(keyUsage);
+  useEffect(() => { keyUsageRef.current = keyUsage; }, [keyUsage]);
+
+  const activeKey = getActiveKey(keyUsage);
+  const usageSummary = useMemo(() => getUsageSummary(keyUsage), [keyUsage]);
+  const scanInterval = usageSummary.intervalMs;
+
+  const persistUsage = useCallback((updater: (u: KeyManager) => KeyManager) => {
+    setKeyUsage((prev) => {
+      const next = updater(prev);
+      saveKeyUsage(next);
+      keyUsageRef.current = next;
+      return next;
+    });
+  }, []);
+
+  const fetchOneSport = useCallback(
+    async (sport: string): Promise<FullGame[]> => {
+      const ak = getActiveKey(keyUsageRef.current);
+      if (!ak) return [];
+      const games = await fetchFullOdds(sport, ak === "secondary");
+      const last = getLastKeyResponse();
+      if (last.code === "QUOTA_EXHAUSTED") {
+        // mark whichever was tried as exhausted
+        persistUsage((u) => markKeyExhausted(u, ak));
+        return [];
+      }
+      if (last.keyUsed && typeof last.remaining === "number") {
+        persistUsage((u) => updateKeyUsage(u, last.keyUsed!, last.remaining!));
+      }
+      return games ?? [];
+    },
+    [persistUsage],
+  );
 
   const scan = useCallback(async () => {
     if (fetchingRef.current) return;
-    if (remainingRequests !== null && remainingRequests <= 0) return;
+    const ak = getActiveKey(keyUsageRef.current);
+    if (!ak) {
+      setSportsError("quota_exhausted");
+      return;
+    }
     fetchingRef.current = true;
     setSportsLoading(true);
     setSportsError(null);
     try {
-      const results = await findSportsMispricings(polymarkets, "server-managed", threshold);
-      setMispricings(results);
-      const dbg = getLastScanDebug();
-      setDebug(dbg);
-      setVegasGamesCount(dbg.vegasGamesFetched);
-      setMatchesCount(dbg.matchesFound);
-      setPolymarketsCount(dbg.polymarketSportsMarkets);
-      const sm = await fetchPolymarketSportsMarkets(polymarkets);
-      setSportsMarkets(sm);
-      setEdgeResponse(getLastEdgeResponse());
-      setEdgeError(getLastEdgeError());
-      setGames(getLastGames());
+      // Mispricings still scan against polymarket sports markets
+      try {
+        const results = await findSportsMispricings(polymarkets, "server-managed", threshold);
+        setMispricings(results);
+        const dbg = getLastScanDebug();
+        setDebug(dbg);
+        setVegasGamesCount(dbg.vegasGamesFetched);
+        setMatchesCount(dbg.matchesFound);
+        setPolymarketsCount(dbg.polymarketSportsMarkets);
+        const sm = await fetchPolymarketSportsMarkets(polymarkets);
+        setSportsMarkets(sm);
+        setEdgeResponse(getLastEdgeResponse());
+        setEdgeError(getLastEdgeError());
+        setGames(getLastGames());
+      } catch (e) {
+        console.warn("mispricings scan failed", e);
+      }
 
-      // Serialize sport fetches with a small delay to avoid Odds API freq limit (429).
-      const allFull: any[] = [];
-      for (const s of selectedSports) {
+      // Fetch only auto-loaded sports (default 2) sequentially with delay
+      const allFull: FullGame[] = [];
+      const autoSports = Array.from(loadedSports).length > 0
+        ? Array.from(loadedSports)
+        : DEFAULT_AUTO_SPORTS;
+      for (const sport of autoSports) {
+        if (!getActiveKey(keyUsageRef.current)) break;
         try {
-          const games = await fetchFullOdds(s);
-          if (games?.length) allFull.push(...games);
+          const got = await fetchOneSport(sport);
+          if (got?.length) allFull.push(...got);
         } catch (e) {
-          console.warn("fetchFullOdds failed for", s, e);
+          console.warn("fetchFullOdds failed for", sport, e);
         }
-        await new Promise((r) => setTimeout(r, 250));
+        await new Promise((r) => setTimeout(r, 500));
       }
 
       const polySports = polymarkets.filter((m) => isSportsMarket(m));
@@ -108,8 +169,8 @@ export function useSportsOdds(polymarkets: Market[]) {
   }, [
     polymarkets,
     threshold,
-    remainingRequests,
-    selectedSports,
+    loadedSports,
+    fetchOneSport,
     setFullGames,
     setMispricings,
     setSportsError,
@@ -117,32 +178,40 @@ export function useSportsOdds(polymarkets: Market[]) {
     setSportsLoading,
   ]);
 
-  const loadGamesForSport = useCallback(async (sportKey: string) => {
-    setSportsLoading(true);
-    try {
-      const data = await fetchOdds(sportKey);
-      setGames(data);
-      setRemainingRequests(getRemainingRequests());
-    } finally {
-      setSportsLoading(false);
-    }
-  }, [setSportsLoading]);
+  // Lazy-load a single sport on demand (e.g. tab click)
+  const loadGamesForSport = useCallback(
+    async (sportKey: string) => {
+      if (loadedSports.has(sportKey)) return;
+      const ak = getActiveKey(keyUsageRef.current);
+      if (!ak) return;
+      setSportsLoading(true);
+      try {
+        const got = await fetchOneSport(sportKey);
+        if (got.length) {
+          const merged = [...(useAppStore.getState().fullGames ?? []), ...got];
+          setFullGames(merged);
+        }
+        setLoadedSports((prev) => new Set([...prev, sportKey]));
+        setRemainingRequests(getRemainingRequests());
+      } finally {
+        setSportsLoading(false);
+      }
+    },
+    [loadedSports, fetchOneSport, setFullGames, setSportsLoading],
+  );
 
+  // Auto-scan on mount + dynamic interval
   useEffect(() => {
-    const isStale =
-      !lastScanned ||
-      Date.now() - new Date(lastScanned).getTime() > STALE_MS;
-    if (fullGames.length > 0 && !isStale) {
-      // fresh — skip
-      return;
-    }
-    if (polymarkets.length > 0 || fullGames.length === 0) {
-      void scan();
-    }
-    const interval = setInterval(() => { void scan(); }, STALE_MS);
+    if (scanInterval === Infinity) return;
+    if (fullGames.length === 0) void scan();
+    const interval = setInterval(() => { void scan(); }, scanInterval);
     return () => clearInterval(interval);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [scanInterval]);
+
+  const nextScanAt = lastScanned && scanInterval !== Infinity
+    ? new Date(new Date(lastScanned).getTime() + scanInterval)
+    : null;
 
   return {
     mispricings,
@@ -166,5 +235,11 @@ export function useSportsOdds(polymarkets: Market[]) {
     hasApiKey: true,
     scan,
     loadGamesForSport,
+    keyUsage,
+    usageSummary,
+    scanInterval,
+    activeKey,
+    loadedSports,
+    nextScanAt,
   };
 }
