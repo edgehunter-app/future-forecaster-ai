@@ -1,7 +1,7 @@
 import { NavLink } from "react-router-dom";
 import {
   House, Zap, Users, TrendingUp, Clock, Settings,
-  ChevronLeft, ChevronRight, Moon, Sun, ArrowLeftRight, Download, Trophy, Settings2,
+  ChevronLeft, ChevronRight, Moon, Sun, ArrowLeftRight, Download, Trophy, ShieldCheck,
 } from "lucide-react";
 import { useAppStore } from "@/store/useAppStore";
 import { usePWA } from "@/hooks/usePWA";
@@ -101,7 +101,7 @@ export function Sidebar({ mobileOpen = false, onMobileClose }: { mobileOpen?: bo
       <div className="border-t border-sidebar-border p-2 space-y-1">
         {isAdmin && (
           <NavLink
-            to="/settings"
+            to="/admin"
             className={({ isActive }) =>
               cn(
                 "flex w-full items-center gap-3 rounded-md px-3 py-2 text-sm font-medium transition-colors",
@@ -112,7 +112,7 @@ export function Sidebar({ mobileOpen = false, onMobileClose }: { mobileOpen?: bo
             }
             title={!open ? "Admin" : undefined}
           >
-            <Settings2 className="h-[18px] w-[18px]" />
+            <ShieldCheck className="h-[18px] w-[18px]" />
             {open && <span>Admin</span>}
           </NavLink>
         )}
