@@ -11,6 +11,7 @@ import { useProfile } from "@/hooks/useProfile";
 import { supabase } from "@/integrations/supabase/client";
 import { usePageTitle } from "@/hooks/usePageTitle";
 import { fetchOdds, SPORTS } from "@/lib/oddsApi";
+import { loadKeyUsage, getUsageSummary } from "@/lib/oddsApiKeyManager";
 
 const KELLY_PRESETS = [
   { label: "1/10 Kelly", value: 0.10, hint: "Safest" },
