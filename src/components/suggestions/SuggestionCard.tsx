@@ -227,13 +227,13 @@ export function SuggestionCard({ suggestion: s, bankroll, onDismiss, onMarkOutco
           <>
             <button
               onClick={() => handleOutcome("won")}
-              className="inline-flex items-center gap-1 rounded-md border border-success/40 bg-success/10 px-2 py-1 text-[11px] font-semibold text-success hover:bg-success/20"
+              className="card-action-btn inline-flex items-center gap-1 rounded-md border border-success/40 bg-success/10 px-2 py-1 text-[11px] font-semibold text-success hover:bg-success/20"
             >
               <Check className="h-3 w-3" /> Won
             </button>
             <button
               onClick={() => handleOutcome("lost")}
-              className="inline-flex items-center gap-1 rounded-md border border-destructive/40 bg-destructive/10 px-2 py-1 text-[11px] font-semibold text-destructive hover:bg-destructive/20"
+              className="card-action-btn inline-flex items-center gap-1 rounded-md border border-destructive/40 bg-destructive/10 px-2 py-1 text-[11px] font-semibold text-destructive hover:bg-destructive/20"
             >
               <XCircle className="h-3 w-3" /> Lost
             </button>
@@ -269,7 +269,7 @@ function ActionBtn({ icon: Icon, label, onClick, danger, className }: {
   return (
     <button onClick={onClick}
       className={cn(
-        "inline-flex items-center gap-1.5 rounded-md border border-border bg-background/40 px-2.5 py-1 text-xs font-medium transition-colors",
+        "card-action-btn inline-flex items-center gap-1.5 rounded-md border border-border bg-background/40 px-2.5 py-1 text-xs font-medium transition-colors",
         danger ? "text-destructive hover:bg-destructive/10 hover:border-destructive/40"
                : "text-muted-foreground hover:text-foreground hover:bg-muted",
         className,

@@ -135,7 +135,7 @@ export function TopBar(_: { onMenuClick?: () => void } = {}) {
           <Link
             to="/auth"
             onClick={() => setDemoMode(false)}
-            className="inline-flex items-center rounded-md bg-info px-3 py-1.5 text-xs font-semibold text-white hover:bg-info/90 transition-colors"
+            className="inline-flex items-center rounded-md bg-info px-4 text-sm font-semibold text-white hover:bg-info/90 transition-colors min-h-[44px] md:min-h-0 md:px-3 md:py-1.5 md:text-xs"
           >
             Sign In
           </Link>
