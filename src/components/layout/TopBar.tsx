@@ -1,10 +1,25 @@
-import { Bell, LogOut, Menu, Settings as SettingsIcon } from "lucide-react";
+import { Bell, LogOut, Settings as SettingsIcon } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import { useAppStore } from "@/store/useAppStore";
 import { fmtUSD } from "@/lib/utils";
 import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
+import { useBreakpoint } from "@/hooks/useBreakpoint";
+import { EdgeHunterLogo } from "@/components/brand/EdgeHunterLogo";
+
+const cnHeader = (m: boolean) =>
+  m
+    ? "relative flex h-[52px] items-center justify-between border-b border-border bg-background/80 backdrop-blur px-3 gap-2"
+    : "flex h-16 items-center justify-between border-b border-border bg-background/80 backdrop-blur px-4 sm:px-6 gap-3";
+const cnIconBtn = (m: boolean) =>
+  m
+    ? "relative inline-flex h-11 w-11 items-center justify-center rounded-md text-muted-foreground hover:text-foreground"
+    : "relative inline-flex h-9 w-9 items-center justify-center rounded-md border border-border bg-card text-muted-foreground hover:text-foreground hover:bg-accent transition-colors";
+const cnAvatarBtn = (m: boolean) =>
+  m
+    ? "inline-flex h-11 w-11 items-center justify-center rounded-full bg-info text-xs font-bold text-white"
+    : "inline-flex h-9 w-9 items-center justify-center rounded-full bg-info text-xs font-bold text-white";
 
 const titles: Record<string, { title: string; subtitle?: string }> = {
   "/": { title: "Dashboard", subtitle: "Overview of suggestions and signals" },
@@ -15,13 +30,14 @@ const titles: Record<string, { title: string; subtitle?: string }> = {
   "/settings": { title: "Settings", subtitle: "Bankroll, alerts and preferences" },
 };
 
-export function TopBar({ onMenuClick }: { onMenuClick?: () => void } = {}) {
+export function TopBar(_: { onMenuClick?: () => void } = {}) {
   const { pathname } = useLocation();
   const navigate = useNavigate();
   const { bankroll, kellyMultiplier } = useAppStore((s) => s.settings);
   const isDemoMode = useAppStore((s) => s.isDemoMode);
   const setDemoMode = useAppStore((s) => s.setDemoMode);
   const { user } = useAuth();
+  const { isMobile } = useBreakpoint();
   const [menuOpen, setMenuOpen] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
 
@@ -52,7 +68,7 @@ export function TopBar({ onMenuClick }: { onMenuClick?: () => void } = {}) {
   const meta = titles[pathname] ?? { title: "EdgeHunter" };
 
   return (
-    <div>
+    <div style={{ paddingTop: "env(safe-area-inset-top)" }}>
       {isDemoMode && !user && (
         <div className="flex items-center justify-center gap-2 bg-warning/15 border-b border-warning/30 px-4 py-1.5 text-xs text-warning">
           <span className="font-semibold">Demo Mode</span>
@@ -65,36 +81,53 @@ export function TopBar({ onMenuClick }: { onMenuClick?: () => void } = {}) {
           </button>
         </div>
       )}
-    <header className="flex h-16 items-center justify-between border-b border-border bg-background/80 backdrop-blur px-4 sm:px-6 gap-3">
-      <div className="flex items-center gap-3 min-w-0">
-        <button
-          onClick={onMenuClick}
-          className="lg:hidden inline-flex h-9 w-9 items-center justify-center rounded-md border border-border bg-card text-muted-foreground hover:text-foreground"
-          aria-label="Open menu"
-        >
-          <Menu className="h-4 w-4" />
-        </button>
-        <div className="min-w-0">
-          <h1 className="text-base sm:text-lg font-semibold tracking-tight text-foreground truncate">{meta.title}</h1>
-          <p className="hidden sm:block text-xs text-muted-foreground font-mono truncate">
-            Bankroll {fmtUSD(bankroll, { compact: true })} · Kelly {kellyMultiplier.toFixed(2)}x
-            {meta.subtitle && <span className="ml-2 font-sans">· {meta.subtitle}</span>}
-          </p>
+    <header
+      className={cnHeader(isMobile)}
+    >
+      {isMobile ? (
+        <>
+          <button
+            onClick={() => navigate("/")}
+            aria-label="Home"
+            className="inline-flex h-11 w-11 items-center justify-center rounded-md"
+          >
+            <EdgeHunterLogo size={28} variant="icon" />
+          </button>
+          <h1 className="absolute left-1/2 -translate-x-1/2 text-base font-bold tracking-tight text-foreground truncate max-w-[55%] text-center">
+            {meta.title}
+          </h1>
+        </>
+      ) : (
+        <div className="flex items-center gap-3 min-w-0">
+          <div className="min-w-0">
+            <h1 className="text-base sm:text-lg font-semibold tracking-tight text-foreground truncate">{meta.title}</h1>
+            <p className="hidden sm:block text-xs text-muted-foreground font-mono truncate">
+              Bankroll {fmtUSD(bankroll, { compact: true })} · Kelly {kellyMultiplier.toFixed(2)}x
+              {meta.subtitle && <span className="ml-2 font-sans">· {meta.subtitle}</span>}
+            </p>
+          </div>
         </div>
-      </div>
+      )}
       <div className="flex items-center gap-2">
-        <div className="hidden sm:inline-flex items-center gap-2 rounded-full border border-success/30 bg-success/10 px-3 py-1 text-xs font-medium text-success">
+        {!isMobile && (
+        <div className="inline-flex items-center gap-2 rounded-full border border-success/30 bg-success/10 px-3 py-1 text-xs font-medium text-success">
           <span className="relative flex h-2 w-2">
             <span className="absolute inline-flex h-full w-full rounded-full bg-success opacity-60 live-dot" />
             <span className="relative inline-flex h-2 w-2 rounded-full bg-success" />
           </span>
           Live Data
         </div>
-        <span className="sm:hidden relative flex h-2.5 w-2.5">
+        )}
+        {isMobile && (
+        <span className="relative flex h-2 w-2">
           <span className="absolute inline-flex h-full w-full rounded-full bg-success opacity-60 live-dot" />
-          <span className="relative inline-flex h-2.5 w-2.5 rounded-full bg-success" />
+          <span className="relative inline-flex h-2 w-2 rounded-full bg-success" />
         </span>
-        <button className="relative inline-flex h-9 w-9 items-center justify-center rounded-md border border-border bg-card text-muted-foreground hover:text-foreground hover:bg-accent transition-colors">
+        )}
+        <button
+          aria-label="Notifications"
+          className={cnIconBtn(isMobile)}
+        >
           <Bell className="h-4 w-4" />
           <span className="absolute right-2 top-2 h-1.5 w-1.5 rounded-full bg-info" />
         </button>
@@ -110,7 +143,7 @@ export function TopBar({ onMenuClick }: { onMenuClick?: () => void } = {}) {
           <div className="relative" ref={menuRef}>
             <button
               onClick={() => setMenuOpen((v) => !v)}
-              className="inline-flex h-9 w-9 items-center justify-center rounded-full bg-info text-xs font-bold text-white"
+              className={cnAvatarBtn(isMobile)}
               aria-label="User menu"
             >
               {initials}
