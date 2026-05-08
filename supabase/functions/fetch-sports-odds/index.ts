@@ -86,57 +86,88 @@ Deno.serve(async (req) => {
 
     const controller = new AbortController();
     const timer = setTimeout(() => controller.abort(), 10000);
-    let resp: Response;
+    const keys = [primaryKey, secondaryKey].filter((k): k is string => !!k);
+    let resp: Response | null = null;
+    let lastStatus = 0;
+    let lastErrText = '';
+    let lastErrCode = '';
     let usedFallback = false;
+    let attempts = 0;
+    let exhaustedCount = 0;
+    let remaining: string | null = null;
+    let used: string | null = null;
+
     try {
-      resp = await fetch(buildUrl(primaryKey), { signal: controller.signal });
-      // If primary is exhausted/invalid (401/429), try secondary key.
-      if (!resp.ok && (resp.status === 401 || resp.status === 429) && secondaryKey) {
-        console.log(`Primary key returned ${resp.status}, falling back to ODDS_API_KEY_2`);
-        try { await resp.body?.cancel(); } catch { /* ignore */ }
-        resp = await fetch(buildUrl(secondaryKey), { signal: controller.signal });
-        usedFallback = true;
+      for (const key of keys) {
+        attempts++;
+        let r: Response;
+        try {
+          r = await fetch(buildUrl(key), { signal: controller.signal });
+        } catch (e) {
+          console.warn('Key attempt failed:', e);
+          lastErrText = String(e);
+          continue;
+        }
+        remaining = r.headers.get('x-requests-remaining');
+        used = r.headers.get('x-requests-used');
+        lastStatus = r.status;
+
+        if (r.ok) {
+          if (attempts > 1) usedFallback = true;
+          resp = r;
+          break;
+        }
+
+        // Non-OK — inspect for quota exhaustion to try next key.
+        const text = await r.text();
+        lastErrText = text;
+        let parsed: any = null;
+        try { parsed = JSON.parse(text); } catch { /* ignore */ }
+        lastErrCode = parsed?.error_code ?? '';
+        const exhausted =
+          r.status === 401 &&
+          (lastErrCode === 'OUT_OF_USAGE_CREDITS' || /credits/i.test(text));
+        console.warn(`Key attempt ${attempts} status=${r.status} code=${lastErrCode}`);
+        if (exhausted || r.status === 429) {
+          if (exhausted) exhaustedCount++;
+          // Try next key
+          continue;
+        }
+        // Other error — stop trying.
+        break;
       }
     } finally {
       clearTimeout(timer);
     }
 
-    const remaining = resp.headers.get('x-requests-remaining');
-    const used = resp.headers.get('x-requests-used');
-
-    console.log("Response status:", resp.status);
-    console.log("Response ok:", resp.ok);
-
-    if (!resp.ok) {
-      const errText = await resp.text();
-      console.error("Odds API error body:", errText);
-      // On rate limit, serve stale cache if available.
-      if (resp.status === 429) {
-        if (cached) {
-          console.log("Serving stale cache due to 429");
-          return new Response(JSON.stringify(cached.payload), {
-            status: 200,
-            headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-          });
-        }
-        // No cache — return empty success so the UI doesn't blank-screen.
-        return new Response(
-          JSON.stringify({
-            data: [],
-            remainingRequests: remaining !== null ? Number(remaining) : null,
-            usedRequests: used !== null ? Number(used) : null,
-            rateLimited: true,
-            debug: { hasApiKey: true, url: safeUrl, status: 429, gamesFound: 0 },
-          }),
-          { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } },
-        );
+    if (!resp) {
+      // All keys failed — serve stale cache if any, else graceful empty payload.
+      if (cached) {
+        console.log('All keys failed; serving stale cache');
+        return new Response(JSON.stringify(cached.payload), {
+          status: 200,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        });
       }
-      return new Response(JSON.stringify({ error: 'Odds API error', status: resp.status, detail: errText }), {
-        status: resp.status,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      });
+      const allExhausted = exhaustedCount > 0 && exhaustedCount === keys.length;
+      return new Response(
+        JSON.stringify({
+          data: [],
+          source: allExhausted ? 'exhausted' : 'error',
+          error: allExhausted
+            ? 'All API keys have reached their quota'
+            : (lastErrText || 'Odds API unavailable'),
+          code: allExhausted ? 'QUOTA_EXHAUSTED' : (lastErrCode || `HTTP_${lastStatus}`),
+          resetUrl: 'https://the-odds-api.com',
+          remainingRequests: remaining !== null ? Number(remaining) : null,
+          usedRequests: used !== null ? Number(used) : null,
+          debug: { hasApiKey: true, url: safeUrl, status: lastStatus, gamesFound: 0, attempts },
+        }),
+        { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } },
+      );
     }
 
+    console.log('Response status:', resp.status, 'usedFallback:', usedFallback);
     const data = await resp.json();
     console.log("Games found:", Array.isArray(data) ? data.length : 0);
     const payload = {
