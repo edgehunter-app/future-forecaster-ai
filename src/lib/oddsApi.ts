@@ -1,5 +1,6 @@
 import type { Market } from "@/types";
 import { supabase } from "@/integrations/supabase/client";
+import { isDailyCapReached, incrementDaily, getDailyCount, DAILY_CAP } from "@/lib/oddsDailyCap";
 
 export interface OddsBookmaker {
   key: string;
@@ -159,9 +160,19 @@ function median(nums: number[]): number {
   return sorted.length % 2 === 0 ? (sorted[mid - 1] + sorted[mid]) / 2 : sorted[mid];
 }
 
-export async function fetchFullOdds(sportKey: string, useSecondary = false): Promise<FullGame[]> {
+export async function fetchFullOdds(
+  sportKey: string,
+  useSecondary = false,
+  trigger: string = "unknown",
+): Promise<FullGame[]> {
+  if (isDailyCapReached()) {
+    console.warn(`[oddsApi] Daily cap (${DAILY_CAP}) reached — skipping fetchFullOdds(${sportKey}) trigger=${trigger}`);
+    return [];
+  }
+  incrementDaily();
+  console.log(`[oddsApi] fetchFullOdds sport=${sportKey} trigger=${trigger} daily=${getDailyCount()}/${DAILY_CAP}`);
   const { data: resp, error } = await supabase.functions.invoke("fetch-sports-odds", {
-    body: { sportKey, regions: "us", markets: "h2h,spreads,totals", oddsFormat: "american", useSecondary },
+    body: { sportKey, regions: "us", markets: "h2h,spreads,totals", oddsFormat: "american", useSecondary, trigger },
   });
   if (error) {
     console.warn("fetch-sports-odds error:", error);
