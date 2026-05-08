@@ -1,5 +1,6 @@
 import type { Market } from "@/types";
 import { supabase } from "@/integrations/supabase/client";
+import { isDailyCapReached, incrementDaily, getDailyCount, DAILY_CAP } from "@/lib/oddsDailyCap";
 
 export interface OddsBookmaker {
   key: string;
@@ -159,9 +160,19 @@ function median(nums: number[]): number {
   return sorted.length % 2 === 0 ? (sorted[mid - 1] + sorted[mid]) / 2 : sorted[mid];
 }
 
-export async function fetchFullOdds(sportKey: string, useSecondary = false): Promise<FullGame[]> {
+export async function fetchFullOdds(
+  sportKey: string,
+  useSecondary = false,
+  trigger: string = "unknown",
+): Promise<FullGame[]> {
+  if (isDailyCapReached()) {
+    console.warn(`[oddsApi] Daily cap (${DAILY_CAP}) reached — skipping fetchFullOdds(${sportKey}) trigger=${trigger}`);
+    return [];
+  }
+  incrementDaily();
+  console.log(`[oddsApi] fetchFullOdds sport=${sportKey} trigger=${trigger} daily=${getDailyCount()}/${DAILY_CAP}`);
   const { data: resp, error } = await supabase.functions.invoke("fetch-sports-odds", {
-    body: { sportKey, regions: "us", markets: "h2h,spreads,totals", oddsFormat: "american", useSecondary },
+    body: { sportKey, regions: "us", markets: "h2h,spreads,totals", oddsFormat: "american", useSecondary, trigger },
   });
   if (error) {
     console.warn("fetch-sports-odds error:", error);
@@ -420,9 +431,16 @@ export function hasPropsSupport(sportKey: string): boolean {
 export async function fetchGameProps(
   sportKey: string,
   gameId: string,
+  trigger: string = "unknown",
 ): Promise<GameProps | null> {
   const propMarkets = PROP_MARKETS[sportKey];
   if (!propMarkets) return null;
+  if (isDailyCapReached()) {
+    console.warn(`[oddsApi] Daily cap (${DAILY_CAP}) reached — skipping fetchGameProps(${gameId}) trigger=${trigger}`);
+    return null;
+  }
+  incrementDaily();
+  console.log(`[oddsApi] fetchGameProps gameId=${gameId} trigger=${trigger} daily=${getDailyCount()}/${DAILY_CAP}`);
 
   const { data: resp, error } = await supabase.functions.invoke("fetch-sports-odds", {
     body: {
@@ -431,6 +449,7 @@ export async function fetchGameProps(
       regions: "us",
       markets: propMarkets.join(","),
       oddsFormat: "american",
+      trigger,
     },
   });
   if (error) {
@@ -542,9 +561,15 @@ export function findPropEdge(prop: PlayerProp): {
   return null;
 }
 
-export async function fetchOdds(sportKey: string): Promise<OddsGame[]> {
+export async function fetchOdds(sportKey: string, trigger: string = "unknown"): Promise<OddsGame[]> {
+  if (isDailyCapReached()) {
+    console.warn(`[oddsApi] Daily cap (${DAILY_CAP}) reached — skipping fetchOdds(${sportKey}) trigger=${trigger}`);
+    return [];
+  }
+  incrementDaily();
+  console.log(`[oddsApi] fetchOdds sport=${sportKey} trigger=${trigger} daily=${getDailyCount()}/${DAILY_CAP}`);
   const { data: resp, error } = await supabase.functions.invoke("fetch-sports-odds", {
-    body: { sportKey, regions: "us", markets: "h2h", oddsFormat: "american" },
+    body: { sportKey, regions: "us", markets: "h2h", oddsFormat: "american", trigger },
   });
   console.log("Edge function response:", resp);
   console.log("Edge function error:", error);
@@ -709,9 +734,10 @@ export async function findSportsMispricings(
   polymarkets: Market[],
   apiKey: string,
   minGap = 0.02,
+  trigger: string = "unknown",
 ): Promise<SportsMispricing[]> {
   void apiKey;
-  const results = await Promise.allSettled(SPORTS.slice(0, 4).map((s) => fetchOdds(s.key)));
+  const results = await Promise.allSettled(SPORTS.slice(0, 4).map((s) => fetchOdds(s.key, trigger)));
   const allGames = results
     .filter((r) => r.status === "fulfilled")
     .flatMap((r) => (r as PromiseFulfilledResult<OddsGame[]>).value);

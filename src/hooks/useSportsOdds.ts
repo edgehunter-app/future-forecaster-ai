@@ -78,10 +78,10 @@ export function useSportsOdds(polymarkets: Market[]) {
   }, []);
 
   const fetchOneSport = useCallback(
-    async (sport: string): Promise<FullGame[]> => {
+    async (sport: string, trigger: string = "unknown"): Promise<FullGame[]> => {
       const ak = getActiveKey(keyUsageRef.current);
       if (!ak) return [];
-      const games = await fetchFullOdds(sport, ak === "secondary");
+      const games = await fetchFullOdds(sport, ak === "secondary", trigger);
       const last = getLastKeyResponse();
       if (last.code === "QUOTA_EXHAUSTED") {
         // mark whichever was tried as exhausted
@@ -96,7 +96,7 @@ export function useSportsOdds(polymarkets: Market[]) {
     [persistUsage],
   );
 
-  const scan = useCallback(async () => {
+  const scan = useCallback(async (trigger: string = "manual") => {
     if (fetchingRef.current) return;
     const ak = getActiveKey(keyUsageRef.current);
     if (!ak) {
@@ -109,7 +109,7 @@ export function useSportsOdds(polymarkets: Market[]) {
     try {
       // Mispricings still scan against polymarket sports markets
       try {
-        const results = await findSportsMispricings(polymarkets, "server-managed", threshold);
+        const results = await findSportsMispricings(polymarkets, "server-managed", threshold, trigger);
         setMispricings(results);
         const dbg = getLastScanDebug();
         setDebug(dbg);
@@ -133,7 +133,7 @@ export function useSportsOdds(polymarkets: Market[]) {
       for (const sport of autoSports) {
         if (!getActiveKey(keyUsageRef.current)) break;
         try {
-          const got = await fetchOneSport(sport);
+          const got = await fetchOneSport(sport, trigger);
           if (got?.length) allFull.push(...got);
         } catch (e) {
           console.warn("fetchFullOdds failed for", sport, e);
@@ -185,7 +185,7 @@ export function useSportsOdds(polymarkets: Market[]) {
       if (!ak) return;
       setSportsLoading(true);
       try {
-        const got = await fetchOneSport(sportKey);
+        const got = await fetchOneSport(sportKey, "tab-click");
         if (got.length) {
           const merged = [...(useAppStore.getState().fullGames ?? []), ...got];
           setFullGames(merged);
@@ -199,18 +199,20 @@ export function useSportsOdds(polymarkets: Market[]) {
     [loadedSports, fetchOneSport, setFullGames, setSportsLoading],
   );
 
-  // Auto-scan on mount + dynamic interval
+  // Mount-only fetch: fire ONCE per mount, only if store is empty AND last
+  // scan was 4+ hours ago AND not already loading. No setInterval — manual
+  // refresh only after that.
   useEffect(() => {
-    if (scanInterval === Infinity) return;
-    if (fullGames.length === 0) void scan();
-    const interval = setInterval(() => { void scan(); }, scanInterval);
-    return () => clearInterval(interval);
+    if (fullGames.length > 0) return;
+    if (loading) return;
+    const lastScannedTime = lastScanned ? new Date(lastScanned).getTime() : 0;
+    const FOUR_HOURS = 4 * 60 * 60 * 1000;
+    const isStale = Date.now() - lastScannedTime > FOUR_HOURS;
+    if (isStale) void scan("mount");
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [scanInterval]);
+  }, []);
 
-  const nextScanAt = lastScanned && scanInterval !== Infinity
-    ? new Date(new Date(lastScanned).getTime() + scanInterval)
-    : null;
+  const nextScanAt = null;
 
   return {
     mispricings,

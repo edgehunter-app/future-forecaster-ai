@@ -7,6 +7,7 @@ import { useIsAdmin } from "@/hooks/useIsAdmin";
 import PageLoadingSkeleton from "@/components/ui/PageLoadingSkeleton";
 import { usePageTitle } from "@/hooks/usePageTitle";
 import { loadKeyUsage, getUsageSummary, type KeyManager } from "@/lib/oddsApiKeyManager";
+import { getDailyCount, DAILY_CAP } from "@/lib/oddsDailyCap";
 import { cn } from "@/lib/utils";
 
 const CLAUDE_COST_PER_RUN = 0.003;
@@ -42,6 +43,7 @@ export default function Admin() {
   const { isAdmin, loading } = useIsAdmin();
 
   const [usage, setUsage] = useState<KeyManager | null>(null);
+  const [dailyCount, setDailyCount] = useState<number>(0);
   const [stats, setStats] = useState({
     totalUsers: 0,
     walletUsers: 0,
@@ -55,6 +57,8 @@ export default function Admin() {
   useEffect(() => {
     if (!isAdmin) return;
     setUsage(loadKeyUsage());
+    setDailyCount(getDailyCount());
+    const id = setInterval(() => setDailyCount(getDailyCount()), 5000);
 
     const startOfDay = new Date();
     startOfDay.setHours(0, 0, 0, 0);
@@ -78,6 +82,7 @@ export default function Admin() {
         suggestionsMonth: sugMonth.count ?? 0,
       });
     });
+    return () => clearInterval(id);
   }, [isAdmin]);
 
   if (loading) return <PageLoadingSkeleton />;
@@ -120,6 +125,33 @@ export default function Admin() {
         <div className="flex items-center gap-2">
           <Activity className="h-4 w-4 text-info" />
           <h2 className="text-sm font-bold uppercase tracking-wide text-foreground">Odds API Usage</h2>
+        </div>
+        {/* Hard daily cap (client-side) */}
+        <div className="rounded-md border border-border bg-background/40 p-3 space-y-2">
+          <div className="flex items-center justify-between">
+            <span className="text-xs font-semibold text-foreground">Daily request cap</span>
+            <span className="font-mono text-xs text-foreground">
+              Today: {dailyCount} / {DAILY_CAP} requests used
+            </span>
+          </div>
+          <div className="h-2 w-full overflow-hidden rounded-full bg-secondary">
+            <div
+              className={cn(
+                "h-full transition-all",
+                dailyCount >= DAILY_CAP
+                  ? "bg-destructive"
+                  : dailyCount >= Math.ceil(DAILY_CAP * 0.7)
+                    ? "bg-warning"
+                    : "bg-success",
+              )}
+              style={{ width: `${Math.min((dailyCount / DAILY_CAP) * 100, 100)}%` }}
+            />
+          </div>
+          {dailyCount >= DAILY_CAP && (
+            <div className="text-[11px] text-destructive">
+              Daily cap reached — further Odds API calls are blocked until tomorrow.
+            </div>
+          )}
         </div>
         {usage && summary ? (
           <>
