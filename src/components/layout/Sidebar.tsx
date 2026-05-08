@@ -1,12 +1,13 @@
 import { NavLink } from "react-router-dom";
 import {
   House, Zap, Users, TrendingUp, Clock, Settings,
-  ChevronLeft, ChevronRight, Moon, Sun, ArrowLeftRight, Download, Trophy,
+  ChevronLeft, ChevronRight, Moon, Sun, ArrowLeftRight, Download, Trophy, Settings2,
 } from "lucide-react";
 import { useAppStore } from "@/store/useAppStore";
 import { usePWA } from "@/hooks/usePWA";
 import { cn } from "@/lib/utils";
 import { EdgeHunterLogo } from "@/components/brand/EdgeHunterLogo";
+import { useIsAdmin } from "@/hooks/useIsAdmin";
 
 export function Sidebar({ mobileOpen = false, onMobileClose }: { mobileOpen?: boolean; onMobileClose?: () => void } = {}) {
   const open = useAppStore((s) => s.ui.sidebarOpen);
@@ -16,6 +17,7 @@ export function Sidebar({ mobileOpen = false, onMobileClose }: { mobileOpen?: bo
   const suggestionsCount = useAppStore((s) => s.suggestions.length);
   const xmCount = useAppStore((s) => s.crossMarketOpps.length);
   const { canInstall, isInstalled, install } = usePWA();
+  const { isAdmin } = useIsAdmin();
 
   const navItems = [
     { to: "/", label: "Dashboard", icon: House, end: true } as const,
@@ -97,6 +99,23 @@ export function Sidebar({ mobileOpen = false, onMobileClose }: { mobileOpen?: bo
       </nav>
 
       <div className="border-t border-sidebar-border p-2 space-y-1">
+        {isAdmin && (
+          <NavLink
+            to="/settings"
+            className={({ isActive }) =>
+              cn(
+                "flex w-full items-center gap-3 rounded-md px-3 py-2 text-sm font-medium transition-colors",
+                isActive
+                  ? "bg-warning/15 text-warning"
+                  : "text-warning/80 hover:bg-sidebar-accent hover:text-warning",
+              )
+            }
+            title={!open ? "Admin" : undefined}
+          >
+            <Settings2 className="h-[18px] w-[18px]" />
+            {open && <span>Admin</span>}
+          </NavLink>
+        )}
         {canInstall && !isInstalled && (
           <button
             onClick={() => void install()}
