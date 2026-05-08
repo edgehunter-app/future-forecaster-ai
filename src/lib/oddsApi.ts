@@ -734,9 +734,10 @@ export async function findSportsMispricings(
   polymarkets: Market[],
   apiKey: string,
   minGap = 0.02,
+  trigger: string = "unknown",
 ): Promise<SportsMispricing[]> {
   void apiKey;
-  const results = await Promise.allSettled(SPORTS.slice(0, 4).map((s) => fetchOdds(s.key)));
+  const results = await Promise.allSettled(SPORTS.slice(0, 4).map((s) => fetchOdds(s.key, trigger)));
   const allGames = results
     .filter((r) => r.status === "fulfilled")
     .flatMap((r) => (r as PromiseFulfilledResult<OddsGame[]>).value);
