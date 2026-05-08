@@ -2,12 +2,27 @@ import { useEffect, useState } from "react";
 import { Plus, Zap, X, Wallet as WalletIcon, Loader2, RefreshCw, Star } from "lucide-react";
 import WalletCard from "@/components/wallets/WalletCard";
 import EmptyState from "@/components/ui/EmptyState";
-import type { Wallet } from "@/types";
+import type { Wallet, WalletPosition, WalletActivity } from "@/types";
 import { scoreWallet, getTier } from "@/lib/walletScorer";
 import { useWallets } from "@/hooks/useWallets";
-import { fetchWalletPositions, fetchWalletHistory } from "@/lib/polymarket";
+import { fetchWalletPositions, fetchWalletActivity } from "@/lib/polymarket";
 import { KNOWN_TOP_WALLETS } from "@/data/knownTopWallets";
 import { usePageTitle } from "@/hooks/usePageTitle";
+import { fmtUSD } from "@/lib/utils";
+
+function timeAgo(timestamp: string): string {
+  const t = new Date(timestamp).getTime();
+  if (!t || Number.isNaN(t)) return "";
+  const diff = Date.now() - t;
+  const mins = Math.floor(diff / 60000);
+  const hours = Math.floor(diff / 3600000);
+  const days = Math.floor(diff / 86400000);
+  if (mins < 1) return "just now";
+  if (mins < 60) return `${mins}m ago`;
+  if (hours < 24) return `${hours}h ago`;
+  if (days < 7) return `${days}d ago`;
+  return new Date(timestamp).toLocaleDateString("en-US", { month: "short", day: "numeric" });
+}
 
 export default function Wallets() {
   usePageTitle("Wallets");
@@ -27,18 +42,18 @@ export default function Wallets() {
   const [label, setLabel] = useState("");
   const [addedAddrs, setAddedAddrs] = useState<Set<string>>(new Set());
   const [activeAddr, setActiveAddr] = useState<string | null>(null);
-  const [positions, setPositions] = useState<any[]>([]);
-  const [history, setHistory] = useState<any[]>([]);
+  const [positions, setPositions] = useState<WalletPosition[]>([]);
+  const [activity, setActivity] = useState<WalletActivity[]>([]);
   const [detailLoading, setDetailLoading] = useState(false);
   const [seeding, setSeeding] = useState(false);
 
   useEffect(() => {
     if (!activeAddr) return;
     setDetailLoading(true);
-    Promise.all([fetchWalletPositions(activeAddr), fetchWalletHistory(activeAddr)])
+    Promise.all([fetchWalletPositions(activeAddr), fetchWalletActivity(activeAddr)])
       .then(([p, h]) => {
         setPositions(p);
-        setHistory(h);
+        setActivity(h);
       })
       .finally(() => setDetailLoading(false));
   }, [activeAddr]);
