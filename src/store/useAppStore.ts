@@ -121,6 +121,7 @@ const defaultSettings: SettingsState = {
   favoriteSports: ["americanfootball_nfl", "basketball_nba"],
   sportsGapThreshold: 0.02,
   alertOnSportsMispricings: false,
+  oddsApiKeySecondary: "",
   alerts: {
     telegram: { enabled: true, chatId: "" },
     discord: { enabled: false, webhookUrl: "" },
