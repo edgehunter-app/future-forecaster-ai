@@ -9,6 +9,8 @@ import Badge from "@/components/ui/Badge";
 import ConfidenceBar from "@/components/ui/ConfidenceBar";
 import { useAppStore } from "@/store/useAppStore";
 import { useToast } from "@/components/ui/AppToast";
+import { useBreakpoint } from "@/hooks/useBreakpoint";
+import { useSwipe } from "@/hooks/useSwipe";
 import {
   getConfidenceColor,
   getConfidenceBg,
@@ -38,6 +40,7 @@ export function SuggestionCard({ suggestion: s, bankroll, onDismiss, onMarkOutco
   const kellyMult = useAppStore((st) => st.settings.kellyMultiplier);
   const { showToast } = useToast();
   const [open, setOpen] = useState(false);
+  const { isMobile } = useBreakpoint();
   const ageMs = (() => {
     const m = /(\d+)\s*h/.exec(s.createdAt);
     if (m) return Number(m[1]) * 3600000;
@@ -54,6 +57,26 @@ export function SuggestionCard({ suggestion: s, bankroll, onDismiss, onMarkOutco
     if (onDismiss) onDismiss();
     else dismissStore(s.id);
   };
+
+  const { dx, dragging, handlers } = useSwipe({
+    threshold: 96,
+    onSwipeLeft: () => {
+      showToast("Suggestion dismissed", "info");
+      handleDismiss();
+    },
+    onSwipeRight: () => {
+      if (showOutcome) handleOutcome("won");
+    },
+  });
+  const swipeStyle = isMobile
+    ? {
+        transform: `translateX(${dx}px)`,
+        transition: dragging ? "none" : "transform 220ms ease",
+      }
+    : undefined;
+  const swipeHandlers = isMobile ? handlers : {};
+  const leftHintOpacity = isMobile ? Math.min(Math.max(-dx, 0) / 96, 1) : 0;
+  const rightHintOpacity = isMobile && showOutcome ? Math.min(Math.max(dx, 0) / 96, 1) : 0;
 
   const dirColor = s.direction === "YES" ? COLORS.yes : COLORS.no;
   const catColor = categoryColor(s.category);
@@ -90,14 +113,41 @@ export function SuggestionCard({ suggestion: s, bankroll, onDismiss, onMarkOutco
   };
 
   return (
-    <div
-      className="group relative rounded-lg bg-card p-5 transition-all duration-200 hover:-translate-y-0.5 overflow-hidden"
-      style={{
-        border: `1px solid ${confBorder}`,
-        boxShadow: `0 0 0 1px ${confColor}10, 0 4px 24px ${confColor}14`,
-        opacity: isWeak ? 0.7 : 1,
-      }}
-    >
+    <div className="relative">
+      {/* Swipe hint backgrounds (mobile only) */}
+      {isMobile && (
+        <>
+          <div
+            className="pointer-events-none absolute inset-0 flex items-center justify-end rounded-lg bg-destructive/15 pr-6 text-destructive"
+            style={{ opacity: leftHintOpacity }}
+            aria-hidden
+          >
+            <X className="h-6 w-6" />
+            <span className="ml-2 text-sm font-bold uppercase tracking-wide">Dismiss</span>
+          </div>
+          {showOutcome && (
+            <div
+              className="pointer-events-none absolute inset-0 flex items-center justify-start rounded-lg bg-success/15 pl-6 text-success"
+              style={{ opacity: rightHintOpacity }}
+              aria-hidden
+            >
+              <Check className="h-6 w-6" />
+              <span className="ml-2 text-sm font-bold uppercase tracking-wide">Won</span>
+            </div>
+          )}
+        </>
+      )}
+      <div
+        {...swipeHandlers}
+        style={{
+          border: `1px solid ${confBorder}`,
+          boxShadow: `0 0 0 1px ${confColor}10, 0 4px 24px ${confColor}14`,
+          opacity: isWeak ? 0.7 : 1,
+          touchAction: "pan-y",
+          ...swipeStyle,
+        }}
+        className="group relative rounded-lg bg-card p-5 transition-all duration-200 md:hover:-translate-y-0.5 overflow-hidden"
+      >
       {isWeak && (
         <span
           className="pointer-events-none absolute -right-4 top-6 select-none font-extrabold tracking-widest"
@@ -240,6 +290,12 @@ export function SuggestionCard({ suggestion: s, bankroll, onDismiss, onMarkOutco
           </>
         )}
         <ActionBtn icon={X} label="Dismiss" onClick={handleDismiss} danger className="ml-auto" />
+      </div>
+      {isMobile && (
+        <div className="mt-2 text-center text-[10px] uppercase tracking-wider text-muted-foreground/60">
+          Swipe ← to dismiss{showOutcome ? " · → to mark won" : ""}
+        </div>
+      )}
       </div>
     </div>
   );
