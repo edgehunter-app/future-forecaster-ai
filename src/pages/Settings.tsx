@@ -558,9 +558,71 @@ function SportsOddsSection() {
   };
 
   const gapPct = Math.round((settings.sportsGapThreshold ?? 0.02) * 100);
+  const usage = loadKeyUsage();
+  const summary = getUsageSummary(usage);
+  const pct = Math.min(100, Math.round((summary.totalUsed / summary.totalLimit) * 100));
 
   return (
     <div className="space-y-4">
+      {/* API Budget */}
+      <div className="rounded-md border border-border/60 bg-background/40 p-3 space-y-2">
+        <div className="flex items-center justify-between">
+          <div className="text-sm font-semibold text-foreground">API Budget</div>
+          <span className={cn(
+            "rounded-full border px-2 py-0.5 text-[10px] font-bold uppercase",
+            summary.willLastUntilReset
+              ? "border-success/40 bg-success/15 text-success"
+              : "border-warning/40 bg-warning/15 text-warning",
+          )}>
+            {summary.willLastUntilReset ? "On track" : "At risk"}
+          </span>
+        </div>
+        <div className="grid grid-cols-2 gap-2 text-[11px]">
+          <div className="rounded border border-border/50 p-2">
+            <div className="text-muted-foreground">Primary key</div>
+            <div className="font-mono text-foreground">
+              {usage.primary.exhausted ? "Exhausted" : `${usage.primary.requestsRemaining} left`}
+            </div>
+          </div>
+          <div className="rounded border border-border/50 p-2">
+            <div className="text-muted-foreground">Secondary key</div>
+            <div className="font-mono text-foreground">
+              {usage.secondary.exhausted ? "Exhausted" : `${usage.secondary.requestsRemaining} left`}
+            </div>
+          </div>
+        </div>
+        <div>
+          <div className="flex items-center justify-between text-[11px] text-muted-foreground">
+            <span>Total</span>
+            <span className="font-mono">{summary.totalUsed} / {summary.totalLimit}</span>
+          </div>
+          <div className="h-1.5 w-full rounded-full bg-background/60 overflow-hidden mt-1">
+            <div
+              className={cn(
+                "h-full",
+                summary.totalRemaining > 400 ? "bg-success"
+                  : summary.totalRemaining > 100 ? "bg-warning" : "bg-destructive",
+              )}
+              style={{ width: `${pct}%` }}
+            />
+          </div>
+        </div>
+        <div className="text-[11px] text-muted-foreground">
+          Scan frequency: <span className="text-foreground font-semibold">{summary.recommendedInterval}</span>
+          {" · "}Resets in {summary.daysLeft} day{summary.daysLeft === 1 ? "" : "s"}
+        </div>
+        {!summary.willLastUntilReset && summary.totalRemaining > 0 && (
+          <a
+            href="https://the-odds-api.com"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="inline-block text-[11px] font-semibold text-info hover:underline"
+          >
+            Upgrade to $10/month for 10,000 requests →
+          </a>
+        )}
+      </div>
+
       <div className="rounded-md border border-border/60 bg-background/40 p-3">
         <div className="flex items-center justify-between gap-3">
           <div>
