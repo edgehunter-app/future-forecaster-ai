@@ -163,11 +163,11 @@ export default function Dashboard() {
   const hasResolved = histStats.totalTrades > 0;
 
   return (
-    <div className="space-y-6">
-      <SafetyBanner />
+    <div className="flex flex-col gap-6">
+      <div className="order-1 md:order-none"><SafetyBanner /></div>
 
       {/* Status header */}
-      <div className="flex flex-wrap items-center gap-2 justify-end">
+      <div className="order-9 md:order-none flex flex-wrap items-center gap-2 justify-end">
         <StatusPill
           label="Markets"
           state={marketsError ? "error" : isLive ? "ok" : markets.length > 0 ? "warn" : "loading"}
@@ -192,7 +192,7 @@ export default function Dashboard() {
       </div>
 
       {/* Claude AI Analysis */}
-      <div className="rounded-lg border border-border bg-card p-5 shadow-card">
+      <div className="order-3 md:order-none rounded-lg border border-border bg-card p-5 shadow-card">
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
           <div className="flex items-center gap-2">
             <Brain className="h-4 w-4 text-purple" />
@@ -326,7 +326,7 @@ export default function Dashboard() {
       </div>
 
       {/* KPI Row */}
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
+      <div className="order-4 md:order-none grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
         <StatCard label="Active Suggestions" value={suggestions.length} icon={Lightbulb} color="#8b5cf6" sub="Ready to review" />
         <StatCard label="Tracked Wallets" value={wallets.length} icon={WalletIcon} color="#3b82f6" sub="Smart money" />
         <StatCard label="Monitored Markets" value={markets.length} icon={BarChart2} color="#06b6d4" sub="Live polling" />
@@ -342,7 +342,7 @@ export default function Dashboard() {
 
       {/* Top markets preview */}
       {markets.length > 0 && (
-        <div className="rounded-lg border border-border bg-card shadow-card">
+        <div className="order-8 md:order-none rounded-lg border border-border bg-card shadow-card">
           <button
             onClick={() => setShowTopMarkets((v) => !v)}
             className="flex w-full items-center justify-between px-5 py-3 text-left"
@@ -374,7 +374,7 @@ export default function Dashboard() {
       )}
 
       {/* Two-column row */}
-      <div className="grid grid-cols-1 gap-6 lg:grid-cols-5">
+      <div className="order-2 md:order-none grid grid-cols-1 gap-6 lg:grid-cols-5">
         {/* Left column 60% */}
         <div className="lg:col-span-3 space-y-4">
           <div className="flex items-center gap-2">
@@ -544,8 +544,8 @@ export default function Dashboard() {
       </div>
 
       {/* Cross-market opportunities */}
-      <CrossMarketStrip />
-      <SportsEdgeStrip />
+      <div className="order-5 md:order-none"><CrossMarketStrip /></div>
+      <div className="order-6 md:order-none"><SportsEdgeStrip /></div>
     </div>
   );
 }
