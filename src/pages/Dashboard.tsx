@@ -12,7 +12,6 @@ import { useWallets } from "@/hooks/useWallets";
 import { MOCK_MARKETS } from "@/data/mockData";
 import { fmtUSD, cn } from "@/lib/utils";
 import { useCrossMarket } from "@/hooks/useCrossMarket";
-import { useSportsOdds } from "@/hooks/useSportsOdds";
 import GamblingDisclaimer from "@/components/sports/GamblingDisclaimer";
 import { getConfidenceColor, getConfidenceTier } from "@/lib/confidenceColor";
 import { useSuggestionsDB } from "@/hooks/useSuggestionsDB";
@@ -557,30 +556,10 @@ export default function Dashboard() {
 }
 
 function SportsEdgeStrip() {
-  const markets = useAppStore((s) => s.markets);
-  const { mispricings, hasApiKey, lastScanned } = useSportsOdds(markets);
-
-  if (!hasApiKey) {
-    return (
-      <div>
-        <div className="mb-3 flex items-center gap-2">
-          <Trophy className="h-4 w-4 text-warning" />
-          <h2 className="text-sm font-semibold uppercase tracking-wide text-foreground">Sports Edge</h2>
-        </div>
-        <div className="rounded-lg border border-border bg-card p-5 flex flex-col sm:flex-row sm:items-center gap-3">
-          <Trophy className="h-8 w-8 text-muted-foreground shrink-0" />
-          <div className="flex-1">
-            <div className="text-sm font-semibold text-foreground">Sports Edge Finder</div>
-            <p className="text-xs text-muted-foreground">Add your Odds API key to compare Vegas odds against Polymarket</p>
-          </div>
-          <Link to="/settings" className="rounded-md bg-info px-3 py-1.5 text-xs font-semibold text-white hover:bg-info/90">
-            Set up in Settings
-          </Link>
-        </div>
-        <GamblingDisclaimer variant="compact" className="mt-3" />
-      </div>
-    );
-  }
+  // Read-only: never trigger sports/odds API calls from Dashboard.
+  const mispricings = useAppStore((s) => s.sportsMispricings);
+  const sportsLastScanned = useAppStore((s) => s.sportsLastScanned);
+  const lastScanned = sportsLastScanned ? new Date(sportsLastScanned) : null;
 
   return (
     <div>
