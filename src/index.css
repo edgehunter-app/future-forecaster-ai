@@ -107,7 +107,7 @@
   a.tap:not(.tap-compact) {
     min-height: 44px;
   }
-  button:not(.tap-compact):where(.icon-btn, [aria-label]:not(:has(span))) {
+  button.icon-btn:not(.tap-compact) {
     min-width: 44px;
   }
   /* Larger hit zone for in-card action buttons (Copy / Share / Dismiss etc.) */
