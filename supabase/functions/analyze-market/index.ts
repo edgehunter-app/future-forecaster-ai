@@ -82,7 +82,7 @@ This suggests potential mispricing between markets.
   const walletBlock = wallets.length > 0
     ? `
 SMART WALLET SIGNALS:
-${wallets.map((w) => `- ${w.label} (Tier ${w.tier}): ${(w.winRate * 100).toFixed(0)}% win rate`).join("\n")}
+${wallets.map((w: Any) => `- ${w.label} (Tier ${w.tier}): ${(w.winRate * 100).toFixed(0)}% win rate`).join("\n")}
 `
     : "No smart wallet data available for this game.";
   return `You are a quantitative sports betting analyst.
