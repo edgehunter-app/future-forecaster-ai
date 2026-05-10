@@ -1,5 +1,5 @@
 import { useMemo, useState } from "react";
-import { ChevronDown, ChevronUp } from "lucide-react";
+import { ChevronDown, ChevronUp, Brain, Loader2, AlertCircle } from "lucide-react";
 import { cn } from "@/lib/utils";
 import {
   formatOdds,
@@ -11,14 +11,18 @@ import {
   type FullGame,
   type FullBookmakerLine,
   type PlayerProp,
+  type SportsMispricing,
 } from "@/lib/oddsApi";
 import GamblingDisclaimer from "./GamblingDisclaimer";
 import PlayerPropsPanel from "./PlayerPropsPanel";
 import { useGameProps } from "@/hooks/useGameProps";
+import { useGameAnalysis } from "@/hooks/useGameAnalysis";
+import GameAnalysisPanel from "./GameAnalysisPanel";
 
 interface Props {
   games: FullGame[];
   loading: boolean;
+  mispricings?: SportsMispricing[];
 }
 
 type Tab = "games" | "best" | "spreads" | "totals" | "props";
@@ -36,7 +40,7 @@ function oddsClass(odds: number): string {
   return odds > 0 ? "text-success" : "text-destructive";
 }
 
-export default function OddsBoard({ games, loading }: Props) {
+export default function OddsBoard({ games, loading, mispricings = [] }: Props) {
   const [tab, setTab] = useState<Tab>("games");
 
   if (loading && games.length === 0) {
@@ -79,7 +83,7 @@ export default function OddsBoard({ games, loading }: Props) {
       {tab === "games" && (
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           {games.map((g) => (
-            <GameCard key={g.id} game={g} />
+            <GameCard key={g.id} game={g} mispricings={mispricings} />
           ))}
         </div>
       )}
@@ -92,7 +96,7 @@ export default function OddsBoard({ games, loading }: Props) {
   );
 }
 
-function GameCard({ game }: { game: FullGame }) {
+function GameCard({ game, mispricings }: { game: FullGame; mispricings: SportsMispricing[] }) {
   const [expanded, setExpanded] = useState(false);
   const [showProps, setShowProps] = useState(false);
   const bookmakers = game.bookmakers ?? [];
@@ -103,6 +107,19 @@ function GameCard({ game }: { game: FullGame }) {
   const awayImplied = game.moneyline?.awayImplied ?? 0;
   const bestHome = hasBookmakers ? getBestMoneyline(bookmakers, "home") : { odds: homeOdds, book: "" };
   const bestAway = hasBookmakers ? getBestMoneyline(bookmakers, "away") : { odds: awayOdds, book: "" };
+  const { analyzeGame, clearResult, isAnalyzing, getResult, getError } = useGameAnalysis();
+  const result = getResult(game.id);
+  const analyzing = isAnalyzing(game.id);
+  const error = getError(game.id);
+
+  const polyMispricing = mispricings.find((m) => m.game?.id === game.id);
+  const polyGap = polyMispricing
+    ? { polyImplied: polyMispricing.polyImplied, gap: polyMispricing.spread }
+    : game.polymarketImplied !== null && game.mispricingGap !== null
+      ? { polyImplied: game.polymarketImplied, gap: game.mispricingGap }
+      : null;
+
+  const handleAnalyze = () => analyzeGame(game, polyGap);
 
   return (
     <div className="rounded-lg border border-border bg-card p-4 space-y-3">
@@ -199,6 +216,51 @@ function GameCard({ game }: { game: FullGame }) {
           </button>
           {expanded && <BookTable books={bookmakers} bestHome={bestHome} bestAway={bestAway} />}
         </div>
+      )}
+
+      {/* Claude AI Analysis */}
+      {result ? (
+        <GameAnalysisPanel result={result} game={game} onClear={() => clearResult(game.id)} />
+      ) : (
+        <>
+          <button
+            onClick={handleAnalyze}
+            disabled={analyzing}
+            className={cn(
+              "flex w-full items-center justify-center gap-2 rounded-md bg-purple px-3 text-white font-semibold transition-colors hover:bg-purple/90 disabled:opacity-60",
+              "h-[52px] sm:h-11",
+            )}
+          >
+            {analyzing ? (
+              <>
+                <Loader2 className="h-4 w-4 animate-spin" />
+                <span className="text-sm">Analyzing…</span>
+              </>
+            ) : (
+              <div className="flex items-center gap-2 text-left">
+                <Brain className="h-4 w-4" />
+                <div>
+                  <div className="text-sm leading-tight">Analyze with Claude</div>
+                  <div className="text-[10px] opacity-80 leading-tight">AI edge detection for this game</div>
+                </div>
+              </div>
+            )}
+          </button>
+          {error && (
+            <div className="rounded-md border border-destructive/40 bg-destructive/10 p-2.5 flex items-start gap-2">
+              <AlertCircle className="h-3.5 w-3.5 mt-0.5 text-destructive shrink-0" />
+              <div className="flex-1">
+                <p className="text-[11px] text-destructive">{error}</p>
+                <button
+                  onClick={handleAnalyze}
+                  className="mt-1.5 rounded-md border border-destructive/40 bg-background px-2 py-0.5 text-[10px] font-semibold text-destructive hover:bg-destructive/10"
+                >
+                  Try Again
+                </button>
+              </div>
+            </div>
+          )}
+        </>
       )}
 
       {/* Player Props toggle */}

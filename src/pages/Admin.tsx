@@ -8,6 +8,7 @@ import PageLoadingSkeleton from "@/components/ui/PageLoadingSkeleton";
 import { usePageTitle } from "@/hooks/usePageTitle";
 import { loadKeyUsage, getUsageSummary, type KeyManager } from "@/lib/oddsApiKeyManager";
 import { getDailyCount, DAILY_CAP } from "@/lib/oddsDailyCap";
+import { getAnalysisCounts } from "@/lib/analysisCounter";
 import { cn } from "@/lib/utils";
 
 const CLAUDE_COST_PER_RUN = 0.003;
@@ -44,6 +45,7 @@ export default function Admin() {
 
   const [usage, setUsage] = useState<KeyManager | null>(null);
   const [dailyCount, setDailyCount] = useState<number>(0);
+  const [analysisCounts, setAnalysisCounts] = useState({ market: 0, sports: 0, total: 0 });
   const [stats, setStats] = useState({
     totalUsers: 0,
     walletUsers: 0,
@@ -58,7 +60,11 @@ export default function Admin() {
     if (!isAdmin) return;
     setUsage(loadKeyUsage());
     setDailyCount(getDailyCount());
-    const id = setInterval(() => setDailyCount(getDailyCount()), 5000);
+    setAnalysisCounts(getAnalysisCounts());
+    const id = setInterval(() => {
+      setDailyCount(getDailyCount());
+      setAnalysisCounts(getAnalysisCounts());
+    }, 5000);
 
     const startOfDay = new Date();
     startOfDay.setHours(0, 0, 0, 0);
@@ -216,6 +222,16 @@ export default function Admin() {
             label="Est. cost this month"
             value={`$${(stats.suggestionsMonth * CLAUDE_COST_PER_RUN).toFixed(3)}`}
             hint={`@ $${CLAUDE_COST_PER_RUN.toFixed(3)} per run`}
+          />
+        </div>
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+          <StatBlock label="Market analyses" value={analysisCounts.market} />
+          <StatBlock label="Sports analyses" value={analysisCounts.sports} />
+          <StatBlock label="Total analyses" value={analysisCounts.total} />
+          <StatBlock
+            label="Estimated cost"
+            value={`$${(analysisCounts.total * CLAUDE_COST_PER_RUN).toFixed(3)}`}
+            hint="lifetime, this device"
           />
         </div>
         <p className="text-[10px] text-muted-foreground">

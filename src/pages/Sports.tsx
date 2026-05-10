@@ -186,7 +186,7 @@ export default function Sports() {
       )}
 
       {/* Main odds board */}
-      <OddsBoard games={filteredGames} loading={loading} />
+      <OddsBoard games={filteredGames} loading={loading} mispricings={mispricings} />
 
       {/* Mispricings section */}
       <div className="space-y-3">
