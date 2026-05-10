@@ -30,6 +30,11 @@ Deno.serve(async (req) => {
   }
 
   try {
+    const _bodyPreview = await req.clone().json().catch(() => ({}));
+    console.log("fetch-sports-odds called", JSON.stringify({
+      timestamp: new Date().toISOString(),
+      body: _bodyPreview,
+    }));
     const primaryKey = Deno.env.get('ODDS_API_KEY');
     const secondaryKey = Deno.env.get('ODDS_API_KEY_2');
     const apiKey = primaryKey;
