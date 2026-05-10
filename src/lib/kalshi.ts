@@ -1,65 +1,50 @@
 import type { Market, CrossMarketOpp } from "@/types";
-
-const KALSHI_PUBLIC_API = "https://trading-api.kalshi.com/trade-api/v2";
-
-function fetchWithTimeout(url: string, ms = 10000): Promise<Response> {
-  const controller = new AbortController();
-  const timer = setTimeout(() => controller.abort(), ms);
-  return fetch(url, { signal: controller.signal }).finally(() => clearTimeout(timer));
-}
-
-async function fetchWithCORSFallback(url: string): Promise<any | null> {
-  try {
-    const res = await fetchWithTimeout(url);
-    if (res.ok) return await res.json();
-  } catch {}
-  try {
-    const proxied = `https://corsproxy.io/?${encodeURIComponent(url)}`;
-    const res = await fetchWithTimeout(proxied);
-    if (res.ok) return await res.json();
-  } catch {}
-  return null;
-}
+import { supabase } from "@/integrations/supabase/client";
 
 export async function fetchKalshiMarkets(params?: {
   limit?: number;
   status?: string;
   series_ticker?: string;
 }): Promise<Market[]> {
-  const query = new URLSearchParams({
-    limit: String(params?.limit ?? 20),
-    status: params?.status ?? "open",
-  }).toString();
-  const data = await fetchWithCORSFallback(`${KALSHI_PUBLIC_API}/markets?${query}`);
-  if (!data) return [];
-  const markets = data.markets ?? [];
-  return markets.map((m: any) => mapKalshiMarket(m));
+  try {
+    const { data, error } = await supabase.functions.invoke("fetch-kalshi-markets", {
+      body: { limit: params?.limit ?? 20 },
+    });
+    if (error) throw error;
+    console.log("Kalshi edge function:", data?.source, data?.markets?.length);
+    const raw = data?.markets ?? [];
+    return raw.map(mapKalshiMarket).filter((m: Market) => m.question && m.yesPrice > 0);
+  } catch (err) {
+    console.error("fetchKalshiMarkets failed:", err);
+    return [];
+  }
 }
 
-export async function fetchKalshiMarket(ticker: string): Promise<Market | null> {
-  const data = await fetchWithCORSFallback(`${KALSHI_PUBLIC_API}/markets/${ticker}`);
-  if (!data?.market) return null;
-  return mapKalshiMarket(data.market);
+export async function fetchKalshiMarket(_ticker: string): Promise<Market | null> {
+  return null;
 }
 
-export async function fetchKalshiEvents(params?: { limit?: number; series_ticker?: string }): Promise<any[]> {
-  const query = new URLSearchParams({ limit: String(params?.limit ?? 20) }).toString();
-  const data = await fetchWithCORSFallback(`${KALSHI_PUBLIC_API}/events?${query}`);
-  return data?.events ?? [];
+export async function fetchKalshiEvents(_params?: { limit?: number; series_ticker?: string }): Promise<any[]> {
+  return [];
 }
 
 function mapKalshiMarket(m: any): Market {
-  const yesPrice = (m.yes_ask ?? m.yes_bid ?? 50) / 100;
-  const noPrice = (m.no_ask ?? m.no_bid ?? 50) / 100;
+  const yesCents = m.yes_ask ?? m.yes_bid ?? m.last_price ?? 50;
+  const noCents = m.no_ask ?? m.no_bid ?? (100 - (m.yes_ask ?? 50));
+  const yesPrice = yesCents / 100;
+  const noPrice = noCents / 100;
   return {
-    id: `kalshi_${m.ticker ?? m.id}`,
-    question: m.title ?? m.question ?? "Unknown market",
-    category: normalizeKalshiCategory(m.category),
+    id: `kalshi_${m.ticker ?? m.id ?? m.event_ticker ?? ""}`,
+    question: m.title ?? m.question ?? m.name ?? "Unknown market",
+    category: normalizeKalshiCategory(m.category ?? m.series_ticker ?? "General"),
     yesPrice: Math.min(Math.max(yesPrice, 0.01), 0.99),
     noPrice: Math.min(Math.max(noPrice, 0.01), 0.99),
-    volume24h: m.volume_24h ?? 0,
-    totalVolume: m.volume ?? 0,
-    endDate: m.close_time?.split("T")[0] ?? "",
+    volume24h: m.volume_24h ?? m.volume ?? 0,
+    totalVolume: m.volume ?? m.open_interest ?? 0,
+    endDate:
+      m.close_time?.split("T")[0] ??
+      m.expected_expiration_time?.split("T")[0] ??
+      "",
     trend: "up",
     change24h: 0,
     source: "kalshi",
