@@ -29,8 +29,14 @@ const SCAN_OPTS = [
   { v: "manual", label: "Manual only" },
 ];
 
+console.log("Settings module loaded");
+
 export default function Settings() {
+  console.log("Settings component rendering...");
   usePageTitle("Settings");
+  useEffect(() => {
+    console.log("Settings mounted successfully");
+  }, []);
   const settings = useAppStore((s) => s.settings);
   const updateSettings = useAppStore((s) => s.updateSettings);
   const updateAlerts = useAppStore((s) => s.updateAlerts);
