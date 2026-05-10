@@ -165,7 +165,8 @@ export async function fetchFullOdds(
   useSecondary = false,
   trigger: string = "unknown",
 ): Promise<FullGame[]> {
-  if (isDailyCapReached()) {
+  const bypassCap = trigger === "manual";
+  if (!bypassCap && isDailyCapReached()) {
     console.warn(`[oddsApi] Daily cap (${DAILY_CAP}) reached — skipping fetchFullOdds(${sportKey}) trigger=${trigger}`);
     return [];
   }
@@ -435,7 +436,8 @@ export async function fetchGameProps(
 ): Promise<GameProps | null> {
   const propMarkets = PROP_MARKETS[sportKey];
   if (!propMarkets) return null;
-  if (isDailyCapReached()) {
+  const bypassCap = trigger === "manual";
+  if (!bypassCap && isDailyCapReached()) {
     console.warn(`[oddsApi] Daily cap (${DAILY_CAP}) reached — skipping fetchGameProps(${gameId}) trigger=${trigger}`);
     return null;
   }
@@ -562,7 +564,8 @@ export function findPropEdge(prop: PlayerProp): {
 }
 
 export async function fetchOdds(sportKey: string, trigger: string = "unknown"): Promise<OddsGame[]> {
-  if (isDailyCapReached()) {
+  const bypassCap = trigger === "manual";
+  if (!bypassCap && isDailyCapReached()) {
     console.warn(`[oddsApi] Daily cap (${DAILY_CAP}) reached — skipping fetchOdds(${sportKey}) trigger=${trigger}`);
     return [];
   }
