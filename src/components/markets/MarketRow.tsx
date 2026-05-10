@@ -9,6 +9,10 @@ import {
   getConfidenceLabel,
 } from "@/lib/confidenceColor";
 import { useState } from "react";
+import { Brain, Loader2 } from "lucide-react";
+import { useAIAnalysis } from "@/hooks/useAIAnalysis";
+import AnalysisResultPanel from "@/components/ui/AnalysisResultPanel";
+import { useAppStore } from "@/store/useAppStore";
 
 interface Props { market: Market; }
 
@@ -21,14 +25,43 @@ export function MarketRow({ market: m }: Props) {
   const sBorder = getConfidenceBorder(score);
   const sLabel = getConfidenceLabel(score);
   const [hover, setHover] = useState(false);
+  const { analyze, clear, isAnalyzing, getResult, getError } = useAIAnalysis();
+  const cachedMarkets = useAppStore((s) => s.cachedMarkets);
+  const result = getResult(m.id);
+  const analyzing = isAnalyzing(m.id);
+  const error = getError(m.id);
+  const isKalshi = m.source === "kalshi";
+  const type = isKalshi ? "kalshi" : "market";
+
+  const handleAnalyze = () => {
+    if (isKalshi) {
+      // Find matching Polymarket counterpart for cross-market gap signal
+      const poly = cachedMarkets.find(
+        (x) => x.source !== "kalshi" && x.question.toLowerCase().slice(0, 30) === m.question.toLowerCase().slice(0, 30),
+      );
+      analyze(m.id, "kalshi", {
+        question: m.question,
+        category: m.category,
+        yesPrice: m.yesPrice,
+        noPrice: m.noPrice,
+        volume24h: m.volume24h,
+        endDate: m.endDate,
+        polymarketYes: poly?.yesPrice,
+        gap: poly ? Math.abs(poly.yesPrice - m.yesPrice) : null,
+      });
+    } else {
+      analyze(m.id, "market", { market: m });
+    }
+  };
 
   return (
     <div
       onMouseEnter={() => setHover(true)}
       onMouseLeave={() => setHover(false)}
-      className="group grid grid-cols-1 gap-4 rounded-lg border border-border p-4 cursor-pointer transition-all hover:border-foreground/15 md:grid-cols-[1fr_260px_110px_140px] md:items-center"
+      className="group rounded-lg border border-border p-4 transition-all hover:border-foreground/15"
       style={{ borderLeft: `3px solid ${sColor}`, background: hover ? sBg : "hsl(var(--card))" }}
     >
+      <div className="grid grid-cols-1 gap-4 md:grid-cols-[1fr_220px_100px_120px_auto] md:items-center">
       {/* LEFT */}
       <div className="min-w-0">
         <div className="flex items-center gap-2 mb-1.5">
@@ -70,6 +103,39 @@ export function MarketRow({ market: m }: Props) {
           <span className="text-[11px] font-semibold" style={{ color: sColor }}>{sLabel}</span>
         </span>
       </div>
+
+      {/* ANALYZE BUTTON */}
+      <div className="md:text-right">
+        <button
+          onClick={handleAnalyze}
+          disabled={analyzing}
+          className="inline-flex items-center gap-1.5 rounded-md bg-purple px-3 py-1.5 text-xs font-semibold text-white hover:bg-purple/90 disabled:opacity-60 transition-colors"
+        >
+          {analyzing ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Brain className="h-3.5 w-3.5" />}
+          {analyzing ? "Analyzing…" : "Analyze"}
+        </button>
+      </div>
+      </div>
+
+      {error && !result && (
+        <div className="mt-3 rounded-md border border-destructive/40 bg-destructive/10 px-3 py-2 text-xs text-destructive">{error}</div>
+      )}
+      {result && (
+        <div className="mt-3">
+          <AnalysisResultPanel
+            result={result}
+            type={type}
+            onClear={() => clear(m.id)}
+            saveAs={{
+              marketId: m.id,
+              question: m.question,
+              direction: result.direction === "NO" ? "NO" : "YES",
+              currentOdds: result.direction === "NO" ? m.noPrice : m.yesPrice,
+              category: `${type}:${m.category}`,
+            }}
+          />
+        </div>
+      )}
     </div>
   );
 }
