@@ -17,6 +17,7 @@ import {
 } from "@/lib/oddsApi";
 import { useAppStore } from "@/store/useAppStore";
 import { SPORTS } from "@/lib/oddsApi";
+import { getDailyCount, DAILY_CAP } from "@/lib/oddsDailyCap";
 import {
   loadKeyUsage,
   saveKeyUsage,
@@ -99,6 +100,13 @@ export function useSportsOdds(polymarkets: Market[]) {
   const scan = useCallback(async (trigger: string = "manual") => {
     if (fetchingRef.current) return;
     const ak = getActiveKey(keyUsageRef.current);
+    console.log("Sports scan starting...", {
+      trigger,
+      activeKey: ak,
+      dailyCount: `${getDailyCount()}/${DAILY_CAP}`,
+      fullGamesInStore: useAppStore.getState().fullGames?.length ?? 0,
+      lastScanned: useAppStore.getState().sportsLastScanned,
+    });
     if (!ak) {
       setSportsError("quota_exhausted");
       return;
@@ -203,8 +211,16 @@ export function useSportsOdds(polymarkets: Market[]) {
   // scan was 4+ hours ago AND not already loading. No setInterval — manual
   // refresh only after that.
   useEffect(() => {
-    if (fullGames.length > 0) return;
     if (loading) return;
+    console.log("[useSportsOdds] mount check", {
+      storeFullGames: useAppStore.getState().fullGames?.length ?? 0,
+      storeLastScanned: useAppStore.getState().sportsLastScanned,
+    });
+    if (fullGames.length === 0) {
+      console.log("No games in store — force fetching");
+      void scan("manual");
+      return;
+    }
     const lastScannedTime = lastScanned ? new Date(lastScanned).getTime() : 0;
     const FOUR_HOURS = 4 * 60 * 60 * 1000;
     const isStale = Date.now() - lastScannedTime > FOUR_HOURS;
