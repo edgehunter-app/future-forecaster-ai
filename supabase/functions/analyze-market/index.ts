@@ -3,34 +3,12 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
-interface MarketIn { question: string; category?: string; yesPrice: number; noPrice: number; volume24h?: number; change24h?: number; source?: string }
-interface WalletIn { label: string; winRate: number; sharpe: number; tier: string }
-interface CrossIn { kalshiYes: number; spread: number; favoredPlatform?: string }
+// deno-lint-ignore no-explicit-any
+type Any = any;
 interface AnalyzeBody {
   ping?: boolean;
-  type?: "market" | "sports";
-  market?: MarketIn;
-  wallets?: WalletIn[];
-  bankroll?: number;
-  kellyMultiplier?: number;
-  maxPositionPct?: number;
-  crossMarketData?: CrossIn | null;
-  // Sports fields
-  homeTeam?: string;
-  awayTeam?: string;
-  league?: string;
-  gameTime?: string;
-  homeImplied?: number;
-  awayImplied?: number;
-  bestHomeOdds?: number;
-  bestAwayOdds?: number;
-  bestHomeBook?: string;
-  bestAwayBook?: string;
-  spread?: number | null;
-  total?: number | null;
-  polymarketGap?: { polyImplied: number; gap: number } | null;
-  polyImplied?: number | null;
-  gap?: number | null;
+  type?: string;
+  [k: string]: Any;
 }
 
 function buildPrompt(b: AnalyzeBody): string {
