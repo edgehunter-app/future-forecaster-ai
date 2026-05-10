@@ -12,7 +12,7 @@ interface AnalyzeBody {
 }
 
 function buildPrompt(b: AnalyzeBody): string {
-  const m = b.market!;
+  const m = b.market;
   const wallets = b.wallets ?? [];
   const bankroll = b.bankroll ?? 1000;
   const kelly = b.kellyMultiplier ?? 0.25;
@@ -34,7 +34,7 @@ CURRENT PRICING:
 - 24h Change: ${((m.change24h ?? 0) * 100).toFixed(1)}%
 
 SMART WALLET SIGNALS:
-${wallets.map((w) => `- ${w.label}: ${(w.winRate * 100).toFixed(0)}% win, Sharpe ${w.sharpe}, Tier ${w.tier}`).join("\n") || "- (none)"}
+${wallets.map((w: Any) => `- ${w.label}: ${(w.winRate * 100).toFixed(0)}% win, Sharpe ${w.sharpe}, Tier ${w.tier}`).join("\n") || "- (none)"}
 ${walletGuidance}
 ${xm ? `
 CROSS-MARKET DATA:
