@@ -66,6 +66,9 @@ export function MarketRow({ market: m }: Props) {
       <div className="min-w-0">
         <div className="flex items-center gap-2 mb-1.5">
           <Badge color={categoryColor(m.category)} small>{m.category}</Badge>
+          <Badge color={isKalshi ? "#10b981" : "#3b82f6"} small>
+            {isKalshi ? "Kalshi" : "Polymarket"}
+          </Badge>
           <span className="text-[11px] font-mono text-muted-foreground">Ends {m.endDate}</span>
         </div>
         <h3 className="text-sm font-semibold leading-snug text-foreground line-clamp-2">{m.question}</h3>
