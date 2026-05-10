@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState } from "react";
 import { useAppStore } from "@/store/useAppStore";
 import { MOCK_MARKETS } from "@/data/mockData";
 import { fetchPolymarketMarkets } from "@/lib/polymarket";
+import { fetchKalshiMarkets } from "@/lib/kalshi";
 import type { Market } from "@/types";
 
 const STALE_MS = 5 * 60 * 1000;
@@ -62,15 +63,28 @@ export function useMarkets() {
     }
 
     try {
-      const raw = await fetchPolymarketMarkets(20);
-      console.log("Markets via edge function:", raw.length);
-      if (raw.length > 0) {
-        const mapped = raw.map(mapMarket).filter((m: Market) => m.question && m.yesPrice > 0);
-        if (mapped.length > 0) {
-          writeMarkets(mapped, true);
-          setLoading(false);
-          return;
-        }
+      const [polyRaw, kalshi] = await Promise.all([
+        fetchPolymarketMarkets(20).catch((err) => {
+          console.warn("Polymarket fetch failed:", err);
+          return [] as any[];
+        }),
+        fetchKalshiMarkets({ limit: 20 }).catch((err) => {
+          console.warn("Kalshi fetch failed:", err);
+          return [] as Market[];
+        }),
+      ]);
+      const poly = polyRaw
+        .map(mapMarket)
+        .filter((m: Market) => m.question && m.yesPrice > 0)
+        .map((m: Market) => ({ ...m, source: "polymarket" as const }));
+      console.log("Markets — poly:", poly.length, "kalshi:", kalshi.length);
+      const combined = [...poly, ...kalshi].sort(
+        (a, b) => (b.volume24h || 0) - (a.volume24h || 0),
+      );
+      if (combined.length > 0) {
+        writeMarkets(combined, true);
+        setLoading(false);
+        return;
       }
     } catch (err) {
       console.warn("Edge function fetch failed:", err);
