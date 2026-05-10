@@ -1,5 +1,13 @@
-const MARKET_KEY = "eh_admin_market_analyses";
-const SPORTS_KEY = "eh_admin_sports_analyses";
+const KEYS: Record<string, string> = {
+  market: "eh_admin_market_analyses",
+  kalshi: "eh_admin_kalshi_analyses",
+  sports: "eh_admin_sports_analyses",
+  prop: "eh_admin_prop_analyses",
+  "cross-market": "eh_admin_xmarket_analyses",
+  "daily-briefing": "eh_admin_briefing_analyses",
+  sentiment: "eh_admin_sentiment_analyses",
+  "wallet-strategy": "eh_admin_wallet_analyses",
+};
 
 function read(key: string): number {
   try {
@@ -16,14 +24,20 @@ function write(key: string, n: number) {
   }
 }
 
-export function bumpMarketAnalyses() {
-  write(MARKET_KEY, read(MARKET_KEY) + 1);
+export function bumpAnalysis(type: string) {
+  const k = KEYS[type] ?? KEYS.market;
+  write(k, read(k) + 1);
 }
-export function bumpSportsAnalyses() {
-  write(SPORTS_KEY, read(SPORTS_KEY) + 1);
-}
+export function bumpMarketAnalyses() { bumpAnalysis("market"); }
+export function bumpSportsAnalyses() { bumpAnalysis("sports"); }
+
 export function getAnalysisCounts() {
-  const market = read(MARKET_KEY);
-  const sports = read(SPORTS_KEY);
-  return { market, sports, total: market + sports };
+  const counts: Record<string, number> = {};
+  let total = 0;
+  for (const [t, k] of Object.entries(KEYS)) {
+    const n = read(k);
+    counts[t] = n;
+    total += n;
+  }
+  return { ...counts, market: counts.market, sports: counts.sports, total } as Record<string, number> & { market: number; sports: number; total: number };
 }
