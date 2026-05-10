@@ -8,12 +8,29 @@ interface WalletIn { label: string; winRate: number; sharpe: number; tier: strin
 interface CrossIn { kalshiYes: number; spread: number; favoredPlatform?: string }
 interface AnalyzeBody {
   ping?: boolean;
+  type?: "market" | "sports";
   market?: MarketIn;
   wallets?: WalletIn[];
   bankroll?: number;
   kellyMultiplier?: number;
   maxPositionPct?: number;
   crossMarketData?: CrossIn | null;
+  // Sports fields
+  homeTeam?: string;
+  awayTeam?: string;
+  league?: string;
+  gameTime?: string;
+  homeImplied?: number;
+  awayImplied?: number;
+  bestHomeOdds?: number;
+  bestAwayOdds?: number;
+  bestHomeBook?: string;
+  bestAwayBook?: string;
+  spread?: number | null;
+  total?: number | null;
+  polymarketGap?: { polyImplied: number; gap: number } | null;
+  polyImplied?: number | null;
+  gap?: number | null;
 }
 
 function buildPrompt(b: AnalyzeBody): string {
@@ -70,6 +87,83 @@ and set riskLevel to "high". Never return null, an empty object, or refuse
 to answer. The user wants to see something to evaluate.`;
 }
 
+function buildSportsPrompt(p: AnalyzeBody): string {
+  const wallets = p.wallets ?? [];
+  const bankroll = p.bankroll ?? 1000;
+  const kelly = p.kellyMultiplier ?? 0.25;
+  const maxPct = p.maxPositionPct ?? 5;
+  const polyBlock = p.polymarketGap
+    ? `
+PREDICTION MARKET SIGNAL:
+Polymarket is pricing this event differently:
+  Polymarket implied: ${(p.polymarketGap.polyImplied * 100).toFixed(1)}%
+  Gap vs Vegas: ${(p.polymarketGap.gap * 100).toFixed(1)}%
+This suggests potential mispricing between markets.
+`
+    : "No Polymarket market found for this game.";
+  const walletBlock = wallets.length > 0
+    ? `
+SMART WALLET SIGNALS:
+${wallets.map((w) => `- ${w.label} (Tier ${w.tier}): ${(w.winRate * 100).toFixed(0)}% win rate`).join("\n")}
+`
+    : "No smart wallet data available for this game.";
+  return `You are a quantitative sports betting analyst.
+Analyze this game and identify if a real edge exists.
+
+GAME: ${p.homeTeam} vs ${p.awayTeam}
+League: ${p.league}
+Game time: ${p.gameTime}
+
+VEGAS CONSENSUS (across all books):
+  Home win probability: ${((p.homeImplied ?? 0) * 100).toFixed(1)}%
+  Away win probability: ${((p.awayImplied ?? 0) * 100).toFixed(1)}%
+  Spread: ${p.spread ?? "N/A"}
+  Total: ${p.total ?? "N/A"}
+
+BEST AVAILABLE ODDS:
+  Home moneyline: ${p.bestHomeOdds} (${p.bestHomeBook})
+  Away moneyline: ${p.bestAwayOdds} (${p.bestAwayBook})
+${polyBlock}
+${walletBlock}
+USER RISK PROFILE:
+  Bankroll: $${bankroll}
+  Kelly multiplier: ${kelly}x
+  Max position: ${maxPct}% = $${((bankroll * maxPct) / 100).toFixed(0)}
+
+INSTRUCTIONS:
+Assess whether a real edge exists based on:
+1. Line value — are the odds mispriced vs true probability?
+2. Cross-market gap — does Polymarket confirm the edge?
+3. Book consensus — is one side getting sharp money?
+4. Game context — injuries, home/away, recent form if known
+
+Calculate suggested bet using Quarter Kelly:
+  raw_kelly = (edge * bankroll) / odds_decimal
+  suggested = min(raw_kelly * ${kelly} * 0.25, max_position)
+
+Respond with ONLY valid JSON, no markdown:
+{
+  "recommendation": "HOME" | "AWAY" | "OVER" | "UNDER" | "NO_EDGE",
+  "recommendedTeam": "team name or Over/Under",
+  "betType": "moneyline" | "spread" | "total",
+  "confidence": 0-100,
+  "edge": decimal e.g. 0.07,
+  "suggestedAmount": dollar amount,
+  "odds": American odds e.g. -110,
+  "impliedProbability": decimal,
+  "reasoning": "2-3 sentences specific to this game",
+  "keyFactors": ["factor1", "factor2", "factor3"],
+  "riskLevel": "low" | "medium" | "high",
+  "warningFlags": ["any concerns about this bet"]
+}
+
+If no edge exists return:
+  "recommendation": "NO_EDGE",
+  "confidence": below 45,
+  "suggestedAmount": 0,
+  "reasoning": explain why no edge`;
+}
+
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
@@ -94,14 +188,21 @@ Deno.serve(async (req) => {
       });
     }
 
-    if (!body.market || typeof body.market.question !== 'string') {
+    const isSports = body.type === "sports";
+    if (!isSports && (!body.market || typeof body.market.question !== 'string')) {
       return new Response(JSON.stringify({ error: 'market is required', code: 'BAD_REQUEST' }), {
         status: 200,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
     }
+    if (isSports && (!body.homeTeam || !body.awayTeam)) {
+      return new Response(JSON.stringify({ error: 'homeTeam/awayTeam required', code: 'BAD_REQUEST' }), {
+        status: 200,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
 
-    const prompt = buildPrompt(body);
+    const prompt = isSports ? buildSportsPrompt(body) : buildPrompt(body);
 
     const callAnthropic = async (): Promise<Response> => {
       const maxAttempts = 4;
