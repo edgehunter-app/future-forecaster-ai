@@ -1,5 +1,6 @@
 import type { Market, Wallet, Suggestion, ClaudeAnalysis } from "@/types";
 import { supabase } from "@/integrations/supabase/client";
+import { bumpMarketAnalyses } from "@/lib/analysisCounter";
 
 export interface AnalyzeMarketParams {
   market: Market;
@@ -33,6 +34,7 @@ export async function analyzeMarketWithClaude(
     result.suggestedAmount = Math.max(1, capped);
     result.confidence = Math.max(0, Math.min(100, result.confidence ?? 0));
     result.edge = Math.max(0, Math.min(0.5, result.edge ?? 0));
+    bumpMarketAnalyses();
     return result;
   } catch (err) {
     console.error("Claude analysis failed:", err);
