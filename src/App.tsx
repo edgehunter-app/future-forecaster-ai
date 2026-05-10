@@ -6,6 +6,7 @@ import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import Layout from "@/components/layout/Layout";
 import PageLoadingSkeleton from "@/components/ui/PageLoadingSkeleton";
+import ErrorBoundary from "@/components/ErrorBoundary";
 import KeyboardShortcuts from "@/components/ui/KeyboardShortcuts";
 import WelcomeModal from "@/components/onboarding/WelcomeModal";
 import InstallBanner from "@/components/pwa/InstallBanner";
@@ -82,7 +83,7 @@ function AppRoutes() {
         <Route path="/cross-market" element={wrap(<CrossMarket />)} />
         <Route path="/sports" element={wrap(<Sports />)} />
         <Route path="/history" element={wrap(<History />)} />
-        <Route path="/settings" element={wrap(<Settings />)} />
+        <Route path="/settings" element={wrap(<ErrorBoundary><Settings /></ErrorBoundary>)} />
         <Route path="/admin" element={wrap(<Admin />)} />
         <Route path="*" element={<Suspense fallback={<PageLoadingSkeleton />}><NotFound /></Suspense>} />
       </Routes>
