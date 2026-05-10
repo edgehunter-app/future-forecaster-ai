@@ -422,21 +422,25 @@ Deno.serve(async (req) => {
       });
     }
 
-    const isSports = body.type === "sports";
-    if (!isSports && (!body.market || typeof body.market.question !== 'string')) {
-      return new Response(JSON.stringify({ error: 'market is required', code: 'BAD_REQUEST' }), {
-        status: 200,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      });
+    const type = body.type ?? "market";
+    let prompt: string;
+    switch (type) {
+      case "sports": prompt = buildSportsPrompt(body); break;
+      case "kalshi": prompt = buildKalshiPrompt(body); break;
+      case "prop": prompt = buildPropPrompt(body); break;
+      case "cross-market": prompt = buildCrossMarketPrompt(body); break;
+      case "daily-briefing": prompt = buildDailyBriefingPrompt(body); break;
+      case "sentiment": prompt = buildSentimentPrompt(body); break;
+      case "wallet-strategy": prompt = buildWalletStrategyPrompt(body); break;
+      case "market":
+      default:
+        if (!body.market || typeof body.market.question !== 'string') {
+          return new Response(JSON.stringify({ error: 'market is required', code: 'BAD_REQUEST' }), {
+            status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+          });
+        }
+        prompt = buildPrompt(body);
     }
-    if (isSports && (!body.homeTeam || !body.awayTeam)) {
-      return new Response(JSON.stringify({ error: 'homeTeam/awayTeam required', code: 'BAD_REQUEST' }), {
-        status: 200,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      });
-    }
-
-    const prompt = isSports ? buildSportsPrompt(body) : buildPrompt(body);
 
     const callAnthropic = async (): Promise<Response> => {
       const maxAttempts = 4;
