@@ -29,18 +29,37 @@ export async function fetchKalshiEvents(_params?: { limit?: number; series_ticke
 }
 
 function mapKalshiMarket(m: any): Market {
-  const yesCents = m.yes_ask ?? m.yes_bid ?? m.last_price ?? 50;
-  const noCents = m.no_ask ?? m.no_bid ?? (100 - (m.yes_ask ?? 50));
-  const yesPrice = yesCents / 100;
-  const noPrice = noCents / 100;
+  // Kalshi now returns *_dollars fields (USD strings) on most endpoints,
+  // but legacy responses still use cent-based integers (yes_ask, etc.).
+  const parseDollar = (v: unknown) => {
+    const n = typeof v === "string" ? parseFloat(v) : typeof v === "number" ? v : NaN;
+    return Number.isFinite(n) ? n : null;
+  };
+  const yesDollar =
+    parseDollar(m.yes_ask_dollars) ??
+    parseDollar(m.yes_bid_dollars) ??
+    parseDollar(m.last_price_dollars);
+  const noDollar =
+    parseDollar(m.no_ask_dollars) ??
+    parseDollar(m.no_bid_dollars);
+  const yesPrice =
+    yesDollar ??
+    (m.yes_ask ?? m.yes_bid ?? m.last_price ?? 50) / 100;
+  const noPrice =
+    noDollar ??
+    (m.no_ask ?? m.no_bid ?? (100 - (m.yes_ask ?? 50))) / 100;
+  const volume24h =
+    parseDollar(m.volume_24h_fp) ?? m.volume_24h ?? m.volume ?? 0;
+  const totalVolume =
+    parseDollar(m.volume_fp) ?? m.volume ?? m.open_interest ?? 0;
   return {
     id: `kalshi_${m.ticker ?? m.id ?? m.event_ticker ?? ""}`,
     question: m.title ?? m.question ?? m.name ?? "Unknown market",
     category: normalizeKalshiCategory(m.category ?? m.series_ticker ?? "General"),
     yesPrice: Math.min(Math.max(yesPrice, 0.01), 0.99),
     noPrice: Math.min(Math.max(noPrice, 0.01), 0.99),
-    volume24h: m.volume_24h ?? m.volume ?? 0,
-    totalVolume: m.volume ?? m.open_interest ?? 0,
+    volume24h,
+    totalVolume,
     endDate:
       m.close_time?.split("T")[0] ??
       m.expected_expiration_time?.split("T")[0] ??
