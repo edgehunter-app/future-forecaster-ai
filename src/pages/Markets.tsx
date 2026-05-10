@@ -1,4 +1,5 @@
 import { Search, X, BarChart2 } from "lucide-react";
+import { useState } from "react";
 import { useAppStore } from "@/store/useAppStore";
 import MarketRow from "@/components/markets/MarketRow";
 import EmptyState from "@/components/ui/EmptyState";
@@ -7,6 +8,13 @@ import { cn, fmtUSD } from "@/lib/utils";
 import { usePageTitle } from "@/hooks/usePageTitle";
 
 const CATEGORIES = ["All", "Economics", "Crypto", "Science", "Finance"];
+
+type SourceFilter = "all" | "polymarket" | "kalshi";
+const SOURCES: { id: SourceFilter; label: string }[] = [
+  { id: "all", label: "All" },
+  { id: "polymarket", label: "Polymarket" },
+  { id: "kalshi", label: "Kalshi" },
+];
 
 const LEGEND = [
   { color: "#10b981", label: "Strong (65%+)" },
@@ -21,11 +29,21 @@ export default function Markets() {
   const setMarketFilters = useAppStore((s) => s.setMarketFilters);
   const setSearch = (q: string) => setMarketFilters({ searchQuery: q });
   const setCat = (c: string) => setMarketFilters({ category: c });
+  const [source, setSource] = useState<SourceFilter>("all");
+
+  const counts = {
+    all: markets.length,
+    polymarket: markets.filter((m) => m.source !== "kalshi").length,
+    kalshi: markets.filter((m) => m.source === "kalshi").length,
+  };
 
   const filtered = markets.filter((m) => {
     const okCat = cat === "All" || m.category === cat;
     const okSearch = !search || m.question.toLowerCase().includes(search.toLowerCase());
-    return okCat && okSearch;
+    const okSource =
+      source === "all" ||
+      (source === "kalshi" ? m.source === "kalshi" : m.source !== "kalshi");
+    return okCat && okSearch && okSource;
   });
 
   return (
@@ -33,7 +51,9 @@ export default function Markets() {
       {/* Header */}
       <div>
         <h1 className="font-sans text-[22px] font-extrabold tracking-tight text-foreground">Markets</h1>
-        <p className="text-sm text-muted-foreground">Live Polymarket prediction market data</p>
+        <p className="text-sm text-muted-foreground">
+          Live prediction market data from Polymarket and Kalshi
+        </p>
       </div>
 
       {/* Search + filters */}
@@ -68,6 +88,26 @@ export default function Markets() {
             >{c}</button>
           ))}
         </div>
+
+        <div className="flex flex-wrap gap-2">
+          {SOURCES.map((s) => (
+            <button
+              key={s.id}
+              onClick={() => setSource(s.id)}
+              className={cn(
+                "rounded-full border px-3.5 py-1.5 text-xs font-semibold transition-colors",
+                source === s.id
+                  ? "border-info bg-info text-white"
+                  : "border-border bg-card text-muted-foreground hover:text-foreground hover:border-foreground/20",
+              )}
+            >
+              {s.label} <span className="opacity-70">({counts[s.id]})</span>
+            </button>
+          ))}
+        </div>
+        <p className="text-[11px] text-muted-foreground">
+          Kalshi is CFTC regulated · Settles in USD · Polymarket is offshore · Settles in USDC
+        </p>
       </div>
 
       {/* List */}
