@@ -10,8 +10,11 @@ import { loadKeyUsage, getUsageSummary, type KeyManager } from "@/lib/oddsApiKey
 import { getDailyCount, DAILY_CAP } from "@/lib/oddsDailyCap";
 import { getAnalysisCounts } from "@/lib/analysisCounter";
 import { cn } from "@/lib/utils";
+import { useAppStore } from "@/store/useAppStore";
 
 const CLAUDE_COST_PER_RUN = 0.003;
+const REFRESH_OPTIONS = [5, 10, 15, 30];
+const RAPID_DAILY_LIMIT = 150;
 
 type PillState = "ok" | "warn" | "error";
 function StatusPill({ label, state, text }: { label: string; state: PillState; text: string }) {
@@ -46,6 +49,9 @@ export default function Admin() {
   const [usage, setUsage] = useState<KeyManager | null>(null);
   const [dailyCount, setDailyCount] = useState<number>(0);
   const [analysisCounts, setAnalysisCounts] = useState({ market: 0, sports: 0, total: 0 });
+  const [rapidUsedToday, setRapidUsedToday] = useState<number>(0);
+  const refreshInterval = useAppStore((s) => s.settings.sportsRefreshMinutes ?? 10);
+  const setSettings = useAppStore((s) => s.setSettings);
   const [stats, setStats] = useState({
     totalUsers: 0,
     walletUsers: 0,
@@ -61,9 +67,21 @@ export default function Admin() {
     setUsage(loadKeyUsage());
     setDailyCount(getDailyCount());
     setAnalysisCounts(getAnalysisCounts());
+    const loadRapid = async () => {
+      const today = new Date().toISOString().slice(0, 10);
+      const { data } = await supabase
+        .from("api_usage")
+        .select("request_count")
+        .eq("provider", "rapidapi-sportsbook")
+        .eq("used_at", today)
+        .maybeSingle();
+      setRapidUsedToday(data?.request_count ?? 0);
+    };
+    void loadRapid();
     const id = setInterval(() => {
       setDailyCount(getDailyCount());
       setAnalysisCounts(getAnalysisCounts());
+      void loadRapid();
     }, 5000);
 
     const startOfDay = new Date();
