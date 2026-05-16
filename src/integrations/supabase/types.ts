@@ -413,6 +413,7 @@ export type Database = {
         }
         Returns: boolean
       }
+      outcomes_log_stats: { Args: never; Returns: Json }
     }
     Enums: {
       app_role: "admin" | "user"
