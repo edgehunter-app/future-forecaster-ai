@@ -124,7 +124,7 @@ const defaultSettings: SettingsState = {
   sportsGapThreshold: 0.02,
   alertOnSportsMispricings: false,
   oddsApiKeySecondary: "",
-  sportsRefreshMinutes: 30,
+  sportsRefreshMinutes: 60,
   alerts: {
     telegram: { enabled: true, chatId: "" },
     discord: { enabled: false, webhookUrl: "" },
