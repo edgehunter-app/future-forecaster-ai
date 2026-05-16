@@ -209,14 +209,33 @@ function flattenMarketOutcomes(market: any): FlatOutcome[] {
 
 // Convert one /v0/events event into Odds-API game shape.
 function eventToOddsApiGame(ev: any, sportKey: string, leagueShort: string) {
-  const participants: any[] = Array.isArray(ev?.participants) ? ev.participants : [];
   const homeKey = ev?.homeParticipantKey;
-  const homePart = participants.find((p) => p.key === homeKey) ?? participants[0];
-  const awayPart = participants.find((p) => p.key !== homeKey) ?? participants[1];
-  const home = homePart?.name ?? "Home";
-  const away = awayPart?.name ?? "Away";
-
   const markets: any[] = Array.isArray(ev?.markets) ? ev.markets : [];
+
+  // Collect distinct participants from market outcomes (top-level
+  // ev.participants is sometimes absent on this provider).
+  const partMap = new Map<string, string>();
+  for (const m of markets) {
+    const grouped = m?.outcomes;
+    if (!grouped || typeof grouped !== "object") continue;
+    for (const arr of Object.values(grouped)) {
+      if (!Array.isArray(arr)) continue;
+      for (const o of arr as any[]) {
+        const p = o?.participant;
+        if (p?.key && p?.name && !partMap.has(p.key)) partMap.set(p.key, p.name);
+      }
+    }
+  }
+  const topParts: any[] = Array.isArray(ev?.participants) ? ev.participants : [];
+  for (const p of topParts) if (p?.key && p?.name && !partMap.has(p.key)) partMap.set(p.key, p.name);
+
+  const partKeys = [...partMap.keys()];
+  const homeName = (homeKey && partMap.get(homeKey)) || partMap.get(partKeys[0] ?? "") || "Home";
+  const awayKeyCand = partKeys.find((k) => k !== homeKey) ?? partKeys[1];
+  const awayName = (awayKeyCand && partMap.get(awayKeyCand)) || "Away";
+  const home = homeName;
+  const away = awayName;
+
   // bookmaker -> { h2h:[], spreads:[], totals:[] }
   const byBook = new Map<string, { h2h: any[]; spreads: any[]; totals: any[] }>();
 
