@@ -137,7 +137,7 @@ async function getEventsList(
   const now = Date.now();
   const hit = eventsListCache.get(competitionKey);
   if (hit && hit.expires > now) return hit.events;
-  const json = await rapidFetch(`/v0/competitions/${competitionKey}/events/`);
+  const json = await rapidFetch(`/v0/competitions/${competitionKey}/events`);
   if (!json) return hit?.events ?? [];
   await bumpCounter(client);
   const events = Array.isArray(json) ? json : (json.events ?? []);
@@ -160,7 +160,7 @@ async function getEventsWithOdds(
   for (let i = 0; i < toFetch.length; i += MAX_EVENT_KEYS_PER_CALL) {
     const batch = toFetch.slice(i, i + MAX_EVENT_KEYS_PER_CALL);
     const qs = batch.map((k) => `eventKeys=${encodeURIComponent(k)}`).join("&");
-    const json = await rapidFetch(`/v0/events/?${qs}`);
+    const json = await rapidFetch(`/v0/events?${qs}`);
     if (!json) continue;
     await bumpCounter(client);
     const events: any[] = Array.isArray(json) ? json : (json.events ?? []);
