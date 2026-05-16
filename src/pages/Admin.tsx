@@ -50,7 +50,7 @@ export default function Admin() {
   const [dailyCount, setDailyCount] = useState<number>(0);
   const [analysisCounts, setAnalysisCounts] = useState({ market: 0, sports: 0, total: 0 });
   const [rapidUsedToday, setRapidUsedToday] = useState<number>(0);
-  const refreshInterval = useAppStore((s) => s.settings.sportsRefreshMinutes ?? 10);
+  const refreshInterval = useAppStore((s) => s.settings.sportsRefreshMinutes ?? 30);
   const updateSettings = useAppStore((s) => s.updateSettings);
   const [stats, setStats] = useState({
     totalUsers: 0,
