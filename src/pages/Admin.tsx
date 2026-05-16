@@ -50,7 +50,7 @@ export default function Admin() {
   const [dailyCount, setDailyCount] = useState<number>(0);
   const [analysisCounts, setAnalysisCounts] = useState({ market: 0, sports: 0, total: 0 });
   const [rapidUsedToday, setRapidUsedToday] = useState<number>(0);
-  const refreshInterval = useAppStore((s) => s.settings.sportsRefreshMinutes ?? 10);
+  const refreshInterval = useAppStore((s) => s.settings.sportsRefreshMinutes ?? 30);
   const updateSettings = useAppStore((s) => s.updateSettings);
   const [stats, setStats] = useState({
     totalUsers: 0,
@@ -209,7 +209,7 @@ export default function Admin() {
               ))}
             </div>
             <span className="text-[10px] text-muted-foreground ml-auto">
-              ~{Math.floor((24 * 60) / refreshInterval)} calls/day max
+              ~{Math.floor((24 * 60) / refreshInterval)} calls/day max · 30m recommended for 150/day cap
             </span>
           </div>
         </div>
