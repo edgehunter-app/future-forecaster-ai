@@ -10,8 +10,11 @@ import { loadKeyUsage, getUsageSummary, type KeyManager } from "@/lib/oddsApiKey
 import { getDailyCount, DAILY_CAP } from "@/lib/oddsDailyCap";
 import { getAnalysisCounts } from "@/lib/analysisCounter";
 import { cn } from "@/lib/utils";
+import { useAppStore } from "@/store/useAppStore";
 
 const CLAUDE_COST_PER_RUN = 0.003;
+const REFRESH_OPTIONS = [5, 10, 15, 30];
+const RAPID_DAILY_LIMIT = 150;
 
 type PillState = "ok" | "warn" | "error";
 function StatusPill({ label, state, text }: { label: string; state: PillState; text: string }) {
@@ -46,6 +49,9 @@ export default function Admin() {
   const [usage, setUsage] = useState<KeyManager | null>(null);
   const [dailyCount, setDailyCount] = useState<number>(0);
   const [analysisCounts, setAnalysisCounts] = useState({ market: 0, sports: 0, total: 0 });
+  const [rapidUsedToday, setRapidUsedToday] = useState<number>(0);
+  const refreshInterval = useAppStore((s) => s.settings.sportsRefreshMinutes ?? 10);
+  const updateSettings = useAppStore((s) => s.updateSettings);
   const [stats, setStats] = useState({
     totalUsers: 0,
     walletUsers: 0,
@@ -61,9 +67,21 @@ export default function Admin() {
     setUsage(loadKeyUsage());
     setDailyCount(getDailyCount());
     setAnalysisCounts(getAnalysisCounts());
+    const loadRapid = async () => {
+      const today = new Date().toISOString().slice(0, 10);
+      const { data } = await supabase
+        .from("api_usage")
+        .select("request_count")
+        .eq("provider", "rapidapi-sportsbook")
+        .eq("used_at", today)
+        .maybeSingle();
+      setRapidUsedToday(data?.request_count ?? 0);
+    };
+    void loadRapid();
     const id = setInterval(() => {
       setDailyCount(getDailyCount());
       setAnalysisCounts(getAnalysisCounts());
+      void loadRapid();
     }, 5000);
 
     const startOfDay = new Date();
@@ -130,10 +148,69 @@ export default function Admin() {
       <section className="rounded-lg border border-border bg-card p-5 space-y-4">
         <div className="flex items-center gap-2">
           <Activity className="h-4 w-4 text-info" />
-          <h2 className="text-sm font-bold uppercase tracking-wide text-foreground">Odds API Usage</h2>
+          <h2 className="text-sm font-bold uppercase tracking-wide text-foreground">Sports Data APIs</h2>
         </div>
-        {/* Hard daily cap (client-side) */}
+
+        {/* Sportsbook API (RapidAPI) — active provider */}
         <div className="rounded-md border border-border bg-background/40 p-3 space-y-2">
+          <div className="flex items-center justify-between">
+            <span className="text-xs font-semibold text-foreground">Sportsbook API (RapidAPI)</span>
+            <span className="font-mono text-xs text-foreground">
+              {rapidUsedToday} / {RAPID_DAILY_LIMIT} requests today
+            </span>
+          </div>
+          <div className="h-2 w-full overflow-hidden rounded-full bg-secondary">
+            <div
+              className={cn(
+                "h-full transition-all",
+                rapidUsedToday / RAPID_DAILY_LIMIT >= 0.85
+                  ? "bg-destructive"
+                  : rapidUsedToday / RAPID_DAILY_LIMIT >= 0.6
+                    ? "bg-warning"
+                    : "bg-success",
+              )}
+              style={{ width: `${Math.min((rapidUsedToday / RAPID_DAILY_LIMIT) * 100, 100)}%` }}
+            />
+          </div>
+          <div className="flex items-center justify-between text-[11px] text-muted-foreground">
+            <span>Active provider · powers sports board and cross-market gaps</span>
+            <span>Resets at 00:00 UTC</span>
+          </div>
+          <div className="flex items-center gap-2 pt-2 border-t border-border/60 mt-2">
+            <label className="text-[11px] uppercase tracking-wide text-muted-foreground">Refresh interval</label>
+            <div className="flex gap-1">
+              {REFRESH_OPTIONS.map((m) => (
+                <button
+                  key={m}
+                  onClick={() => updateSettings({ sportsRefreshMinutes: m })}
+                  className={cn(
+                    "rounded-md border px-2 py-0.5 text-[11px] font-mono transition-colors",
+                    refreshInterval === m
+                      ? "border-info/50 bg-info/15 text-info"
+                      : "border-border text-muted-foreground hover:text-foreground",
+                  )}
+                >
+                  {m}m
+                </button>
+              ))}
+            </div>
+            <span className="text-[10px] text-muted-foreground ml-auto">
+              ~{Math.floor((24 * 60) / refreshInterval)} calls/day max
+            </span>
+          </div>
+        </div>
+
+        {/* Legacy The Odds API — exhausted */}
+        <div className="rounded-md border border-border bg-background/20 p-3 space-y-2 opacity-60">
+          <div className="flex items-center justify-between">
+            <span className="text-xs font-semibold text-muted-foreground">The Odds API (legacy)</span>
+            <span className="text-[10px] font-bold uppercase rounded-full px-2 py-0.5 bg-destructive/15 text-destructive border border-destructive/30">
+              Exhausted — resets June 1
+            </span>
+          </div>
+
+        {/* Hard daily cap (client-side) */}
+        <div className="rounded-md border border-border/60 bg-background/40 p-3 space-y-2">
           <div className="flex items-center justify-between">
             <span className="text-xs font-semibold text-foreground">Daily request cap</span>
             <span className="font-mono text-xs text-foreground">
@@ -203,6 +280,7 @@ export default function Admin() {
         ) : (
           <div className="text-xs text-muted-foreground">Loading usage…</div>
         )}
+        </div>
       </section>
 
       {/* 2. Claude AI Cost */}

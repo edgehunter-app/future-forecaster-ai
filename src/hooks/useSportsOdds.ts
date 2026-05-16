@@ -11,6 +11,8 @@ import {
   fetchFullOdds,
   getLastKeyResponse,
   isSportsMarket,
+  fetchSportsbookGaps,
+  gapToMispricing,
   type OddsGame,
   type SportsScanDebug,
   type FullGame,
@@ -115,22 +117,22 @@ export function useSportsOdds(polymarkets: Market[]) {
     setSportsLoading(true);
     setSportsError(null);
     try {
-      // Mispricings still scan against polymarket sports markets
+      // Cross-market gaps now come from Sportsbook API directly (one call,
+      // shared via edge fn cache with the per-sport fetches below).
       try {
-        const results = await findSportsMispricings(polymarkets, "server-managed", threshold, trigger);
-        setMispricings(results);
-        const dbg = getLastScanDebug();
-        setDebug(dbg);
-        setVegasGamesCount(dbg.vegasGamesFetched);
-        setMatchesCount(dbg.matchesFound);
-        setPolymarketsCount(dbg.polymarketSportsMarkets);
+        const { gaps } = await fetchSportsbookGaps(trigger);
+        const mispricingsFromGaps = gaps
+          .filter((g) => Math.abs(g.edgePct) / 100 >= threshold)
+          .slice(0, 20)
+          .map(gapToMispricing);
+        setMispricings(mispricingsFromGaps);
         const sm = await fetchPolymarketSportsMarkets(polymarkets);
         setSportsMarkets(sm);
         setEdgeResponse(getLastEdgeResponse());
         setEdgeError(getLastEdgeError());
         setGames(getLastGames());
       } catch (e) {
-        console.warn("mispricings scan failed", e);
+        console.warn("sportsbook gaps fetch failed", e);
       }
 
       // Fetch only auto-loaded sports (default 2) sequentially with delay
