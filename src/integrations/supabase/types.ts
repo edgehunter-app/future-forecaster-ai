@@ -124,6 +124,69 @@ export type Database = {
         }
         Relationships: []
       }
+      outcomes_log: {
+        Row: {
+          american: number
+          bookmaker: string
+          category: string
+          event_key: string
+          event_name: string | null
+          fetched_at: string
+          id: string
+          implied: number
+          league: string | null
+          market_key: string
+          market_type: string
+          modifier: number | null
+          outcome_type: string
+          participant_key: string | null
+          participant_name: string | null
+          payout: number
+          source: string
+          start_time: string | null
+        }
+        Insert: {
+          american: number
+          bookmaker: string
+          category: string
+          event_key: string
+          event_name?: string | null
+          fetched_at?: string
+          id?: string
+          implied: number
+          league?: string | null
+          market_key: string
+          market_type: string
+          modifier?: number | null
+          outcome_type: string
+          participant_key?: string | null
+          participant_name?: string | null
+          payout: number
+          source: string
+          start_time?: string | null
+        }
+        Update: {
+          american?: number
+          bookmaker?: string
+          category?: string
+          event_key?: string
+          event_name?: string | null
+          fetched_at?: string
+          id?: string
+          implied?: number
+          league?: string | null
+          market_key?: string
+          market_type?: string
+          modifier?: number | null
+          outcome_type?: string
+          participant_key?: string | null
+          participant_name?: string | null
+          payout?: number
+          source?: string
+          start_time?: string | null
+        }
+        Relationships: []
+      }
       profiles: {
         Row: {
           alert_email: string
@@ -350,6 +413,7 @@ export type Database = {
         }
         Returns: boolean
       }
+      outcomes_log_stats: { Args: never; Returns: Json }
     }
     Enums: {
       app_role: "admin" | "user"

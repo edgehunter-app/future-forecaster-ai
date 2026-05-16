@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { Navigate } from "react-router-dom";
-import { ShieldCheck, Loader2, Activity, Database, Brain, Trophy, Users } from "lucide-react";
+import { ShieldCheck, Loader2, Activity, Database, Brain, Trophy, Users, FlaskConical } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { useIsAdmin } from "@/hooks/useIsAdmin";
@@ -61,6 +61,14 @@ export default function Admin() {
   });
   const [grantEmail, setGrantEmail] = useState("");
   const [granting, setGranting] = useState(false);
+  const [research, setResearch] = useState<{
+    total_rows: number;
+    earliest: string | null;
+    latest: string | null;
+    unique_events_24h: number;
+    unique_sources_24h: number;
+    sources_24h: string[];
+  } | null>(null);
 
   useEffect(() => {
     if (!isAdmin) return;
@@ -78,10 +86,16 @@ export default function Admin() {
       setRapidUsedToday(data?.request_count ?? 0);
     };
     void loadRapid();
+    const loadResearch = async () => {
+      const { data, error } = await supabase.rpc("outcomes_log_stats" as any);
+      if (!error && data) setResearch(data as any);
+    };
+    void loadResearch();
     const id = setInterval(() => {
       setDailyCount(getDailyCount());
       setAnalysisCounts(getAnalysisCounts());
       void loadRapid();
+      void loadResearch();
     }, 5000);
 
     const startOfDay = new Date();
@@ -347,6 +361,42 @@ export default function Admin() {
           />
           <StatusPill label="Lovable Cloud" state="ok" text="Connected" />
         </div>
+      </section>
+
+      {/* Research Data */}
+      <section className="rounded-lg border border-border bg-card p-5 space-y-4">
+        <div className="flex items-center gap-2">
+          <FlaskConical className="h-4 w-4 text-purple" />
+          <h2 className="text-sm font-bold uppercase tracking-wide text-foreground">Research Data</h2>
+        </div>
+        {research ? (
+          <>
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+              <StatBlock label="Total outcomes logged" value={research.total_rows.toLocaleString()} />
+              <StatBlock
+                label="Unique events (24h)"
+                value={research.unique_events_24h}
+              />
+              <StatBlock
+                label="Unique sources (24h)"
+                value={research.unique_sources_24h}
+              />
+              <StatBlock
+                label="Latest snapshot"
+                value={research.latest ? new Date(research.latest).toLocaleString() : "—"}
+                hint={research.earliest ? `since ${new Date(research.earliest).toLocaleDateString()}` : undefined}
+              />
+            </div>
+            <div className="text-[11px] text-muted-foreground">
+              Sources seen (24h):{" "}
+              <span className="font-mono text-foreground">
+                {research.sources_24h?.length ? research.sources_24h.join(", ") : "none"}
+              </span>
+            </div>
+          </>
+        ) : (
+          <div className="text-xs text-muted-foreground">Loading research stats…</div>
+        )}
       </section>
 
       {/* 5. Grant admin */}

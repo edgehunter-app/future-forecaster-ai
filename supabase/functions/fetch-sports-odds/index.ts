@@ -413,6 +413,7 @@ Deno.serve(async (req) => {
 
     let advantages: any[] | null = null;
     const now = Date.now();
+    let freshFetch = false;
     if (cache && cache.expires > now) {
       advantages = cache.payload;
       console.log("upstream cache hit");
@@ -421,6 +422,7 @@ Deno.serve(async (req) => {
       if (advantages) {
         cache = { expires: now + UPSTREAM_TTL_MS, payload: advantages };
         await bumpCounter(client);
+        freshFetch = true;
       }
     }
 
@@ -435,6 +437,56 @@ Deno.serve(async (req) => {
     const allMarkets = Array.from(marketMap.values());
     const uniqueEvents = new Set(allMarkets.map((m) => m.eventKey)).size;
     console.log(`uniqueEventsReturned: ${uniqueEvents} (from ${advantages.length} advantages)`);
+
+    // Snapshot every outcome from this fresh API call into outcomes_log
+    // for offline research analysis. Failure must NOT break user response.
+    if (freshFetch) {
+      try {
+        const fetchedAt = new Date().toISOString();
+        const seen = new Set<string>();
+        const rows: any[] = [];
+        for (const adv of advantages) {
+          for (const o of adv?.outcomes ?? []) {
+            const market = o.market ?? adv.market;
+            const event = market?.event;
+            if (!market || !event) continue;
+            const partKey = o.participantKey ?? o.participant?.key ?? null;
+            const mod = o.modifier ?? null;
+            const dedupe = `${event.key}:${market.key}:${o.source}:${o.type}:${partKey ?? "null"}:${mod ?? "null"}`;
+            if (seen.has(dedupe)) continue;
+            seen.add(dedupe);
+            const norm = normalizeSource(o.source);
+            const payout = Number(o.payout) || 0;
+            rows.push({
+              fetched_at: fetchedAt,
+              event_key: event.key,
+              event_name: event.name ?? null,
+              league: event.competitionInstance?.competition?.shortName ?? null,
+              market_key: market.key,
+              market_type: market.type,
+              outcome_type: o.type,
+              participant_key: partKey,
+              participant_name: o.participant?.name ?? null,
+              modifier: mod,
+              source: o.source,
+              category: norm.category,
+              bookmaker: norm.bookmaker,
+              payout,
+              american: toAmerican(payout),
+              implied: toImplied(payout),
+              start_time: event.startTime ?? null,
+            });
+          }
+        }
+        if (rows.length > 0) {
+          const { error } = await client.from("outcomes_log").insert(rows);
+          if (error) console.error("outcomes_log insert failed:", error);
+          else console.log(`Logged ${rows.length} outcomes to outcomes_log`);
+        }
+      } catch (e) {
+        console.error("outcomes_log insert threw:", e);
+      }
+    }
 
     const games = buildGames(allMarkets, body.sportKey);
     const gaps = buildGaps(allMarkets);
