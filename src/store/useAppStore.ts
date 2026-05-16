@@ -25,6 +25,8 @@ export interface SettingsState {
   sportsGapThreshold: number;
   alertOnSportsMispricings: boolean;
   oddsApiKeySecondary: string;
+  /** Default refresh interval for sportsbook data in minutes */
+  sportsRefreshMinutes: number;
   alerts: {
     telegram: AlertChannelTelegram;
     discord: AlertChannelDiscord;
@@ -122,6 +124,7 @@ const defaultSettings: SettingsState = {
   sportsGapThreshold: 0.02,
   alertOnSportsMispricings: false,
   oddsApiKeySecondary: "",
+  sportsRefreshMinutes: 10,
   alerts: {
     telegram: { enabled: true, chatId: "" },
     discord: { enabled: false, webhookUrl: "" },
