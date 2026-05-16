@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { Navigate } from "react-router-dom";
-import { ShieldCheck, Loader2, Activity, Database, Brain, Trophy, Users } from "lucide-react";
+import { ShieldCheck, Loader2, Activity, Database, Brain, Trophy, Users, FlaskConical } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { useIsAdmin } from "@/hooks/useIsAdmin";
@@ -61,6 +61,14 @@ export default function Admin() {
   });
   const [grantEmail, setGrantEmail] = useState("");
   const [granting, setGranting] = useState(false);
+  const [research, setResearch] = useState<{
+    total_rows: number;
+    earliest: string | null;
+    latest: string | null;
+    unique_events_24h: number;
+    unique_sources_24h: number;
+    sources_24h: string[];
+  } | null>(null);
 
   useEffect(() => {
     if (!isAdmin) return;
@@ -78,10 +86,16 @@ export default function Admin() {
       setRapidUsedToday(data?.request_count ?? 0);
     };
     void loadRapid();
+    const loadResearch = async () => {
+      const { data, error } = await supabase.rpc("outcomes_log_stats" as any);
+      if (!error && data) setResearch(data as any);
+    };
+    void loadResearch();
     const id = setInterval(() => {
       setDailyCount(getDailyCount());
       setAnalysisCounts(getAnalysisCounts());
       void loadRapid();
+      void loadResearch();
     }, 5000);
 
     const startOfDay = new Date();
