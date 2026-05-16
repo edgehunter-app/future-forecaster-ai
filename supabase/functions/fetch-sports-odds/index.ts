@@ -415,16 +415,7 @@ Deno.serve(async (req) => {
     const eventKeys = upcoming.map((e: any) => e.key).filter(Boolean);
 
     const eventsWithOdds = await getEventsWithOdds(client, eventKeys);
-  console.log(`Sport ${sportKey} (${comp.shortName}): ${eventsList.length} events listed, ${eventsWithOdds.length} hydrated`);
-  if (eventsWithOdds[0]) {
-    const ev0 = eventsWithOdds[0];
-    const mks: any[] = Array.isArray(ev0.markets) ? ev0.markets : [];
-    console.log(`sample event ${ev0.key} markets=${mks.length} types=${mks.map((m: any) => `${m.type}/${m.segment}`).slice(0, 8).join(",")}`);
-    if (mks[0]) {
-      const sourcesIn = Object.keys(mks[0].outcomes ?? {});
-      console.log(`sample market[0] sources=${sourcesIn.slice(0, 6).join(",")} outcomeCount0=${(mks[0].outcomes?.[sourcesIn[0]] ?? []).length}`);
-    }
-  }
+    console.log(`Sport ${sportKey} (${comp.shortName}): ${eventsList.length} events listed, ${eventsWithOdds.length} hydrated`);
 
     // Snapshot to outcomes_log for research.
     if (eventsWithOdds.length) await logEventOutcomes(client, eventsWithOdds, comp.shortName);
