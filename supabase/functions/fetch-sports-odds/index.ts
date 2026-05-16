@@ -163,8 +163,11 @@ async function getEventsWithOdds(
     const json = await rapidFetch(`/v0/events?${qs}`);
     if (!json) continue;
     await bumpCounter(client);
-    console.log(`v0/events raw keys: ${Object.keys(json).slice(0, 8).join(",")}; sample: ${JSON.stringify(json).slice(0, 600)}`);
-    const events: any[] = Array.isArray(json) ? json : (json.events ?? []);
+    // /v0/events returns { events: [[...event objects...]] } — a nested array.
+    let events: any[] = Array.isArray(json) ? json : (json.events ?? []);
+    if (events.length > 0 && Array.isArray(events[0])) {
+      events = events.flat();
+    }
     for (const ev of events) {
       if (ev?.key) eventsOddsCache.set(ev.key, { expires: now + EVENTS_ODDS_TTL_MS, event: ev });
       out.push(ev);
