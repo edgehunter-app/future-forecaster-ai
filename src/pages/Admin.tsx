@@ -209,7 +209,7 @@ export default function Admin() {
               ))}
             </div>
             <span className="text-[10px] text-muted-foreground ml-auto">
-              ~{Math.floor((24 * 60) / refreshInterval)} calls/day max
+              ~{Math.floor((24 * 60) / refreshInterval)} calls/day max · 30m recommended for 150/day cap
             </span>
           </div>
         </div>
