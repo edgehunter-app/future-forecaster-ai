@@ -13,7 +13,7 @@ import { cn } from "@/lib/utils";
 import { useAppStore } from "@/store/useAppStore";
 
 const CLAUDE_COST_PER_RUN = 0.003;
-const REFRESH_OPTIONS = [5, 10, 15, 30];
+const REFRESH_OPTIONS = [5, 10, 15, 30, 60];
 const RAPID_DAILY_LIMIT = 150;
 
 type PillState = "ok" | "warn" | "error";
@@ -50,7 +50,8 @@ export default function Admin() {
   const [dailyCount, setDailyCount] = useState<number>(0);
   const [analysisCounts, setAnalysisCounts] = useState({ market: 0, sports: 0, total: 0 });
   const [rapidUsedToday, setRapidUsedToday] = useState<number>(0);
-  const refreshInterval = useAppStore((s) => s.settings.sportsRefreshMinutes ?? 30);
+  const [lastCallAt, setLastCallAt] = useState<string | null>(null);
+  const refreshInterval = useAppStore((s) => s.settings.sportsRefreshMinutes ?? 60);
   const updateSettings = useAppStore((s) => s.updateSettings);
   const [stats, setStats] = useState({
     totalUsers: 0,
@@ -86,6 +87,16 @@ export default function Admin() {
       setRapidUsedToday(data?.request_count ?? 0);
     };
     void loadRapid();
+    const loadLastCall = async () => {
+      const { data } = await supabase
+        .from("outcomes_log")
+        .select("fetched_at")
+        .order("fetched_at", { ascending: false })
+        .limit(1)
+        .maybeSingle();
+      setLastCallAt(data?.fetched_at ?? null);
+    };
+    void loadLastCall();
     const loadResearch = async () => {
       const { data, error } = await supabase.rpc("outcomes_log_stats" as any);
       if (!error && data) setResearch(data as any);
@@ -96,6 +107,7 @@ export default function Admin() {
       setAnalysisCounts(getAnalysisCounts());
       void loadRapid();
       void loadResearch();
+      void loadLastCall();
     }, 5000);
 
     const startOfDay = new Date();
@@ -129,6 +141,20 @@ export default function Admin() {
   const summary = usage ? getUsageSummary(usage) : null;
   const oddsState: PillState =
     !summary || summary.totalRemaining === 0 ? "error" : summary.totalRemaining < 100 ? "warn" : "ok";
+
+  // Projected daily total: extrapolate from hours elapsed today (UTC, matches reset).
+  const now = new Date();
+  const utcHoursElapsed =
+    now.getUTCHours() + now.getUTCMinutes() / 60 + now.getUTCSeconds() / 3600;
+  const projectedDaily =
+    utcHoursElapsed > 0.1 ? Math.round((rapidUsedToday / utcHoursElapsed) * 24) : rapidUsedToday;
+  const projColor =
+    projectedDaily > RAPID_DAILY_LIMIT
+      ? "text-destructive"
+      : projectedDaily > 130
+        ? "text-warning"
+        : "text-success";
+  const rapidPct = Math.round((rapidUsedToday / RAPID_DAILY_LIMIT) * 100);
 
   const handleGrant = async () => {
     const email = grantEmail.trim();
@@ -170,7 +196,7 @@ export default function Admin() {
           <div className="flex items-center justify-between">
             <span className="text-xs font-semibold text-foreground">Sportsbook API (RapidAPI)</span>
             <span className="font-mono text-xs text-foreground">
-              {rapidUsedToday} / {RAPID_DAILY_LIMIT} requests today
+              {rapidUsedToday} / {RAPID_DAILY_LIMIT} ({rapidPct}%)
             </span>
           </div>
           <div className="h-2 w-full overflow-hidden rounded-full bg-secondary">
@@ -189,6 +215,17 @@ export default function Admin() {
           <div className="flex items-center justify-between text-[11px] text-muted-foreground">
             <span>Active provider · powers sports board and cross-market gaps</span>
             <span>Resets at 00:00 UTC</span>
+          </div>
+          <div className="flex items-center justify-between text-[11px] pt-1">
+            <span className="text-muted-foreground">
+              Last call:{" "}
+              <span className="font-mono text-foreground">
+                {lastCallAt ? new Date(lastCallAt).toLocaleTimeString() : "—"}
+              </span>
+            </span>
+            <span className={cn("font-mono font-semibold", projColor)}>
+              Projected: ~{projectedDaily} / day
+            </span>
           </div>
           <div className="flex items-center gap-2 pt-2 border-t border-border/60 mt-2">
             <label className="text-[11px] uppercase tracking-wide text-muted-foreground">Refresh interval</label>
@@ -209,7 +246,7 @@ export default function Admin() {
               ))}
             </div>
             <span className="text-[10px] text-muted-foreground ml-auto">
-              ~{Math.floor((24 * 60) / refreshInterval)} calls/day max · 30m recommended for 150/day cap
+              60m recommended to stay under 150/day with multiple sports active
             </span>
           </div>
         </div>
