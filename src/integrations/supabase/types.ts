@@ -52,6 +52,33 @@ export type Database = {
           },
         ]
       }
+      api_usage: {
+        Row: {
+          created_at: string
+          id: string
+          provider: string
+          request_count: number
+          updated_at: string
+          used_at: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          provider: string
+          request_count?: number
+          updated_at?: string
+          used_at?: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          provider?: string
+          request_count?: number
+          updated_at?: string
+          used_at?: string
+        }
+        Relationships: []
+      }
       markets_cache: {
         Row: {
           category: string
