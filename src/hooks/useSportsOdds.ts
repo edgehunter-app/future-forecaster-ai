@@ -31,7 +31,7 @@ import {
   type KeyManager,
 } from "@/lib/oddsApiKeyManager";
 
-const DEFAULT_AUTO_SPORTS = ["americanfootball_nfl", "basketball_nba"];
+const DEFAULT_SPORT = "americanfootball_nfl";
 
 export function useSportsOdds(polymarkets: Market[]) {
   const settings = useAppStore((s) => s.settings);
@@ -61,11 +61,17 @@ export function useSportsOdds(polymarkets: Market[]) {
   const [selectedSports, setSelectedSports] = useState<string[]>(SPORTS.map((s) => s.key));
   const [remainingRequests, setRemainingRequests] = useState<number | null>(getRemainingRequests());
   const [fromCache, setFromCache] = useState(false);
-  const [loadedSports, setLoadedSports] = useState<Set<string>>(new Set(DEFAULT_AUTO_SPORTS));
+  const [loadedSports, setLoadedSports] = useState<Set<string>>(new Set([DEFAULT_SPORT]));
+  const [currentSport, setCurrentSport] = useState<string>(DEFAULT_SPORT);
   const [keyUsage, setKeyUsage] = useState<KeyManager>(loadKeyUsage);
   const fetchingRef = useRef(false);
   const keyUsageRef = useRef<KeyManager>(keyUsage);
   useEffect(() => { keyUsageRef.current = keyUsage; }, [keyUsage]);
+  const currentSportRef = useRef(currentSport);
+  useEffect(() => { currentSportRef.current = currentSport; }, [currentSport]);
+  const [nextScanAt, setNextScanAt] = useState<Date | null>(null);
+
+  const refreshMinutes = settings.sportsRefreshMinutes ?? 60;
 
   const activeKey = getActiveKey(keyUsage);
   const usageSummary = useMemo(() => getUsageSummary(keyUsage), [keyUsage]);
@@ -135,21 +141,20 @@ export function useSportsOdds(polymarkets: Market[]) {
         console.warn("sportsbook gaps fetch failed", e);
       }
 
-      // Fetch only auto-loaded sports (default 2) sequentially with delay
-      const allFull: FullGame[] = [];
-      const autoSports = Array.from(loadedSports).length > 0
-        ? Array.from(loadedSports)
-        : DEFAULT_AUTO_SPORTS;
-      for (const sport of autoSports) {
-        if (!getActiveKey(keyUsageRef.current)) break;
+      // Lazy: only refresh the currently-viewed sport. Other previously-loaded
+      // sports remain in the store from their last fetch (no background refresh).
+      const sportToRefresh = currentSportRef.current;
+      const existing = useAppStore.getState().fullGames ?? [];
+      const allFull: FullGame[] = existing.filter((g) => g.sport !== sportToRefresh);
+      if (getActiveKey(keyUsageRef.current)) {
         try {
-          const got = await fetchOneSport(sport, trigger);
+          const got = await fetchOneSport(sportToRefresh, trigger);
           if (got?.length) allFull.push(...got);
         } catch (e) {
-          console.warn("fetchFullOdds failed for", sport, e);
+          console.warn("fetchFullOdds failed for", sportToRefresh, e);
         }
-        await new Promise((r) => setTimeout(r, 500));
       }
+      setLoadedSports((prev) => new Set([...prev, sportToRefresh]));
 
       const polySports = polymarkets.filter((m) => isSportsMarket(m));
       for (const game of allFull) {
@@ -178,7 +183,6 @@ export function useSportsOdds(polymarkets: Market[]) {
   }, [
     polymarkets,
     threshold,
-    loadedSports,
     fetchOneSport,
     setFullGames,
     setMispricings,
@@ -230,7 +234,20 @@ export function useSportsOdds(polymarkets: Market[]) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  const nextScanAt = null;
+  // Auto-refresh on the user's chosen interval — refreshes only the current sport.
+  useEffect(() => {
+    if (!refreshMinutes || refreshMinutes <= 0) {
+      setNextScanAt(null);
+      return;
+    }
+    const ms = refreshMinutes * 60 * 1000;
+    setNextScanAt(new Date(Date.now() + ms));
+    const id = setInterval(() => {
+      void scan("auto");
+      setNextScanAt(new Date(Date.now() + ms));
+    }, ms);
+    return () => clearInterval(id);
+  }, [refreshMinutes, scan]);
 
   return {
     mispricings,
@@ -260,5 +277,7 @@ export function useSportsOdds(polymarkets: Market[]) {
     activeKey,
     loadedSports,
     nextScanAt,
+    currentSport,
+    setCurrentSport,
   };
 }
