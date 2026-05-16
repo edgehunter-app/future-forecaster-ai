@@ -217,8 +217,12 @@ function eventToOddsApiGame(ev: any, sportKey: string, leagueShort: string) {
   const byBook = new Map<string, { h2h: any[]; spreads: any[]; totals: any[] }>();
 
   for (const m of markets) {
-    if (m?.segment && m.segment !== "FULL_MATCH" && m.segment !== "REGULATION_TIME") continue;
+    // Accept FULL_MATCH/REGULATION_TIME (full-game lines). Reject quarter/half
+    // sub-segments. Missing segment = treat as full game.
+    const seg = m?.segment;
+    if (seg && seg !== "FULL_MATCH" && seg !== "REGULATION_TIME") continue;
     const outs = flattenMarketOutcomes(m);
+    if (outs.length === 0) continue;
     for (const o of outs) {
       const norm = normalizeSource(o.source);
       if (norm.bookmaker === "kutt") continue;
@@ -388,7 +392,16 @@ Deno.serve(async (req) => {
     const eventKeys = upcoming.map((e: any) => e.key).filter(Boolean);
 
     const eventsWithOdds = await getEventsWithOdds(client, eventKeys);
-    console.log(`Sport ${sportKey} (${comp.shortName}): ${eventsList.length} events listed, ${eventsWithOdds.length} hydrated with odds`);
+  console.log(`Sport ${sportKey} (${comp.shortName}): ${eventsList.length} events listed, ${eventsWithOdds.length} hydrated`);
+  if (eventsWithOdds[0]) {
+    const ev0 = eventsWithOdds[0];
+    const mks: any[] = Array.isArray(ev0.markets) ? ev0.markets : [];
+    console.log(`sample event ${ev0.key} markets=${mks.length} types=${mks.map((m: any) => `${m.type}/${m.segment}`).slice(0, 8).join(",")}`);
+    if (mks[0]) {
+      const sourcesIn = Object.keys(mks[0].outcomes ?? {});
+      console.log(`sample market[0] sources=${sourcesIn.slice(0, 6).join(",")} outcomeCount0=${(mks[0].outcomes?.[sourcesIn[0]] ?? []).length}`);
+    }
+  }
 
     // Snapshot to outcomes_log for research.
     if (eventsWithOdds.length) await logEventOutcomes(client, eventsWithOdds, comp.shortName);
