@@ -33,6 +33,7 @@ export default function Sports() {
     usageSummary,
     nextScanAt,
     scanInterval,
+    setCurrentSport,
   } = useSportsOdds(markets);
 
   const [activeSport, setActiveSport] = useState<string>("all");
@@ -149,6 +150,9 @@ export default function Sports() {
                 setActiveSport(s.key);
                 if (s.key !== "all" && !selectedSports.includes(s.key)) {
                   setSelectedSports([...selectedSports, s.key]);
+                }
+                if (s.key !== "all") {
+                  setCurrentSport(s.key);
                 }
                 if (s.key !== "all" && !loadedSports.has(s.key) && activeKey) {
                   void loadGamesForSport(s.key);
