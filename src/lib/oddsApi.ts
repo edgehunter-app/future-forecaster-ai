@@ -285,6 +285,105 @@ let lastFullGames: FullGame[] = [];
 export function getLastFullGames(): FullGame[] { return lastFullGames; }
 export function setLastFullGames(g: FullGame[]) { lastFullGames = g; }
 
+// ============= Sportsbook API cross-market gaps =============
+
+export interface SportsbookGap {
+  id: string;
+  eventKey: string;
+  eventName: string;
+  league: string;
+  marketType: "MONEYLINE" | "POINT_SPREAD" | "POINT_TOTAL";
+  outcomeType: "WIN" | "OVER" | "UNDER";
+  participant: string | null;
+  modifier: number | null;
+  predictionMarkets: Array<{ source: string; payout: number; american: number; implied: number }>;
+  vegasBest: { source: string; payout: number; american: number; implied: number };
+  edgePct: number;
+  startTime: string;
+}
+
+let lastSportsbookGaps: SportsbookGap[] = [];
+export function getLastSportsbookGaps(): SportsbookGap[] { return lastSportsbookGaps; }
+
+/** Fetch the full /v0/advantages payload once. Returns parsed gaps + games. */
+export async function fetchSportsbookGaps(trigger = "manual"): Promise<{
+  gaps: SportsbookGap[];
+  meta: { uniqueEventsReturned?: number; requestsUsedToday?: number; dailyLimit?: number } | null;
+  remaining: number | null;
+}> {
+  const { data: resp, error } = await supabase.functions.invoke("fetch-sports-odds", {
+    body: { trigger, allSports: true },
+  });
+  if (error) {
+    console.warn("fetchSportsbookGaps error", error);
+    return { gaps: [], meta: null, remaining: null };
+  }
+  const gaps: SportsbookGap[] = Array.isArray(resp?.crossMarketGaps) ? resp.crossMarketGaps : [];
+  lastSportsbookGaps = gaps;
+  return {
+    gaps,
+    meta: resp?.meta ?? null,
+    remaining: typeof resp?.remainingRequests === "number" ? resp.remainingRequests : null,
+  };
+}
+
+/** Convert a SportsbookGap to a SportsMispricing for the existing UI. */
+export function gapToMispricing(g: SportsbookGap): SportsMispricing {
+  const bestPred = g.predictionMarkets[0];
+  const polyImplied = bestPred?.implied ?? 0;
+  const vegasImplied = g.vegasBest.implied;
+  const spread = Math.abs(g.edgePct) / 100;
+  const direction: "YES" | "NO" = g.edgePct > 0 ? "YES" : "NO";
+  const teams = (g.eventName || "").split(/\s+(?:@|vs\.?)\s+/i);
+  const away = teams[0] ?? "";
+  const home = teams[1] ?? "";
+  const label = g.marketType === "POINT_TOTAL"
+    ? `${g.outcomeType} ${g.modifier ?? ""}`
+    : g.marketType === "POINT_SPREAD"
+      ? `${g.participant ?? ""} ${g.modifier ?? ""}`
+      : (g.participant ?? "");
+  const stubGame: OddsGame = {
+    id: g.eventKey,
+    sport: g.league.toLowerCase(),
+    league: g.league,
+    homeTeam: home,
+    awayTeam: away,
+    commenceTime: g.startTime,
+    bookmakers: [],
+    consensusProb: { home: vegasImplied, away: 1 - vegasImplied },
+  };
+  const polyStub: Market = {
+    id: `sportsbook-gap-${g.id}`,
+    question: `${g.eventName} — ${label}`,
+    category: g.league,
+    yesPrice: polyImplied,
+    noPrice: 1 - polyImplied,
+    volume24h: 0,
+    totalVolume: 0,
+    endDate: g.startTime,
+    trend: "flat",
+    change24h: 0,
+    source: bestPred?.source === "kalshi" ? "kalshi" : "polymarket",
+  };
+  return {
+    id: g.id,
+    question: `${g.eventName} — ${label}`,
+    game: stubGame,
+    polymarket: polyStub,
+    polyImplied,
+    vegasImplied,
+    spread,
+    edge: spread,
+    direction,
+    favoredSide: g.participant ?? g.outcomeType,
+    bestBook: g.vegasBest.source,
+    bestOdds: g.vegasBest.american,
+    confidence: Math.min(Math.round(spread * 600 + 50), 95),
+    league: g.league,
+    claudeAnalysis: null,
+  };
+}
+
 // ============= Formatting helpers =============
 
 export function formatOdds(american: number): string {
