@@ -311,8 +311,8 @@ export async function fetchSportsbookGaps(trigger = "manual"): Promise<{
   meta: { uniqueEventsReturned?: number; requestsUsedToday?: number; dailyLimit?: number } | null;
   remaining: number | null;
 }> {
-  const { data: resp, error } = await supabase.functions.invoke("fetch-sports-odds", {
-    body: { trigger, allSports: true },
+  const { data: resp, error } = await supabase.functions.invoke("fetch-cross-market-gaps", {
+    body: { trigger },
   });
   if (error) {
     console.warn("fetchSportsbookGaps error", error);
