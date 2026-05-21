@@ -2,13 +2,14 @@ import { useState } from "react";
 import { NavLink, useNavigate, useLocation } from "react-router-dom";
 import {
   House, Zap, Trophy, TrendingUp, LayoutGrid,
-  Users, Clock, ArrowLeftRight, Settings as SettingsIcon, ChevronRight,
+  Users, Clock, ArrowLeftRight, Settings as SettingsIcon, ChevronRight, BarChart2,
 } from "lucide-react";
 import BottomSheet from "@/components/ui/BottomSheet";
 import { useAppStore } from "@/store/useAppStore";
 import { cn } from "@/lib/utils";
 
 const MORE_ITEMS = [
+  { to: "/tracker", label: "Bet Tracker", icon: BarChart2 },
   { to: "/wallets", label: "Wallets", icon: Users },
   { to: "/cross-market", label: "Cross-Market", icon: ArrowLeftRight },
   { to: "/history", label: "History", icon: Clock },

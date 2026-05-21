@@ -79,6 +79,66 @@ export type Database = {
         }
         Relationships: []
       }
+      bets: {
+        Row: {
+          amount: number
+          bet_type: string
+          created_at: string
+          game_date: string | null
+          id: string
+          notes: string | null
+          odds: number
+          pick: string
+          profit_loss: number | null
+          resolved_at: string | null
+          sport: string
+          sportsbook: string | null
+          status: string
+          suggestion_id: string | null
+          title: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          amount: number
+          bet_type?: string
+          created_at?: string
+          game_date?: string | null
+          id?: string
+          notes?: string | null
+          odds: number
+          pick: string
+          profit_loss?: number | null
+          resolved_at?: string | null
+          sport?: string
+          sportsbook?: string | null
+          status?: string
+          suggestion_id?: string | null
+          title: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          amount?: number
+          bet_type?: string
+          created_at?: string
+          game_date?: string | null
+          id?: string
+          notes?: string | null
+          odds?: number
+          pick?: string
+          profit_loss?: number | null
+          resolved_at?: string | null
+          sport?: string
+          sportsbook?: string | null
+          status?: string
+          suggestion_id?: string | null
+          title?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       markets_cache: {
         Row: {
           category: string
