@@ -1,7 +1,7 @@
 import { useState } from "react";
 import {
   Sparkles, ShieldAlert, ChevronDown, ChevronUp, Copy, X, Share2,
-  Zap, TrendingUp, Target, Repeat, Check, XCircle,
+  Zap, TrendingUp, Target, Repeat, Check, XCircle, BookmarkPlus,
 } from "lucide-react";
 import type { Suggestion } from "@/types";
 import { cn, fmtUSD, categoryColor } from "@/lib/utils";
@@ -11,6 +11,8 @@ import { useAppStore } from "@/store/useAppStore";
 import { useToast } from "@/components/ui/AppToast";
 import { useBreakpoint } from "@/hooks/useBreakpoint";
 import { useSwipe } from "@/hooks/useSwipe";
+import LogBetModal from "@/components/tracker/LogBetModal";
+import { useBetTracker, type NewBetInput } from "@/hooks/useBetTracker";
 import {
   getConfidenceColor,
   getConfidenceBg,
@@ -40,6 +42,9 @@ export function SuggestionCard({ suggestion: s, bankroll, onDismiss, onMarkOutco
   const kellyMult = useAppStore((st) => st.settings.kellyMultiplier);
   const { showToast } = useToast();
   const [open, setOpen] = useState(false);
+  const [logOpen, setLogOpen] = useState(false);
+  const [logged, setLogged] = useState(false);
+  const { logBet } = useBetTracker();
   const { isMobile } = useBreakpoint();
   const ageMs = (() => {
     const m = /(\d+)\s*h/.exec(s.createdAt);
@@ -110,6 +115,32 @@ export function SuggestionCard({ suggestion: s, bankroll, onDismiss, onMarkOutco
   const copyTrade = () => {
     const txt = `EdgeHunter: ${s.question} → ${s.direction} ${fmtUSD(s.suggestedAmount)} (confidence: ${s.confidence}%)`;
     void navigator.clipboard?.writeText(txt);
+  };
+
+  const impliedToAmerican = (p: number): number => {
+    const x = Math.min(Math.max(p, 0.01), 0.99);
+    return x <= 0.5
+      ? Math.round((1 / x - 1) * 100)
+      : -Math.round((x / (1 - x)) * 100);
+  };
+
+  const betInitial: Partial<NewBetInput> = {
+    title: s.question,
+    sport: s.category,
+    pick: s.direction,
+    odds: impliedToAmerican(s.currentOdds),
+    amount: s.suggestedAmount,
+    suggestion_id: s.id,
+    notes: s.reasoning,
+  };
+
+  const handleLogBet = async (bet: NewBetInput) => {
+    const res = await logBet(bet);
+    if (res) {
+      setLogged(true);
+      showToast("Bet Logged ✓", "success");
+    }
+    return res;
   };
 
   return (
@@ -289,6 +320,16 @@ export function SuggestionCard({ suggestion: s, bankroll, onDismiss, onMarkOutco
             </button>
           </>
         )}
+        <button
+          onClick={() => setLogOpen(true)}
+          disabled={logged}
+          className={cn(
+            "card-action-btn inline-flex items-center gap-1 rounded-md border border-purple/40 bg-purple/10 px-2 py-1 text-[11px] font-semibold text-purple transition-colors hover:bg-purple/20",
+            logged && "opacity-60 cursor-not-allowed",
+          )}
+        >
+          <BookmarkPlus className="h-3 w-3" /> {logged ? "Bet Logged ✓" : "Log Bet"}
+        </button>
         <ActionBtn icon={X} label="Dismiss" onClick={handleDismiss} danger className="ml-auto" />
       </div>
       {isMobile && (
@@ -297,6 +338,12 @@ export function SuggestionCard({ suggestion: s, bankroll, onDismiss, onMarkOutco
         </div>
       )}
       </div>
+      <LogBetModal
+        open={logOpen}
+        onClose={() => setLogOpen(false)}
+        onSubmit={handleLogBet}
+        initial={betInitial}
+      />
     </div>
   );
 }
