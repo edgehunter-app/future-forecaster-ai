@@ -1,16 +1,12 @@
-// Sportsbook API (RapidAPI) backed fetch-sports-odds.
-// Returns the FULL games board for a sport (every event, every book), not
-// just arbitrage candidates. Emits Odds-API-compatible `data: []` shape so
-// the existing frontend parser in src/lib/oddsApi.ts works unchanged.
+// Sportsbook API (RapidAPI) backed fetch-sports-odds — advantages variant.
+// Calls /v0/advantages?type=ARBITRAGE which returns whatever has live cross-
+// book interest across ALL sports in ONE request (cheap on quota). Groups
+// outcomes by event and emits Odds-API-compatible `data: []` so the existing
+// frontend parser in src/lib/oddsApi.ts builds FullGame objects unchanged.
 //
-// Workflow per docs:
-//   1. /v0/competitions                       (cached forever in module mem)
-//   2. /v0/competitions/{key}/events          (cached 4h)
-//   3. /v0/events?eventKeys=K1&eventKeys=K2.. (fresh, up to 50 events)
-//
-// Cross-market gaps now live in a separate function: fetch-cross-market-gaps
-// Player props are not supported by the documented /v0/events market types
-// (MONEYLINE, MONEYLINE_3WAY, POINT_SPREAD, POINT_TOTAL, BOTH_TEAMS_TO_SCORE).
+// Player props are not supported by this provider — we keep a stub response
+// when the client passes eventId so the UI shows "not supported" instead of
+// crashing.
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
 const corsHeaders = {
@@ -22,9 +18,7 @@ const RAPID_HOST = "sportsbook-api2.p.rapidapi.com";
 const RAPID_BASE = `https://${RAPID_HOST}`;
 const DAILY_LIMIT = 150;
 const PROVIDER = "rapidapi-sportsbook";
-const EVENTS_LIST_TTL_MS = 4 * 60 * 60 * 1000; // 4h
-const EVENTS_ODDS_TTL_MS = 90_000;             // 90s
-const MAX_EVENT_KEYS_PER_CALL = 50;
+const ADVANTAGES_TTL_MS = 90_000; // 90s
 
 const SOURCE_MAP: Record<string, { bookmaker: string; category: "vegas" | "prediction_market" | "synthetic" }> = {
   DRAFT_KINGS: { bookmaker: "draftkings", category: "vegas" },
@@ -61,9 +55,7 @@ const toAmerican = (p: number): number =>
 const toImplied = (p: number): number => (p > 0 ? 1 / p : 0);
 
 // ---------------- module caches ----------------
-let competitionsCache: any[] | null = null;
-const eventsListCache = new Map<string, { expires: number; events: any[] }>();
-const eventsOddsCache = new Map<string, { expires: number; event: any }>();
+let advantagesCache: { expires: number; payload: any[] } | null = null;
 
 function getServiceClient() {
   const url = Deno.env.get("SUPABASE_URL")!;
@@ -110,70 +102,60 @@ async function rapidFetch(path: string): Promise<any | null> {
   return await res.json();
 }
 
-async function getCompetitionKey(
-  client: any, sportKey: string,
-): Promise<{ key: string; shortName: string } | null> {
-  const matcher = SPORT_TO_SHORT[sportKey];
-  if (!matcher) return null;
-  if (!competitionsCache) {
-    const json = await rapidFetch("/v0/competitions/");
-    if (!json) return null;
-    await bumpCounter(client);
-    competitionsCache = Array.isArray(json) ? json : (json.competitions ?? []);
-  }
-  const comp = competitionsCache!.find((c: any) =>
-    typeof c?.shortName === "string" && matcher(c.shortName),
-  );
-  if (!comp) {
-    console.warn(`No competition matched for ${sportKey}`);
-    return null;
-  }
-  return { key: comp.key, shortName: comp.shortName };
-}
-
-async function getEventsList(
-  client: any, competitionKey: string,
-): Promise<any[]> {
+async function getAdvantages(client: any): Promise<any[]> {
   const now = Date.now();
-  const hit = eventsListCache.get(competitionKey);
-  if (hit && hit.expires > now) return hit.events;
-  const json = await rapidFetch(`/v0/competitions/${competitionKey}/events`);
-  if (!json) return hit?.events ?? [];
+  if (advantagesCache && advantagesCache.expires > now) return advantagesCache.payload;
+  const json = await rapidFetch("/v0/advantages/?type=ARBITRAGE");
+  if (!json) return advantagesCache?.payload ?? [];
   await bumpCounter(client);
-  const events = Array.isArray(json) ? json : (json.events ?? []);
-  eventsListCache.set(competitionKey, { expires: now + EVENTS_LIST_TTL_MS, events });
-  return events;
+  const advantages: any[] = Array.isArray(json) ? json : (json.advantages ?? []);
+  advantagesCache = { expires: now + ADVANTAGES_TTL_MS, payload: advantages };
+  return advantages;
 }
 
-async function getEventsWithOdds(
-  client: any, eventKeys: string[],
-): Promise<any[]> {
-  if (eventKeys.length === 0) return [];
-  const now = Date.now();
-  const out: any[] = [];
-  const toFetch: string[] = [];
-  for (const k of eventKeys) {
-    const hit = eventsOddsCache.get(k);
-    if (hit && hit.expires > now) out.push(hit.event);
-    else toFetch.push(k);
-  }
-  for (let i = 0; i < toFetch.length; i += MAX_EVENT_KEYS_PER_CALL) {
-    const batch = toFetch.slice(i, i + MAX_EVENT_KEYS_PER_CALL);
-    const qs = batch.map((k) => `eventKeys=${encodeURIComponent(k)}`).join("&");
-    const json = await rapidFetch(`/v0/events?${qs}`);
-    if (!json) continue;
-    await bumpCounter(client);
-    // /v0/events returns { events: [[...event objects...]] } — a nested array.
-    let events: any[] = Array.isArray(json) ? json : (json.events ?? []);
-    if (events.length > 0 && Array.isArray(events[0])) {
-      events = events.flat();
+// Build synthetic events from a flat list of advantages, grouped by event.key.
+// Each synthetic event mirrors the /v0/events shape so the downstream
+// transformer below works unchanged.
+function advantagesToEvents(advantages: any[]): any[] {
+  const byEvent = new Map<string, any>();
+  for (const adv of advantages) {
+    const market = adv?.market;
+    const event = market?.event;
+    if (!event?.key) continue;
+    let ev = byEvent.get(event.key);
+    if (!ev) {
+      ev = {
+        key: event.key,
+        name: event.name ?? null,
+        startTime: event.startTime ?? null,
+        homeParticipantKey: event.homeParticipantKey ?? null,
+        participants: Array.isArray(event.participants) ? [...event.participants] : [],
+        competitionInstance: event.competitionInstance ?? null,
+        markets: [] as any[],
+      };
+      byEvent.set(event.key, ev);
     }
-    for (const ev of events) {
-      if (ev?.key) eventsOddsCache.set(ev.key, { expires: now + EVENTS_ODDS_TTL_MS, event: ev });
-      out.push(ev);
+    // Re-shape outcomes from a flat array into the grouped `{ source: [...] }`
+    // shape that flattenMarketOutcomes() expects below.
+    const grouped: Record<string, any[]> = {};
+    for (const o of (adv?.outcomes ?? [])) {
+      const src = o?.source;
+      if (!src) continue;
+      (grouped[src] ||= []).push({
+        type: o.type,
+        payout: o.payout,
+        modifier: o.modifier,
+        participant: o.participant,
+      });
     }
+    ev.markets.push({
+      key: market.type ? market.type.toLowerCase() : "market",
+      type: market.type,
+      segment: market.segment ?? null,
+      outcomes: grouped,
+    });
   }
-  return out;
+  return [...byEvent.values()];
 }
 
 // ---------------- transformation ----------------
@@ -385,44 +367,32 @@ Deno.serve(async (req) => {
       });
     }
 
+    // Pull ONE big call covering every sport with live arbitrage.
+    const advantages = await getAdvantages(client);
+    const events = advantagesToEvents(advantages);
+    console.log(`Advantages: ${advantages.length} outcomes → ${events.length} events`);
+
+    // Optional client-side filter by sport. If sportKey unmatched/missing,
+    // we return everything.
     const sportKey: string | null = body.sportKey ?? null;
-    if (!sportKey || !SPORT_TO_SHORT[sportKey]) {
-      return new Response(JSON.stringify({
-        data: [], source: "error", code: "UNSUPPORTED_SPORT",
-        error: `sportKey '${sportKey}' is not supported`,
-        remainingRequests: Math.max(0, DAILY_LIMIT - used),
-      }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
-    }
+    const matcher = sportKey ? SPORT_TO_SHORT[sportKey] : null;
 
-    const comp = await getCompetitionKey(client, sportKey);
-    if (!comp) {
-      const usedNow = await readCounter(client);
-      return new Response(JSON.stringify({
-        data: [], source: "error", code: "NO_COMPETITION",
-        remainingRequests: Math.max(0, DAILY_LIMIT - usedNow),
-      }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
-    }
+    const allGames = events.map((ev: any) => {
+      const leagueShort: string =
+        ev?.competitionInstance?.competition?.shortName ?? "UNKNOWN";
+      const inferredSportKey =
+        Object.entries(SPORT_TO_SHORT).find(([_k, fn]) => fn(leagueShort))?.[0]
+          ?? (sportKey ?? "unknown");
+      return eventToOddsApiGame(ev, inferredSportKey, leagueShort);
+    }).filter((g: any) => g.bookmakers.length > 0);
 
-    const eventsList = await getEventsList(client, comp.key);
-    // Upcoming-only filter so we don't waste budget on finished games.
-    const cutoff = Date.now() - 3 * 60 * 60 * 1000;
-    const upcoming = eventsList
-      .filter((e: any) => {
-        const t = e?.startTime ? new Date(e.startTime).getTime() : 0;
-        return t === 0 || t >= cutoff;
-      })
-      .slice(0, MAX_EVENT_KEYS_PER_CALL);
-    const eventKeys = upcoming.map((e: any) => e.key).filter(Boolean);
+    const games = matcher
+      ? allGames.filter((g: any) => matcher(g.sport_title))
+      : allGames;
 
-    const eventsWithOdds = await getEventsWithOdds(client, eventKeys);
-    console.log(`Sport ${sportKey} (${comp.shortName}): ${eventsList.length} events listed, ${eventsWithOdds.length} hydrated`);
-
-    // Snapshot to outcomes_log for research.
-    if (eventsWithOdds.length) await logEventOutcomes(client, eventsWithOdds, comp.shortName);
-
-    const games = eventsWithOdds
-      .map((ev: any) => eventToOddsApiGame(ev, sportKey, comp.shortName))
-      .filter((g: any) => g.bookmakers.length > 0);
+    // Snapshot to outcomes_log for research (everything we saw, not just
+    // the filtered slice).
+    if (events.length) await logEventOutcomes(client, events, "MIXED");
 
     const usedNow = await readCounter(client);
     return new Response(JSON.stringify({
@@ -435,12 +405,12 @@ Deno.serve(async (req) => {
       used: usedNow,
       meta: {
         source: "sportsbook-api",
-        endpoint: "/v0/events",
+        endpoint: "/v0/advantages",
         fetchedAt: new Date().toISOString(),
         requestsUsedToday: usedNow,
         dailyLimit: DAILY_LIMIT,
-        league: comp.shortName,
-        eventsListed: eventsList.length,
+        league: sportKey ?? "ALL",
+        eventsListed: events.length,
         eventsReturned: games.length,
       },
     }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
