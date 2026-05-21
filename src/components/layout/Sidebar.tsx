@@ -1,7 +1,7 @@
 import { NavLink } from "react-router-dom";
 import {
   House, Zap, Users, TrendingUp, Clock, Settings,
-  ChevronLeft, ChevronRight, Moon, Sun, ArrowLeftRight, Download, Trophy, ShieldCheck,
+  ChevronLeft, ChevronRight, Moon, Sun, ArrowLeftRight, Download, Trophy, ShieldCheck, BarChart2,
 } from "lucide-react";
 import { useAppStore } from "@/store/useAppStore";
 import { usePWA } from "@/hooks/usePWA";
@@ -22,6 +22,7 @@ export function Sidebar({ mobileOpen = false, onMobileClose }: { mobileOpen?: bo
   const navItems = [
     { to: "/", label: "Dashboard", icon: House, end: true } as const,
     { to: "/suggestions", label: "Suggestions", icon: Zap, badge: suggestionsCount, badgeColor: "info" as const },
+    { to: "/tracker", label: "Bet Tracker", icon: BarChart2 },
     { to: "/wallets", label: "Wallets", icon: Users },
     { to: "/markets", label: "Markets", icon: TrendingUp },
     { to: "/cross-market", label: "Cross-Market", icon: ArrowLeftRight, badge: xmCount || undefined, badgeColor: "warning" as const },

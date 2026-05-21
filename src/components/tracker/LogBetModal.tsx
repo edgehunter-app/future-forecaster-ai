@@ -21,7 +21,7 @@ const BOOKS = [
 export interface LogBetModalProps {
   open: boolean;
   onClose: () => void;
-  onSubmit: (bet: NewBetInput) => Promise<void> | void;
+  onSubmit: (bet: NewBetInput) => Promise<unknown> | unknown;
   initial?: Partial<NewBetInput>;
 }
 
