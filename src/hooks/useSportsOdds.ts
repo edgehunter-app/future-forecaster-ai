@@ -88,13 +88,13 @@ export function useSportsOdds(polymarkets: Market[]) {
 
   const fetchOneSport = useCallback(
     async (sport: string, trigger: string = "unknown"): Promise<FullGame[]> => {
+      // RapidAPI/Sportsbook quota is enforced inside the edge function; do
+      // not gate on the legacy TheOddsAPI key manager.
       const ak = getActiveKey(keyUsageRef.current);
-      if (!ak) return [];
       const games = await fetchFullOdds(sport, ak === "secondary", trigger);
       const last = getLastKeyResponse();
       if (last.code === "QUOTA_EXHAUSTED") {
-        // mark whichever was tried as exhausted
-        persistUsage((u) => markKeyExhausted(u, ak));
+        if (ak) persistUsage((u) => markKeyExhausted(u, ak));
         return [];
       }
       if (last.keyUsed && typeof last.remaining === "number") {
@@ -115,10 +115,8 @@ export function useSportsOdds(polymarkets: Market[]) {
       fullGamesInStore: useAppStore.getState().fullGames?.length ?? 0,
       lastScanned: useAppStore.getState().sportsLastScanned,
     });
-    if (!ak) {
-      setSportsError("quota_exhausted");
-      return;
-    }
+    // No longer gate on the legacy TheOddsAPI key manager — the Sportsbook
+    // edge function enforces its own daily limit.
     fetchingRef.current = true;
     setSportsLoading(true);
     setSportsError(null);
@@ -146,13 +144,11 @@ export function useSportsOdds(polymarkets: Market[]) {
       const sportToRefresh = currentSportRef.current;
       const existing = useAppStore.getState().fullGames ?? [];
       const allFull: FullGame[] = existing.filter((g) => g.sport !== sportToRefresh);
-      if (getActiveKey(keyUsageRef.current)) {
-        try {
-          const got = await fetchOneSport(sportToRefresh, trigger);
-          if (got?.length) allFull.push(...got);
-        } catch (e) {
-          console.warn("fetchFullOdds failed for", sportToRefresh, e);
-        }
+      try {
+        const got = await fetchOneSport(sportToRefresh, trigger);
+        if (got?.length) allFull.push(...got);
+      } catch (e) {
+        console.warn("fetchFullOdds failed for", sportToRefresh, e);
       }
       setLoadedSports((prev) => new Set([...prev, sportToRefresh]));
 
@@ -195,8 +191,6 @@ export function useSportsOdds(polymarkets: Market[]) {
   const loadGamesForSport = useCallback(
     async (sportKey: string) => {
       if (loadedSports.has(sportKey)) return;
-      const ak = getActiveKey(keyUsageRef.current);
-      if (!ak) return;
       setSportsLoading(true);
       try {
         const got = await fetchOneSport(sportKey, "tab-click");
