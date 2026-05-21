@@ -173,11 +173,19 @@ export async function fetchFullOdds(
   incrementDaily();
   console.log(`[oddsApi] fetchFullOdds sport=${sportKey} trigger=${trigger} daily=${getDailyCount()}/${DAILY_CAP}`);
   const { data: resp, error } = await supabase.functions.invoke("fetch-sports-odds", {
-    body: { sportKey, regions: "us", markets: "h2h,spreads,totals", oddsFormat: "american", useSecondary, trigger },
+    // Sportsbook API returns all sports in one /v0/advantages call. Don't
+    // filter server-side — let the client tab filter handle it so a refresh
+    // for one tab populates every tab.
+    body: { regions: "us", markets: "h2h,spreads,totals", oddsFormat: "american", useSecondary, trigger },
   });
   if (error) {
     console.warn("fetch-sports-odds error:", error);
     return [];
+  }
+  console.log("[oddsApi] invoke response keys:", resp ? Object.keys(resp) : null,
+    "data isArray:", Array.isArray(resp?.data), "length:", resp?.data?.length);
+  if (resp?.data?.[0]) {
+    console.log("[oddsApi] first game:", JSON.stringify(resp.data[0]).slice(0, 400));
   }
   if (resp && typeof resp.remainingRequests === "number") {
     lastRemaining = resp.remainingRequests;
@@ -255,7 +263,7 @@ export async function fetchFullOdds(
 
     return {
       id: g.id,
-      sport: sportKey,
+      sport: g.sport_key ?? sportKey,
       league: g.sport_title ?? sportKey,
       homeTeam: home,
       awayTeam: away,

@@ -139,18 +139,17 @@ export function useSportsOdds(polymarkets: Market[]) {
         console.warn("sportsbook gaps fetch failed", e);
       }
 
-      // Lazy: only refresh the currently-viewed sport. Other previously-loaded
-      // sports remain in the store from their last fetch (no background refresh).
-      const sportToRefresh = currentSportRef.current;
-      const existing = useAppStore.getState().fullGames ?? [];
-      const allFull: FullGame[] = existing.filter((g) => g.sport !== sportToRefresh);
+      // Sportsbook API returns every sport in one call, so a single refresh
+      // fully repopulates the board across all leagues.
+      let allFull: FullGame[] = [];
       try {
-        const got = await fetchOneSport(sportToRefresh, trigger);
-        if (got?.length) allFull.push(...got);
+        allFull = await fetchOneSport(currentSportRef.current, trigger);
       } catch (e) {
-        console.warn("fetchFullOdds failed for", sportToRefresh, e);
+        console.warn("fetchFullOdds failed", e);
       }
-      setLoadedSports((prev) => new Set([...prev, sportToRefresh]));
+      console.log("[useSportsOdds] mapped games:", allFull.length,
+        "sports:", [...new Set(allFull.map((g) => g.sport))]);
+      setLoadedSports(new Set([...SPORTS.map((s) => s.key)]));
 
       const polySports = polymarkets.filter((m) => isSportsMarket(m));
       for (const game of allFull) {
@@ -167,6 +166,7 @@ export function useSportsOdds(polymarkets: Market[]) {
         }
       }
       setFullGames(allFull);
+      console.log("[useSportsOdds] fullGames set to:", allFull.length);
       setSportsLastScanned(new Date());
       setFromCache(false);
       setRemainingRequests(getRemainingRequests());
