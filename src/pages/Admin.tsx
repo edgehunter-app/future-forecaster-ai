@@ -6,8 +6,6 @@ import { supabase } from "@/integrations/supabase/client";
 import { useIsAdmin } from "@/hooks/useIsAdmin";
 import PageLoadingSkeleton from "@/components/ui/PageLoadingSkeleton";
 import { usePageTitle } from "@/hooks/usePageTitle";
-import { loadKeyUsage, getUsageSummary, type KeyManager } from "@/lib/oddsApiKeyManager";
-import { getDailyCount, DAILY_CAP } from "@/lib/oddsDailyCap";
 import { getAnalysisCounts } from "@/lib/analysisCounter";
 import { cn } from "@/lib/utils";
 import { useAppStore } from "@/store/useAppStore";
@@ -46,8 +44,6 @@ export default function Admin() {
   usePageTitle("Admin");
   const { isAdmin, loading } = useIsAdmin();
 
-  const [usage, setUsage] = useState<KeyManager | null>(null);
-  const [dailyCount, setDailyCount] = useState<number>(0);
   const [analysisCounts, setAnalysisCounts] = useState({ market: 0, sports: 0, total: 0 });
   const [rapidUsedToday, setRapidUsedToday] = useState<number>(0);
   const [lastCallAt, setLastCallAt] = useState<string | null>(null);
@@ -73,8 +69,6 @@ export default function Admin() {
 
   useEffect(() => {
     if (!isAdmin) return;
-    setUsage(loadKeyUsage());
-    setDailyCount(getDailyCount());
     setAnalysisCounts(getAnalysisCounts());
     const loadRapid = async () => {
       const today = new Date().toISOString().slice(0, 10);
@@ -103,7 +97,6 @@ export default function Admin() {
     };
     void loadResearch();
     const id = setInterval(() => {
-      setDailyCount(getDailyCount());
       setAnalysisCounts(getAnalysisCounts());
       void loadRapid();
       void loadResearch();
@@ -137,10 +130,6 @@ export default function Admin() {
 
   if (loading) return <PageLoadingSkeleton />;
   if (!isAdmin) return <Navigate to="/" replace />;
-
-  const summary = usage ? getUsageSummary(usage) : null;
-  const oddsState: PillState =
-    !summary || summary.totalRemaining === 0 ? "error" : summary.totalRemaining < 100 ? "warn" : "ok";
 
   // Projected daily total: extrapolate from hours elapsed today (UTC, matches reset).
   const now = new Date();
@@ -188,7 +177,7 @@ export default function Admin() {
       <section className="rounded-lg border border-border bg-card p-5 space-y-4">
         <div className="flex items-center gap-2">
           <Activity className="h-4 w-4 text-info" />
-          <h2 className="text-sm font-bold uppercase tracking-wide text-foreground">Sports Data APIs</h2>
+          <h2 className="text-sm font-bold uppercase tracking-wide text-foreground">Sports Data: Sportsbook API (RapidAPI)</h2>
         </div>
 
         {/* Sportsbook API (RapidAPI) — active provider */}
@@ -198,6 +187,9 @@ export default function Admin() {
             <span className="font-mono text-xs text-foreground">
               {rapidUsedToday} / {RAPID_DAILY_LIMIT} ({rapidPct}%)
             </span>
+          </div>
+          <div className="text-[11px] text-muted-foreground">
+            Free tier limit: {RAPID_DAILY_LIMIT} requests/day
           </div>
           <div className="h-2 w-full overflow-hidden rounded-full bg-secondary">
             <div
@@ -249,88 +241,6 @@ export default function Admin() {
               60m recommended to stay under 150/day with multiple sports active
             </span>
           </div>
-        </div>
-
-        {/* Legacy The Odds API — exhausted */}
-        <div className="rounded-md border border-border bg-background/20 p-3 space-y-2 opacity-60">
-          <div className="flex items-center justify-between">
-            <span className="text-xs font-semibold text-muted-foreground">The Odds API (legacy)</span>
-            <span className="text-[10px] font-bold uppercase rounded-full px-2 py-0.5 bg-destructive/15 text-destructive border border-destructive/30">
-              Exhausted — resets June 1
-            </span>
-          </div>
-
-        {/* Hard daily cap (client-side) */}
-        <div className="rounded-md border border-border/60 bg-background/40 p-3 space-y-2">
-          <div className="flex items-center justify-between">
-            <span className="text-xs font-semibold text-foreground">Daily request cap</span>
-            <span className="font-mono text-xs text-foreground">
-              Today: {dailyCount} / {DAILY_CAP} requests used
-            </span>
-          </div>
-          <div className="h-2 w-full overflow-hidden rounded-full bg-secondary">
-            <div
-              className={cn(
-                "h-full transition-all",
-                dailyCount >= DAILY_CAP
-                  ? "bg-destructive"
-                  : dailyCount >= Math.ceil(DAILY_CAP * 0.7)
-                    ? "bg-warning"
-                    : "bg-success",
-              )}
-              style={{ width: `${Math.min((dailyCount / DAILY_CAP) * 100, 100)}%` }}
-            />
-          </div>
-          {dailyCount >= DAILY_CAP && (
-            <div className="text-[11px] text-destructive">
-              Daily cap reached — further Odds API calls are blocked until tomorrow.
-            </div>
-          )}
-        </div>
-        {usage && summary ? (
-          <>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-              {(["primary", "secondary"] as const).map((k) => {
-                const key = usage[k];
-                return (
-                  <div key={k} className="rounded-md border border-border bg-background/40 p-3 space-y-1.5">
-                    <div className="flex items-center justify-between">
-                      <span className="text-xs font-semibold capitalize text-foreground">{k} key</span>
-                      <span
-                        className={cn(
-                          "text-[10px] font-bold uppercase rounded-full px-2 py-0.5",
-                          key.exhausted
-                            ? "bg-destructive/15 text-destructive border border-destructive/30"
-                            : "bg-success/15 text-success border border-success/30",
-                        )}
-                      >
-                        {key.exhausted ? "Exhausted" : "Active"}
-                      </span>
-                    </div>
-                    <div className="font-mono text-sm text-foreground">
-                      {key.requestsUsed} / 500 used
-                    </div>
-                    <div className="font-mono text-[11px] text-muted-foreground">
-                      {key.requestsRemaining} remaining
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-              <StatBlock label="Total remaining" value={summary.totalRemaining} hint={`of ${summary.totalLimit}`} />
-              <StatBlock label="Days until reset" value={summary.daysLeft} />
-              <StatBlock
-                label="Projected daily use"
-                value={summary.projectedDailyUse}
-                hint={summary.willLastUntilReset ? "On track" : "At risk"}
-              />
-              <StatBlock label="Reset date" value={summary.resetDate} />
-            </div>
-          </>
-        ) : (
-          <div className="text-xs text-muted-foreground">Loading usage…</div>
-        )}
         </div>
       </section>
 
@@ -392,9 +302,9 @@ export default function Admin() {
           <StatusPill label="Kalshi API" state="ok" text="Connected" />
           <StatusPill label="Claude AI" state="ok" text="Connected" />
           <StatusPill
-            label="Odds API"
-            state={oddsState}
-            text={oddsState === "error" ? "Exhausted" : "Connected"}
+            label="Sportsbook API"
+            state={rapidUsedToday >= RAPID_DAILY_LIMIT ? "error" : rapidUsedToday >= RAPID_DAILY_LIMIT * 0.85 ? "warn" : "ok"}
+            text={rapidUsedToday >= RAPID_DAILY_LIMIT ? "Exhausted" : "Connected"}
           />
           <StatusPill label="Lovable Cloud" state="ok" text="Connected" />
         </div>
