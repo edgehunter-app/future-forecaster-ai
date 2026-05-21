@@ -74,7 +74,15 @@ const toImplied = (p: number): number => (p > 0 ? 1 / p : 0);
 
 // ---------------- module caches ----------------
 let advantagesCache: { expires: number; payload: any[] } | null = null;
-let oddsCache: { expires: number; payload: any[] } | null = null;
+const competitionEventsCache = new Map<string, { expires: number; payload: any[] }>();
+const SPORT_KEY_TO_SHORT: Record<string, string> = {
+  americanfootball_nfl: "NFL",
+  basketball_nba: "NBA",
+  baseball_mlb: "MLB",
+  icehockey_nhl: "NHL",
+  soccer_epl: "EPL",
+  soccer_usa_mls: "MLS",
+};
 
 function getServiceClient() {
   const url = Deno.env.get("SUPABASE_URL")!;
@@ -124,69 +132,78 @@ async function rapidFetch(path: string): Promise<any | null> {
 async function getAdvantages(client: any): Promise<any[]> {
   const now = Date.now();
   if (advantagesCache && advantagesCache.expires > now) return advantagesCache.payload;
-  // Fetch both endpoints in parallel
-  const [advJson, oddsJson] = await Promise.all([
-    rapidFetch("/v0/advantages/?type=ARBITRAGE"),
-    rapidFetch("/v0/odds/"),
-  ]);
-  if (advJson) await bumpCounter(client);
-  if (oddsJson) await bumpCounter(client);
-  const advantages: any[] = advJson
-    ? (Array.isArray(advJson) ? advJson : (advJson.advantages ?? []))
-    : (advantagesCache?.payload ?? []);
-  const odds: any[] = oddsJson
-    ? (Array.isArray(oddsJson) ? oddsJson : (oddsJson.odds ?? []))
-    : (oddsCache?.payload ?? []);
+  const json = await rapidFetch("/v0/advantages/?type=ARBITRAGE");
+  if (!json) return advantagesCache?.payload ?? [];
+  await bumpCounter(client);
+  const advantages: any[] = Array.isArray(json) ? json : (json.advantages ?? []);
   advantagesCache = { expires: now + ADVANTAGES_TTL_MS, payload: advantages };
-  oddsCache = { expires: now + ODDS_TTL_MS, payload: odds };
   return advantages;
 }
 
-function getCachedOdds(): any[] {
-  return oddsCache?.payload ?? [];
+// /v1/competitions/{SHORT}/events returns events with main markets (moneyline,
+// spread, total) and latest outcomes baked in. One call = one full league
+// slate. Cached per-competition.
+async function getCompetitionEvents(client: any, short: string): Promise<any[]> {
+  const now = Date.now();
+  const cached = competitionEventsCache.get(short);
+  if (cached && cached.expires > now) return cached.payload;
+  // Provide an explicit startTimeFrom (yesterday UTC) — the API errors out
+  // with "If a startTimeTo is provided a startTimeFrom is required" otherwise.
+  const from = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
+  const to = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString();
+  const qs = `?startTimeFrom=${encodeURIComponent(from)}&startTimeTo=${encodeURIComponent(to)}`;
+  const json = await rapidFetch(`/v1/competitions/${encodeURIComponent(short)}/events${qs}`);
+  if (!json) return cached?.payload ?? [];
+  await bumpCounter(client);
+  const events: any[] = Array.isArray(json?.events) ? json.events : [];
+  competitionEventsCache.set(short, { expires: now + ADVANTAGES_TTL_MS, payload: events });
+  return events;
 }
 
-// Convert /v0/odds/ entries (flat outcomes per event) into the same event
-// shape advantagesToEvents emits. Each /v0/odds/ entry becomes one synthetic
-// MONEYLINE market keyed by source.
-function oddsToEvents(odds: any[]): any[] {
-  const byEvent = new Map<string, any>();
-  for (const entry of odds) {
-    const event = entry?.event;
-    const key = entry?.key ?? event?.key;
-    if (!key || !event) continue;
-    let ev = byEvent.get(key);
-    if (!ev) {
-      ev = {
-        key,
-        name: event.name ?? null,
-        startTime: event.startTime ?? null,
-        homeParticipantKey: event.homeParticipantKey ?? null,
-        participants: Array.isArray(event.participants) ? [...event.participants] : [],
-        competitionInstance: event.competitionInstance ?? null,
-        markets: [] as any[],
+// v1 events come back with markets already attached but outcomes may be flat
+// arrays. Normalize into the same `markets[].outcomes = { source: [...] }`
+// shape the rest of the transformer expects, and stamp competitionInstance
+// so leagueShort resolves correctly downstream.
+function normalizeCompetitionEvents(events: any[], short: string): any[] {
+  return events.map((ev: any) => {
+    const markets = Array.isArray(ev?.markets) ? ev.markets : [];
+    const normMarkets = markets.map((m: any) => {
+      const outs = m?.outcomes;
+      let grouped: Record<string, any[]>;
+      if (outs && !Array.isArray(outs) && typeof outs === "object") {
+        grouped = outs;
+      } else {
+        grouped = {};
+        for (const o of (Array.isArray(outs) ? outs : [])) {
+          const src = o?.source;
+          if (!src) continue;
+          (grouped[src] ||= []).push({
+            type: o.type,
+            payout: o.payout,
+            modifier: o.modifier,
+            participant: o.participant,
+          });
+        }
+      }
+      return {
+        key: m.key ?? (m.type ? String(m.type).toLowerCase() : "market"),
+        type: m.type,
+        segment: m.segment ?? "FULL_MATCH",
+        outcomes: grouped,
       };
-      byEvent.set(key, ev);
-    }
-    const grouped: Record<string, any[]> = {};
-    for (const o of (entry?.outcomes ?? [])) {
-      const src = o?.source;
-      if (!src) continue;
-      (grouped[src] ||= []).push({
-        type: o.type,
-        payout: o.payout,
-        modifier: o.modifier,
-        participant: o.participant,
-      });
-    }
-    ev.markets.push({
-      key: "moneyline",
-      type: "MONEYLINE",
-      segment: "FULL_MATCH",
-      outcomes: grouped,
     });
-  }
-  return [...byEvent.values()];
+    const inst = ev.competitionInstance ?? {};
+    const comp = (inst.competition && typeof inst.competition === "object") ? inst.competition : {};
+    return {
+      key: ev.key,
+      name: ev.name ?? null,
+      startTime: ev.startTime ?? null,
+      homeParticipantKey: ev.homeParticipantKey ?? null,
+      participants: Array.isArray(ev.participants) ? ev.participants : [],
+      competitionInstance: { ...inst, competition: { ...comp, shortName: comp.shortName ?? short } },
+      markets: normMarkets,
+    };
+  });
 }
 
 // Merge advantages events onto odds events. Odds = primary (all games),
@@ -463,17 +480,27 @@ Deno.serve(async (req) => {
       });
     }
 
-    // Pull BOTH endpoints in parallel: /v0/odds (all games) + /v0/advantages (arb).
-    const advantages = await getAdvantages(client);
-    const odds = getCachedOdds();
+    // Lazy per-sport fetch: /v1/competitions/{SHORT}/events for the requested
+    // sport (or all known sports if none given), plus /v0/advantages overlay.
+    const sportKey: string | null = body.sportKey ?? null;
+    const shortsToFetch: string[] = sportKey && SPORT_KEY_TO_SHORT[sportKey]
+      ? [SPORT_KEY_TO_SHORT[sportKey]]
+      : Object.values(SPORT_KEY_TO_SHORT);
+
+    const [advantages, ...perSport] = await Promise.all([
+      getAdvantages(client),
+      ...shortsToFetch.map((s) => getCompetitionEvents(client, s).then((evs) => ({ short: s, evs }))),
+    ]);
     const advEvents = advantagesToEvents(advantages);
-    const oddsEvents = oddsToEvents(odds);
-    const { events, arbKeys } = mergeEvents(oddsEvents, advEvents);
-    console.log(`Advantages: ${advantages.length} outcomes → ${advEvents.length} events; Odds: ${odds.length} → ${oddsEvents.length} events; merged: ${events.length}`);
+    const compEvents: any[] = [];
+    for (const { short, evs } of perSport as Array<{ short: string; evs: any[] }>) {
+      compEvents.push(...normalizeCompetitionEvents(evs, short));
+    }
+    const { events, arbKeys } = mergeEvents(compEvents, advEvents);
+    console.log(`Advantages: ${advantages.length} → ${advEvents.length} events; Competitions [${shortsToFetch.join(",")}]: ${compEvents.length} events; merged: ${events.length}`);
 
     // Optional client-side filter by sport. If sportKey unmatched/missing,
     // we return everything.
-    const sportKey: string | null = body.sportKey ?? null;
     const matcher = sportKey ? SPORT_TO_SHORT[sportKey] : null;
 
     const allGames = events.map((ev: any) => {
@@ -504,11 +531,12 @@ Deno.serve(async (req) => {
       used: usedNow,
       meta: {
         source: "sportsbook-api",
-        endpoint: "/v0/odds + /v0/advantages",
+        endpoint: "/v1/competitions/{SHORT}/events + /v0/advantages",
         fetchedAt: new Date().toISOString(),
         requestsUsedToday: usedNow,
         dailyLimit: DAILY_LIMIT,
         league: sportKey ?? "ALL",
+        leaguesFetched: shortsToFetch,
         eventsListed: events.length,
         eventsReturned: games.length,
         arbitrageEvents: arbKeys.size,
