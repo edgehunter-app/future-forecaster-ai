@@ -147,7 +147,12 @@ async function getCompetitionEvents(client: any, short: string): Promise<any[]> 
   const now = Date.now();
   const cached = competitionEventsCache.get(short);
   if (cached && cached.expires > now) return cached.payload;
-  const json = await rapidFetch(`/v1/competitions/${encodeURIComponent(short)}/events`);
+  // Provide an explicit startTimeFrom (yesterday UTC) — the API errors out
+  // with "If a startTimeTo is provided a startTimeFrom is required" otherwise.
+  const from = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
+  const to = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString();
+  const qs = `?startTimeFrom=${encodeURIComponent(from)}&startTimeTo=${encodeURIComponent(to)}`;
+  const json = await rapidFetch(`/v1/competitions/${encodeURIComponent(short)}/events${qs}`);
   if (!json) return cached?.payload ?? [];
   await bumpCounter(client);
   const events: any[] = Array.isArray(json?.events) ? json.events : [];
