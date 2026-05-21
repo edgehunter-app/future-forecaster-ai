@@ -192,13 +192,15 @@ function normalizeCompetitionEvents(events: any[], short: string): any[] {
         outcomes: grouped,
       };
     });
+    const inst = ev.competitionInstance ?? {};
+    const comp = (inst.competition && typeof inst.competition === "object") ? inst.competition : {};
     return {
       key: ev.key,
       name: ev.name ?? null,
       startTime: ev.startTime ?? null,
       homeParticipantKey: ev.homeParticipantKey ?? null,
       participants: Array.isArray(ev.participants) ? ev.participants : [],
-      competitionInstance: ev.competitionInstance ?? { competition: { shortName: short } },
+      competitionInstance: { ...inst, competition: { ...comp, shortName: comp.shortName ?? short } },
       markets: normMarkets,
     };
   });
