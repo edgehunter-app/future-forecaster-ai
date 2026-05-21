@@ -139,3 +139,25 @@ export interface ClaudeAnalysis {
   keySignals: string[];
   crossMarketEdge?: string | null;
 }
+
+export type BetStatus = "pending" | "won" | "lost" | "push" | "void";
+
+export interface Bet {
+  id: string;
+  user_id: string;
+  title: string;
+  sport: string;
+  bet_type: string;
+  pick: string;
+  odds: number;
+  amount: number;
+  sportsbook: string | null;
+  suggestion_id?: string | null;
+  status: BetStatus;
+  profit_loss: number;
+  game_date?: string | null;
+  notes?: string | null;
+  created_at: string;
+  updated_at: string;
+  resolved_at?: string | null;
+}
