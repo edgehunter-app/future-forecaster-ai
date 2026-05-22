@@ -22,6 +22,13 @@ function tierTone(confidence: number, noEdge: boolean) {
   return "border-border bg-muted/30 text-foreground";
 }
 
+function formatOdds(v: number | string | undefined): string {
+  if (v === undefined || v === null || v === "") return "";
+  const n = typeof v === "string" ? Number(v.replace(/[^\d.-]/g, "")) : v;
+  if (!Number.isFinite(n)) return String(v);
+  return n > 0 ? `+${n}` : `${n}`;
+}
+
 export default function GameAnalysisPanel({ result, game, onClear }: Props) {
   const settings = useAppStore((s) => s.settings);
   const { user } = useAuth();
