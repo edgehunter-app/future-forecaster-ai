@@ -85,8 +85,11 @@ SMART WALLET SIGNALS:
 ${wallets.map((w: Any) => `- ${w.label} (Tier ${w.tier}): ${(w.winRate * 100).toFixed(0)}% win rate`).join("\n")}
 `
     : "No smart wallet data available for this game.";
-  return `You are a quantitative sports betting analyst.
-Analyze this game and identify if a real edge exists.
+  return `You are EdgeHunter's sports betting analyst.
+Your job is to find the BEST BET available given the current lines —
+not just flag large edges. Even a small edge is worth reporting.
+ALWAYS return a specific recommendation. Never return NO_EDGE if there
+are real games with real odds to analyze.
 
 GAME: ${p.homeTeam} vs ${p.awayTeam}
 League: ${p.league}
@@ -108,12 +111,25 @@ USER RISK PROFILE:
   Kelly multiplier: ${kelly}x
   Max position: ${maxPct}% = $${((bankroll * maxPct) / 100).toFixed(0)}
 
-INSTRUCTIONS:
-Assess whether a real edge exists based on:
-1. Line value — are the odds mispriced vs true probability?
-2. Cross-market gap — does Polymarket confirm the edge?
-3. Book consensus — is one side getting sharp money?
-4. Game context — injuries, home/away, recent form if known
+PRIORITY ORDER FOR FINDING VALUE:
+1. Line shopping — if one book offers significantly better odds than
+   consensus, THAT is the recommendation.
+2. Consensus value — if implied probability differs meaningfully from
+   your assessment of true probability.
+3. Cross-market signal — if Polymarket/Kalshi pricing differs from Vegas.
+
+LINE SHOPPING GUIDANCE:
+- 8+ cents better than worst book  => STRONG recommendation
+- 4-7 cents better                  => MODERATE recommendation
+- 1-3 cents better                  => WEAK but real recommendation
+
+Calculate true edge as:
+  edge = bestImplied - consensusImplied
+  bestImplied = 1 / bestDecimalOdds
+  consensusImplied = average of all books for that side
+
+Always name the specific book offering the best odds for your recommended
+side.
 
 Calculate suggested bet using Quarter Kelly:
   raw_kelly = (edge * bankroll) / odds_decimal
@@ -121,25 +137,35 @@ Calculate suggested bet using Quarter Kelly:
 
 Respond with ONLY valid JSON, no markdown:
 {
-  "recommendation": "HOME" | "AWAY" | "OVER" | "UNDER" | "NO_EDGE",
+  "recommendation": "HOME" | "AWAY" | "OVER" | "UNDER",
   "recommendedTeam": "team name or Over/Under",
   "betType": "moneyline" | "spread" | "total",
   "confidence": 0-100,
   "edge": decimal e.g. 0.07,
   "suggestedAmount": dollar amount,
   "odds": American odds e.g. -110,
+  "bestBook": "book name with the best line",
   "impliedProbability": decimal,
+  "consensusImplied": decimal,
+  "lineShopping": {
+    "bestBook": "e.g. ProphetX",
+    "bestOdds": "American odds e.g. 121",
+    "worstBook": "e.g. FanDuel",
+    "worstOdds": "American odds e.g. 110",
+    "edgeCents": "integer cents between best and worst",
+    "recommendation": "one sentence e.g. Bet AWAY at ProphetX +121 vs consensus +113"
+  },
   "reasoning": "2-3 sentences specific to this game",
   "keyFactors": ["factor1", "factor2", "factor3"],
   "riskLevel": "low" | "medium" | "high",
   "warningFlags": ["any concerns about this bet"]
 }
 
-If no edge exists return:
-  "recommendation": "NO_EDGE",
-  "confidence": below 45,
-  "suggestedAmount": 0,
-  "reasoning": explain why no edge`;
+IMPORTANT: If the best available line is clearly better than consensus,
+ALWAYS recommend it even if the overall edge is small. Users want to
+know WHERE to bet, not just WHETHER to bet. Only return
+"recommendation": "NO_EDGE" if confidence would be below 35 — otherwise
+always pick a side.`;
 }
 
 function buildKalshiPrompt(p: AnalyzeBody): string {
