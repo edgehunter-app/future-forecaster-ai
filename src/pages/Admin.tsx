@@ -9,14 +9,13 @@ import { usePageTitle } from "@/hooks/usePageTitle";
 import { getAnalysisCounts } from "@/lib/analysisCounter";
 import { cn } from "@/lib/utils";
 import { useAppStore } from "@/store/useAppStore";
-import { loadKeyUsage } from "@/lib/oddsApiKeyManager";
-
 const CLAUDE_COST_PER_RUN = 0.003;
 // 0 = Manual refresh only (no setInterval). Other values are minutes.
 const REFRESH_OPTIONS = [0, 15, 30, 60, 120];
 const RAPID_DAILY_LIMIT = 1000;   // Pro tier hard limit
 const RAPID_RATE_LIMIT = 60;      // requests / minute
-const ODDS_MONTHLY_LIMIT = 500;
+// Both legacy Odds API keys are exhausted until this date.
+const ODDS_API_RESET_DATE = new Date("2026-06-01T00:00:00Z");
 
 type PillState = "ok" | "warn" | "error";
 function StatusPill({ label, state, text }: { label: string; state: PillState; text: string }) {
@@ -45,32 +44,27 @@ function StatBlock({ label, value, hint }: { label: string; value: string | numb
 }
 
 function OddsApiKeyStatus() {
-  const [usage, setUsage] = useState(() => loadKeyUsage());
-  useEffect(() => {
-    const id = setInterval(() => setUsage(loadKeyUsage()), 5000);
-    return () => clearInterval(id);
-  }, []);
-  const reset = new Date(usage.primary.resetDate);
-  const daysLeft = Math.max(0, Math.ceil((reset.getTime() - Date.now()) / 86_400_000));
-  const Row = ({ label, k }: { label: string; k: "primary" | "secondary" }) => {
-    const u = usage[k];
-    return (
-      <div className="flex items-center justify-between text-[11px]">
-        <span className="text-muted-foreground">{label}</span>
-        <span className={cn("font-mono", u.exhausted ? "text-destructive" : "text-foreground")}>
-          {u.requestsRemaining} remaining {u.exhausted ? "· exhausted" : ""}
-        </span>
-      </div>
-    );
-  };
+function OddsApiKeyStatus() {
+  const daysLeft = Math.max(
+    0,
+    Math.ceil((ODDS_API_RESET_DATE.getTime() - Date.now()) / 86_400_000),
+  );
+  const Row = ({ label }: { label: string }) => (
+    <div className="flex items-center justify-between text-[11px]">
+      <span className="text-muted-foreground">{label}</span>
+      <span className="inline-flex items-center rounded-full border border-destructive/40 bg-destructive/10 px-2 py-0.5 font-mono text-[10px] font-semibold uppercase text-destructive">
+        Exhausted
+      </span>
+    </div>
+  );
   return (
     <div className="space-y-1">
-      <Row label="Key 1 (ODDS_API_KEY)" k="primary" />
-      <Row label="Key 2 (ODDS_API_KEY_2)" k="secondary" />
+      <Row label="Key 1 (ODDS_API_KEY)" />
+      <Row label="Key 2 (ODDS_API_KEY_2)" />
       <div className="flex items-center justify-between text-[11px] pt-1 border-t border-border/40">
         <span className="text-muted-foreground">Resets</span>
         <span className="font-mono text-foreground">
-          {reset.toLocaleDateString()} · in {daysLeft}d
+          {ODDS_API_RESET_DATE.toLocaleDateString()} · in {daysLeft}d
         </span>
       </div>
     </div>
@@ -310,13 +304,13 @@ export default function Admin() {
         <div className="rounded-md border border-border bg-background/40 p-3 space-y-2">
           <div className="flex items-center justify-between">
             <span className="text-xs font-semibold text-foreground">The Odds API (legacy fallback)</span>
-            <span className="font-mono text-[11px] text-muted-foreground">
-              {ODDS_MONTHLY_LIMIT}/mo per key
+            <span className="inline-flex items-center rounded-full border border-destructive/40 bg-destructive/10 px-2 py-0.5 font-mono text-[10px] font-semibold uppercase text-destructive">
+              Both keys exhausted
             </span>
           </div>
           <OddsApiKeyStatus />
           <div className="text-[10px] text-muted-foreground">
-            Not used in active scans — kept as fallback. Monthly quota resets on the 1st.
+            Not used in active scans — both keys are out of quota until June 1, 2026.
           </div>
         </div>
       </section>
