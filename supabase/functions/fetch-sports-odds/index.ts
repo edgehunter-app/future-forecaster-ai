@@ -16,7 +16,7 @@ const corsHeaders = {
 
 const RAPID_HOST = "sportsbook-api2.p.rapidapi.com";
 const RAPID_BASE = `https://${RAPID_HOST}`;
-const DAILY_LIMIT = 150;
+const DAILY_LIMIT = 1000;
 const PROVIDER = "rapidapi-sportsbook";
 const ADVANTAGES_TTL_MS = 90_000; // 90s
 const ODDS_TTL_MS = 90_000;
