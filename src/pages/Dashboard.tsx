@@ -556,10 +556,21 @@ export default function Dashboard() {
 }
 
 function SportsEdgeStrip() {
-  // Read-only: never trigger sports/odds API calls from Dashboard.
   const mispricings = useAppStore((s) => s.sportsMispricings);
   const sportsLastScanned = useAppStore((s) => s.sportsLastScanned);
+  const lastBestBet = useAppStore((s) => s.lastBestBet);
+  const setTriggerBestBetOnSports = useAppStore((s) => s.setTriggerBestBetOnSports);
+  const navigate = useNavigate();
   const lastScanned = sportsLastScanned ? new Date(sportsLastScanned) : null;
+
+  const bestBetIsRecent = lastBestBet
+    ? Date.now() - new Date(lastBestBet.generatedAt).getTime() < 4 * 60 * 60 * 1000
+    : false;
+
+  const handleRunAnalysis = () => {
+    setTriggerBestBetOnSports(true);
+    navigate("/sports");
+  };
 
   return (
     <div>
@@ -570,12 +581,7 @@ function SportsEdgeStrip() {
           View all <ArrowRight className="h-3 w-3" />
         </Link>
       </div>
-      {mispricings.length === 0 ? (
-        <div className="rounded-lg border border-dashed border-border bg-card/40 p-5 text-center text-sm text-muted-foreground">
-          No sports gaps detected right now
-          {lastScanned && <div className="mt-1 text-[11px] font-mono">Last scanned: {lastScanned.toLocaleTimeString()}</div>}
-        </div>
-      ) : (
+      {mispricings.length > 0 ? (
         <div className="flex gap-3 overflow-x-auto scrollbar-thin pb-2">
           {mispricings.slice(0, 6).map((m) => {
             const color = getConfidenceColor(m.confidence);
@@ -599,6 +605,45 @@ function SportsEdgeStrip() {
               </Link>
             );
           })}
+        </div>
+      ) : bestBetIsRecent && lastBestBet ? (
+        <div className="rounded-lg border bg-card p-4 hover:border-foreground/20 transition-colors">
+          <div className="flex items-center gap-2 mb-2">
+            <Trophy className="h-4 w-4 text-warning" />
+            <span className="text-xs font-bold uppercase tracking-wide text-foreground">Today's Best Bet</span>
+          </div>
+          <div className="text-sm font-semibold text-foreground">
+            {lastBestBet.analysis.recommendedTeam || lastBestBet.game.awayTeam} at {lastBestBet.analysis.bestBook || "best book"} {lastBestBet.analysis.odds > 0 ? `+${lastBestBet.analysis.odds}` : lastBestBet.analysis.odds}
+          </div>
+          <div className="mt-1 flex items-center gap-3 text-xs font-mono text-muted-foreground">
+            <span className="text-success font-semibold">Edge: +{(lastBestBet.analysis.edge * 100).toFixed(1)}%</span>
+            <span>·</span>
+            <span>Confidence: {Math.round(lastBestBet.analysis.confidence)}%</span>
+          </div>
+          <Link
+            to="/sports"
+            className="mt-3 inline-flex items-center gap-1 text-xs font-semibold text-info hover:text-info/80"
+          >
+            View Full Analysis <ArrowRight className="h-3 w-3" />
+          </Link>
+        </div>
+      ) : (
+        <div className="rounded-lg border border-dashed border-border bg-card/40 p-5 text-center">
+          <Trophy className="h-8 w-8 mx-auto text-muted-foreground mb-2" />
+          <div className="text-sm font-semibold text-foreground">Find Today's Best Bet</div>
+          <p className="mt-1 text-xs text-muted-foreground">AI scans all games for line shopping value</p>
+          <button
+            onClick={handleRunAnalysis}
+            className={cn(
+              "mt-3 inline-flex items-center gap-2 rounded-xl px-4 py-2 text-xs font-bold text-white shadow-md transition-opacity hover:opacity-90",
+              "bg-gradient-to-r from-purple to-purple/70",
+            )}
+          >
+            <Zap className="h-3.5 w-3.5" />
+            Run Analysis
+            <ArrowRight className="h-3.5 w-3.5" />
+          </button>
+          {lastScanned && <div className="mt-2 text-[11px] font-mono text-muted-foreground">Last scanned: {lastScanned.toLocaleTimeString()}</div>}
         </div>
       )}
       <GamblingDisclaimer variant="compact" className="mt-3" />
