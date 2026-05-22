@@ -13,6 +13,16 @@ export interface GameAnalysisResult {
   suggestedAmount: number;
   odds: number;
   impliedProbability: number;
+  consensusImplied?: number;
+  bestBook?: string;
+  lineShopping?: {
+    bestBook?: string;
+    bestOdds?: number | string;
+    worstBook?: string;
+    worstOdds?: number | string;
+    edgeCents?: number;
+    recommendation?: string;
+  } | null;
   reasoning: string;
   keyFactors: string[];
   riskLevel: "low" | "medium" | "high";
