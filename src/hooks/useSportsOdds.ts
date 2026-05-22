@@ -229,20 +229,10 @@ export function useSportsOdds(polymarkets: Market[]) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // Auto-refresh on the user's chosen interval — refreshes only the current sport.
+  // Manual refresh only — no auto-scan interval.
   useEffect(() => {
-    if (!refreshMinutes || refreshMinutes <= 0) {
-      setNextScanAt(null);
-      return;
-    }
-    const ms = refreshMinutes * 60 * 1000;
-    setNextScanAt(new Date(Date.now() + ms));
-    const id = setInterval(() => {
-      void scan("auto");
-      setNextScanAt(new Date(Date.now() + ms));
-    }, ms);
-    return () => clearInterval(id);
-  }, [refreshMinutes, scan]);
+    setNextScanAt(null);
+  }, [refreshMinutes]);
 
   return {
     mispricings,
