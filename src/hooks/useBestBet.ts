@@ -127,12 +127,14 @@ export function useBestBet() {
         bestResult.keyFactors = Array.isArray(bestResult.keyFactors) ? bestResult.keyFactors : [];
         bestResult.warningFlags = Array.isArray(bestResult.warningFlags) ? bestResult.warningFlags : [];
         bumpSportsAnalyses();
-        setResult({
+        const resultObj = {
           game: bestGame,
           analysis: bestResult,
           scannedCount: sortedGames.length,
           generatedAt: new Date(),
-        });
+        };
+        setResult(resultObj);
+        setLastBestBet(resultObj);
       } else {
         setError("Couldn't find a strong bet today. Try again when more games are available.");
       }
