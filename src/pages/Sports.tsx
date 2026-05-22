@@ -1,11 +1,13 @@
 import { useMemo, useState } from "react";
 import { Link } from "react-router-dom";
-import { Trophy, RotateCw, AlertTriangle } from "lucide-react";
+import { Trophy, RotateCw, AlertTriangle, Zap, Loader2 } from "lucide-react";
 import { useAppStore } from "@/store/useAppStore";
 import { useSportsOdds } from "@/hooks/useSportsOdds";
 import SportsMispricingCard from "@/components/sports/SportsMispricingCard";
 import GamblingDisclaimer from "@/components/sports/GamblingDisclaimer";
 import OddsBoard from "@/components/sports/OddsBoard";
+import BestBetCard from "@/components/sports/BestBetCard";
+import { useBestBet } from "@/hooks/useBestBet";
 import { SPORTS } from "@/lib/oddsApi";
 import { cn } from "@/lib/utils";
 import { usePageTitle } from "@/hooks/usePageTitle";
@@ -37,6 +39,24 @@ export default function Sports() {
   } = useSportsOdds(markets);
 
   const [activeSport, setActiveSport] = useState<string>("all");
+
+  const {
+    findBestBet,
+    loading: bestBetLoading,
+    scannedSoFar,
+    result: bestBetResult,
+    error: bestBetError,
+    clear: clearBestBet,
+  } = useBestBet();
+
+  const handleBestBet = async () => {
+    await findBestBet();
+    setTimeout(() => {
+      document
+        .getElementById("best-bet-card")
+        ?.scrollIntoView({ behavior: "smooth", block: "start" });
+    }, 100);
+  };
 
   const filteredGames = useMemo(() => {
     const list = fullGames ?? [];
@@ -102,6 +122,33 @@ export default function Sports() {
               return `Updated ${minutesAgo}m ago${refreshing}`;
             })()}
           </span>
+          <button
+            onClick={handleBestBet}
+            disabled={bestBetLoading || (fullGames?.length ?? 0) === 0}
+            className={cn(
+              "inline-flex items-center gap-2 rounded-xl px-4 text-sm font-bold text-white shadow-md transition-opacity disabled:opacity-60",
+              "bg-gradient-to-r from-purple to-purple/70 hover:opacity-90",
+            )}
+            style={{ minHeight: 44 }}
+          >
+            {bestBetLoading ? (
+              <>
+                <Loader2 className="h-4 w-4 animate-spin" />
+                <span className="flex flex-col items-start leading-tight">
+                  <span>Scanning {scannedSoFar}/8…</span>
+                  <span className="text-[10px] font-normal opacity-80">Analyzing games</span>
+                </span>
+              </>
+            ) : (
+              <>
+                <Zap className="h-4 w-4" />
+                <span className="flex flex-col items-start leading-tight">
+                  <span>Best Bet Today</span>
+                  <span className="text-[10px] font-normal opacity-80">AI scans all games</span>
+                </span>
+              </>
+            )}
+          </button>
           <div className="flex flex-col items-end gap-0.5">
             <button
               onClick={() => void scan("manual")}
@@ -125,6 +172,16 @@ export default function Sports() {
           </div>
         </div>
       </div>
+
+      {bestBetError && (
+        <div className="rounded-lg border border-destructive/40 bg-destructive/10 px-4 py-3 text-sm text-destructive">
+          {bestBetError}
+        </div>
+      )}
+
+      {bestBetResult && (
+        <BestBetCard result={bestBetResult} onClear={clearBestBet} />
+      )}
 
       {isAdmin && !activeKey && (
         <div className="rounded-lg border border-destructive/40 bg-destructive/10 px-4 py-2 text-sm flex items-start gap-2 text-destructive">
