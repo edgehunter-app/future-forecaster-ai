@@ -59,10 +59,13 @@ Respond with ONLY valid JSON, no markdown:
   "crossMarketEdge": "one sentence or null"
 }
 
-IMPORTANT: Even if the signal is weak, always return a valid JSON object.
-Use low confidence (30-50) and low edge (0.03-0.05) for weak signals,
-and set riskLevel to "high". Never return null, an empty object, or refuse
-to answer. The user wants to see something to evaluate.`;
+IMPORTANT: ALWAYS return the best available tip given the data — do not
+refuse just because the edge is small. Even a 2-3% mispricing is worth
+surfacing. Pick the side (YES or NO) with better expected value relative
+to current pricing. Use low confidence (30-50) and low edge (0.02-0.05)
+for weak signals and set riskLevel to "high", but still return a
+direction. Never return null, an empty object, or refuse to answer.
+Users want to know WHERE the edge is, not just whether to bet.`;
 }
 
 function buildSportsPrompt(p: AnalyzeBody): string {
