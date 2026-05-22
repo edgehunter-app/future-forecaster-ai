@@ -77,6 +77,8 @@ export interface AppState {
   crossMarketLastScanned: Date | null;
   crossMarketLoading: boolean;
   propsCache: Record<string, GameProps>;
+  lastBestBet: BestBetResult | null;
+  triggerBestBetOnSports: boolean;
 
   setCachedMarkets: (m: Market[], isLive: boolean) => void;
   setMarketsLastUpdated: (d: Date) => void;
@@ -88,6 +90,8 @@ export interface AppState {
   setCrossMarketLastScanned: (d: Date) => void;
   setCrossMarketLoading: (b: boolean) => void;
   setPropsCache: (c: Record<string, GameProps>) => void;
+  setLastBestBet: (r: BestBetResult | null) => void;
+  setTriggerBestBetOnSports: (val: boolean) => void;
 
   updateSettings: (partial: Partial<SettingsState>) => void;
   updateAlerts: (
