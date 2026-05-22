@@ -149,7 +149,8 @@ export function useBestBet() {
     setResult(null);
     setError(null);
     setScannedSoFar(0);
-  }, []);
+    setLastBestBet(null);
+  }, [setLastBestBet]);
 
   return { findBestBet, loading, scannedSoFar, result, error, clear };
 }
