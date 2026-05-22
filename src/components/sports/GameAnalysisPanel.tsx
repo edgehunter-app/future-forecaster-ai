@@ -3,7 +3,7 @@ import { Brain, X, Shield, ChevronDown, ChevronUp, Save, TrendingUp } from "luci
 import { cn } from "@/lib/utils";
 import { ConfidenceBar } from "@/components/ui/ConfidenceBar";
 import type { FullGame } from "@/lib/oddsApi";
-import type { GameAnalysisResult } from "@/hooks/useGameAnalysis";
+import type { GameAnalysisResult } from "@/types";
 import { useAppStore } from "@/store/useAppStore";
 import { useSuggestionsDB } from "@/hooks/useSuggestionsDB";
 import { useAuth } from "@/hooks/useAuth";

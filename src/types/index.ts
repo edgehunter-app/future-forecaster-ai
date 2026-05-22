@@ -161,3 +161,35 @@ export interface Bet {
   updated_at: string;
   resolved_at?: string | null;
 }
+
+export interface GameAnalysisResult {
+  recommendation: "HOME" | "AWAY" | "OVER" | "UNDER" | "NO_EDGE" | string;
+  recommendedTeam: string;
+  betType: "moneyline" | "spread" | "total" | string;
+  confidence: number;
+  edge: number;
+  suggestedAmount: number;
+  odds: number;
+  impliedProbability: number;
+  consensusImplied?: number;
+  bestBook?: string;
+  lineShopping?: {
+    bestBook?: string;
+    bestOdds?: number | string;
+    worstBook?: string;
+    worstOdds?: number | string;
+    edgeCents?: number;
+    recommendation?: string;
+  } | null;
+  reasoning: string;
+  keyFactors: string[];
+  riskLevel: "low" | "medium" | "high";
+  warningFlags: string[];
+}
+
+export interface BestBetResult {
+  game: import("@/lib/oddsApi").FullGame;
+  analysis: GameAnalysisResult;
+  scannedCount: number;
+  generatedAt: Date;
+}

@@ -2,32 +2,9 @@ import { useCallback, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAppStore } from "@/store/useAppStore";
 import type { FullGame } from "@/lib/oddsApi";
+import type { GameAnalysisResult } from "@/types";
 import { bumpSportsAnalyses } from "@/lib/analysisCounter";
 
-export interface GameAnalysisResult {
-  recommendation: "HOME" | "AWAY" | "OVER" | "UNDER" | "NO_EDGE" | string;
-  recommendedTeam: string;
-  betType: "moneyline" | "spread" | "total" | string;
-  confidence: number;
-  edge: number;
-  suggestedAmount: number;
-  odds: number;
-  impliedProbability: number;
-  consensusImplied?: number;
-  bestBook?: string;
-  lineShopping?: {
-    bestBook?: string;
-    bestOdds?: number | string;
-    worstBook?: string;
-    worstOdds?: number | string;
-    edgeCents?: number;
-    recommendation?: string;
-  } | null;
-  reasoning: string;
-  keyFactors: string[];
-  riskLevel: "low" | "medium" | "high";
-  warningFlags: string[];
-}
 
 export interface PolymarketGapInput {
   polyImplied: number;

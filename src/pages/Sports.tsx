@@ -1,5 +1,5 @@
-import { useMemo, useState } from "react";
-import { Link } from "react-router-dom";
+import { useEffect, useMemo, useState } from "react";
+import { Link, useNavigate } from "react-router-dom";
 import { Trophy, RotateCw, AlertTriangle, Zap, Loader2 } from "lucide-react";
 import { useAppStore } from "@/store/useAppStore";
 import { useSportsOdds } from "@/hooks/useSportsOdds";
@@ -18,6 +18,9 @@ export default function Sports() {
   usePageTitle("Sports Odds Board");
   const { isAdmin } = useIsAdmin();
   const markets = useAppStore((s) => s.markets);
+  const triggerBestBetOnSports = useAppStore((s) => s.triggerBestBetOnSports);
+  const setTriggerBestBetOnSports = useAppStore((s) => s.setTriggerBestBetOnSports);
+  const navigate = useNavigate();
   const {
     mispricings,
     fullGames,
@@ -57,6 +60,14 @@ export default function Sports() {
         ?.scrollIntoView({ behavior: "smooth", block: "start" });
     }, 100);
   };
+
+  useEffect(() => {
+    if (triggerBestBetOnSports) {
+      setTriggerBestBetOnSports(false);
+      void handleBestBet();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [triggerBestBetOnSports]);
 
   const filteredGames = useMemo(() => {
     const list = fullGames ?? [];

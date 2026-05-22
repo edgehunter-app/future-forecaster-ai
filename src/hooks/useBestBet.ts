@@ -2,15 +2,9 @@ import { useCallback, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAppStore } from "@/store/useAppStore";
 import type { FullGame } from "@/lib/oddsApi";
-import type { GameAnalysisResult } from "@/hooks/useGameAnalysis";
+import type { GameAnalysisResult, BestBetResult } from "@/types";
 import { bumpSportsAnalyses } from "@/lib/analysisCounter";
 
-export interface BestBetResult {
-  game: FullGame;
-  analysis: GameAnalysisResult;
-  scannedCount: number;
-  generatedAt: Date;
-}
 
 function isToday(iso: string): boolean {
   const d = new Date(iso);
@@ -31,6 +25,7 @@ export function useBestBet() {
   const fullGames = useAppStore((s) => s.fullGames);
   const settings = useAppStore((s) => s.settings);
   const trackedWallets = useAppStore((s) => s.trackedWallets ?? []);
+  const setLastBestBet = useAppStore((s) => s.setLastBestBet);
 
   const findBestBet = useCallback(async () => {
     if (!fullGames || fullGames.length === 0) {
@@ -132,12 +127,14 @@ export function useBestBet() {
         bestResult.keyFactors = Array.isArray(bestResult.keyFactors) ? bestResult.keyFactors : [];
         bestResult.warningFlags = Array.isArray(bestResult.warningFlags) ? bestResult.warningFlags : [];
         bumpSportsAnalyses();
-        setResult({
+        const resultObj = {
           game: bestGame,
           analysis: bestResult,
           scannedCount: sortedGames.length,
           generatedAt: new Date(),
-        });
+        };
+        setResult(resultObj);
+        setLastBestBet(resultObj);
       } else {
         setError("Couldn't find a strong bet today. Try again when more games are available.");
       }
@@ -152,7 +149,8 @@ export function useBestBet() {
     setResult(null);
     setError(null);
     setScannedSoFar(0);
-  }, []);
+    setLastBestBet(null);
+  }, [setLastBestBet]);
 
   return { findBestBet, loading, scannedSoFar, result, error, clear };
 }

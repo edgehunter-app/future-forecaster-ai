@@ -1,6 +1,6 @@
 import { create } from "zustand";
 import { persist, createJSONStorage } from "zustand/middleware";
-import type { Wallet, Suggestion, Market, CrossMarketOpp } from "@/types";
+import type { Wallet, Suggestion, Market, CrossMarketOpp, BestBetResult } from "@/types";
 import type { FullGame, GameProps, SportsMispricing } from "@/lib/oddsApi";
 
 export interface AlertChannelTelegram { enabled: boolean; chatId: string; }
@@ -77,6 +77,8 @@ export interface AppState {
   crossMarketLastScanned: Date | null;
   crossMarketLoading: boolean;
   propsCache: Record<string, GameProps>;
+  lastBestBet: BestBetResult | null;
+  triggerBestBetOnSports: boolean;
 
   setCachedMarkets: (m: Market[], isLive: boolean) => void;
   setMarketsLastUpdated: (d: Date) => void;
@@ -88,6 +90,8 @@ export interface AppState {
   setCrossMarketLastScanned: (d: Date) => void;
   setCrossMarketLoading: (b: boolean) => void;
   setPropsCache: (c: Record<string, GameProps>) => void;
+  setLastBestBet: (r: BestBetResult | null) => void;
+  setTriggerBestBetOnSports: (val: boolean) => void;
 
   updateSettings: (partial: Partial<SettingsState>) => void;
   updateAlerts: (
@@ -158,6 +162,8 @@ export const useAppStore = create<AppState>()(
       crossMarketLastScanned: null,
       crossMarketLoading: false,
       propsCache: {},
+      lastBestBet: null,
+      triggerBestBetOnSports: false,
 
       setCachedMarkets: (m, isLive) =>
         set({ cachedMarkets: m, marketsIsLive: isLive, marketsLastUpdated: new Date() }),
@@ -170,6 +176,8 @@ export const useAppStore = create<AppState>()(
       setCrossMarketLastScanned: (d) => set({ crossMarketLastScanned: d }),
       setCrossMarketLoading: (b) => set({ crossMarketLoading: b }),
       setPropsCache: (c) => set({ propsCache: c }),
+      setLastBestBet: (r) => set({ lastBestBet: r }),
+      setTriggerBestBetOnSports: (val) => set({ triggerBestBetOnSports: val }),
 
       updateSettings: (partial) => set((s) => ({ settings: { ...s.settings, ...partial } })),
       updateAlerts: (channel, partial) =>

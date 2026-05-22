@@ -1,7 +1,7 @@
 import { Trophy, X, TrendingUp, Save } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { ConfidenceBar } from "@/components/ui/ConfidenceBar";
-import type { BestBetResult } from "@/hooks/useBestBet";
+import type { BestBetResult } from "@/types";
 import { useAppStore } from "@/store/useAppStore";
 import { useSuggestionsDB } from "@/hooks/useSuggestionsDB";
 import { useAuth } from "@/hooks/useAuth";
