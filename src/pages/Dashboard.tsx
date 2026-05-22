@@ -559,7 +559,7 @@ function SportsEdgeStrip() {
   const mispricings = useAppStore((s) => s.sportsMispricings);
   const sportsLastScanned = useAppStore((s) => s.sportsLastScanned);
   const lastBestBet = useAppStore((s) => s.lastBestBet);
-  const setTriggerBestBetOnSports = useAppStore((s) => s.setTriggerBestBetOnSports);
+  const setPendingBestBetScan = useAppStore((s) => s.setPendingBestBetScan);
   const navigate = useNavigate();
   const lastScanned = sportsLastScanned ? new Date(sportsLastScanned) : null;
 
@@ -568,7 +568,7 @@ function SportsEdgeStrip() {
     : false;
 
   const handleRunAnalysis = () => {
-    setTriggerBestBetOnSports(true);
+    setPendingBestBetScan(true);
     navigate("/sports");
   };
 
