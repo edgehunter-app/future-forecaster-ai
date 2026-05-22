@@ -18,6 +18,9 @@ export default function Sports() {
   usePageTitle("Sports Odds Board");
   const { isAdmin } = useIsAdmin();
   const markets = useAppStore((s) => s.markets);
+  const triggerBestBetOnSports = useAppStore((s) => s.triggerBestBetOnSports);
+  const setTriggerBestBetOnSports = useAppStore((s) => s.setTriggerBestBetOnSports);
+  const navigate = useNavigate();
   const {
     mispricings,
     fullGames,
