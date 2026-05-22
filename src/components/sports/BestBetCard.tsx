@@ -109,7 +109,7 @@ export default function BestBetCard({ result, onClear }: Props) {
         marketId: `sports:${game.id}`,
         question: `${game.awayTeam} @ ${game.homeTeam}`,
         direction:
-          analysis.recommendation === "HOME" || analysis.recommendation === "OVER" ? "YES" : "NO",
+          resolvedSide === "HOME" || analysis.recommendation === "OVER" ? "YES" : "NO",
         currentOdds: analysis.impliedProbability,
         suggestedAmount: analysis.suggestedAmount,
         confidence: analysis.confidence,
