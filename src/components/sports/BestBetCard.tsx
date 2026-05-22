@@ -35,17 +35,33 @@ export default function BestBetCard({ result, onClear }: Props) {
   const [saved, setSaved] = useState(false);
 
   const tone = confidenceTone(analysis.confidence);
+  // Resolve the actual side being recommended. If Claude's `recommendedTeam`
+  // names the home or away team, that wins — it represents the side Claude's
+  // reasoning is actually about. Otherwise fall back to the side label.
+  const recTeamRaw = (analysis.recommendedTeam ?? "").trim();
+  const matchesHome =
+    !!recTeamRaw && game.homeTeam.toLowerCase().includes(recTeamRaw.toLowerCase());
+  const matchesAway =
+    !!recTeamRaw && game.awayTeam.toLowerCase().includes(recTeamRaw.toLowerCase());
+  const resolvedSide: "HOME" | "AWAY" | null = matchesHome
+    ? "HOME"
+    : matchesAway
+      ? "AWAY"
+      : analysis.recommendation === "HOME" || analysis.recommendation === "AWAY"
+        ? analysis.recommendation
+        : null;
+
   const team =
-    analysis.recommendation === "HOME"
+    resolvedSide === "HOME"
       ? game.homeTeam
-      : analysis.recommendation === "AWAY"
+      : resolvedSide === "AWAY"
         ? game.awayTeam
-        : analysis.recommendedTeam ?? "";
+        : recTeamRaw;
 
   const headline =
-    analysis.recommendation === "HOME"
+    resolvedSide === "HOME"
       ? `BET HOME — ${game.homeTeam}`
-      : analysis.recommendation === "AWAY"
+      : resolvedSide === "AWAY"
         ? `BET AWAY — ${game.awayTeam}`
         : analysis.recommendation === "OVER"
           ? `BET OVER — ${team || game.total?.line || ""}`
@@ -63,16 +79,16 @@ export default function BestBetCard({ result, onClear }: Props) {
           : analysis.betType;
 
   const bestOdds =
-    analysis.recommendation === "HOME"
+    resolvedSide === "HOME"
       ? game.moneyline?.bestHomeOdds
-      : analysis.recommendation === "AWAY"
+      : resolvedSide === "AWAY"
         ? game.moneyline?.bestAwayOdds
         : analysis.odds;
   const bestBook =
     analysis.bestBook ??
-    (analysis.recommendation === "HOME"
+    (resolvedSide === "HOME"
       ? game.moneyline?.bestHomeBook
-      : analysis.recommendation === "AWAY"
+      : resolvedSide === "AWAY"
         ? game.moneyline?.bestAwayBook
         : "");
 
@@ -93,7 +109,7 @@ export default function BestBetCard({ result, onClear }: Props) {
         marketId: `sports:${game.id}`,
         question: `${game.awayTeam} @ ${game.homeTeam}`,
         direction:
-          analysis.recommendation === "HOME" || analysis.recommendation === "OVER" ? "YES" : "NO",
+          resolvedSide === "HOME" || analysis.recommendation === "OVER" ? "YES" : "NO",
         currentOdds: analysis.impliedProbability,
         suggestedAmount: analysis.suggestedAmount,
         confidence: analysis.confidence,

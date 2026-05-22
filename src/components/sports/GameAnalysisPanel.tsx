@@ -38,17 +38,31 @@ export default function GameAnalysisPanel({ result, game, onClear }: Props) {
 
   const noEdge = result.recommendation === "NO_EDGE";
   const tone = tierTone(result.confidence, noEdge);
+  // Resolve the actual side. If Claude's `recommendedTeam` names the home or
+  // away team, trust it over the side label (which sometimes disagrees).
+  const recTeamRaw = (result.recommendedTeam ?? "").trim();
+  const matchesHome =
+    !!recTeamRaw && game.homeTeam.toLowerCase().includes(recTeamRaw.toLowerCase());
+  const matchesAway =
+    !!recTeamRaw && game.awayTeam.toLowerCase().includes(recTeamRaw.toLowerCase());
+  const resolvedSide: "HOME" | "AWAY" | null = matchesHome
+    ? "HOME"
+    : matchesAway
+      ? "AWAY"
+      : result.recommendation === "HOME" || result.recommendation === "AWAY"
+        ? result.recommendation
+        : null;
   const headline = noEdge
     ? "NO EDGE DETECTED"
-    : result.recommendation === "HOME"
+    : resolvedSide === "HOME"
       ? `BET HOME — ${game.homeTeam}`
-      : result.recommendation === "AWAY"
+      : resolvedSide === "AWAY"
         ? `BET AWAY — ${game.awayTeam}`
         : result.recommendation === "OVER"
-          ? `BET OVER — ${result.recommendedTeam || game.total?.line || ""}`
+          ? `BET OVER — ${recTeamRaw || game.total?.line || ""}`
           : result.recommendation === "UNDER"
-            ? `BET UNDER — ${result.recommendedTeam || game.total?.line || ""}`
-            : `BET ${result.recommendation} — ${result.recommendedTeam ?? ""}`;
+            ? `BET UNDER — ${recTeamRaw || game.total?.line || ""}`
+            : `BET ${result.recommendation} — ${recTeamRaw}`;
 
   const betTypeLabel =
     result.betType === "moneyline"
@@ -77,7 +91,7 @@ export default function GameAnalysisPanel({ result, game, onClear }: Props) {
         id: crypto.randomUUID(),
         marketId: `sports:${game.id}`,
         question: `${game.awayTeam} @ ${game.homeTeam}`,
-        direction: result.recommendation === "HOME" || result.recommendation === "OVER" ? "YES" : "NO",
+        direction: resolvedSide === "HOME" || result.recommendation === "OVER" ? "YES" : "NO",
         currentOdds: result.impliedProbability,
         suggestedAmount: result.suggestedAmount,
         confidence: result.confidence,

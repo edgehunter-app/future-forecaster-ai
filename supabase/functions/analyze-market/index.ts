@@ -140,9 +140,16 @@ not just flag large edges. Even a small edge is worth reporting.
 ALWAYS return a specific recommendation. Never return NO_EDGE if there
 are real games with real odds to analyze.
 
-GAME: ${p.homeTeam} vs ${p.awayTeam}
+MATCHUP: ${p.awayTeam} (AWAY) @ ${p.homeTeam} (HOME)
+  HOME team = ${p.homeTeam}
+  AWAY team = ${p.awayTeam}
 League: ${p.league}
 Game time: ${p.gameTime}
+
+IMPORTANT: "HOME" always refers to ${p.homeTeam} and "AWAY" always
+refers to ${p.awayTeam}. When you set "recommendation" to HOME or AWAY,
+"recommendedTeam" MUST be the exact team name for that side, and your
+"reasoning" MUST discuss that same team. Do not mix them up.
 
 VEGAS BOOK ODDS (${vegasBooks.length} books):
 ${vegasBookTable}
