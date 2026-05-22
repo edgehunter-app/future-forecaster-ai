@@ -368,9 +368,16 @@ function eventToOddsApiGame(ev: any, sportKey: string, leagueShort: string) {
     if (b.spreads.length) ms.push({ key: "spreads", outcomes: b.spreads });
     if (b.totals.length) ms.push({ key: "totals", outcomes: b.totals });
     if (!ms.length) continue;
+    const regulatoryNote =
+      norm.bookmaker === "kalshi" ? "CFTC regulated"
+      : norm.bookmaker === "polymarket" ? "Offshore · USDC"
+      : norm.bookmaker === "prophetx" ? "Peer-to-peer exchange"
+      : null;
     bookmakers.push({
       key: norm.bookmaker,
       title: norm.bookmaker.charAt(0).toUpperCase() + norm.bookmaker.slice(1),
+      category: norm.category,
+      regulatoryNote,
       markets: ms,
     });
   }
