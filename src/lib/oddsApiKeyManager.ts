@@ -1,5 +1,7 @@
 const KEY_USAGE_STORE = "eh_odds_key_usage";
 const MONTHLY_LIMIT = 500;
+// Both Odds API keys are exhausted until this date.
+const ODDS_RESET_ISO = "2026-06-01";
 
 export interface KeyUsage {
   requestsUsed: number;
@@ -16,51 +18,35 @@ export interface KeyManager {
 }
 
 function nextResetDate(): string {
-  const now = new Date();
-  const next = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth() + 1, 1));
-  return next.toISOString().slice(0, 10);
+  return ODDS_RESET_ISO;
 }
 
 function defaultUsage(): KeyManager {
+  const exhausted: KeyUsage = {
+    requestsUsed: MONTHLY_LIMIT,
+    requestsRemaining: 0,
+    lastUsed: Date.now(),
+    exhausted: true,
+    resetDate: ODDS_RESET_ISO,
+  };
   return {
-    primary: {
-      // Primary is known-exhausted at the time this manager was introduced.
-      requestsUsed: 498,
-      requestsRemaining: 2,
-      lastUsed: Date.now(),
-      exhausted: true,
-      resetDate: nextResetDate(),
-    },
-    secondary: {
-      requestsUsed: 0,
-      requestsRemaining: MONTHLY_LIMIT,
-      lastUsed: 0,
-      exhausted: false,
-      resetDate: nextResetDate(),
-    },
-    activeKey: "secondary",
+    primary: { ...exhausted },
+    secondary: { ...exhausted },
+    activeKey: "primary",
   };
 }
 
 export function loadKeyUsage(): KeyManager {
+  // Force exhausted state until the official reset date — ignore stale localStorage.
+  const now = new Date();
+  if (now < new Date(ODDS_RESET_ISO)) {
+    const init = defaultUsage();
+    try { localStorage.setItem(KEY_USAGE_STORE, JSON.stringify(init)); } catch {}
+    return init;
+  }
   try {
     const raw = localStorage.getItem(KEY_USAGE_STORE);
-    if (raw) {
-      const parsed = JSON.parse(raw) as KeyManager;
-      // Reset if past reset date
-      const now = new Date();
-      const resetD = new Date(parsed.primary?.resetDate ?? nextResetDate());
-      if (now.getTime() >= resetD.getTime()) {
-        const fresh: KeyManager = {
-          primary: { requestsUsed: 0, requestsRemaining: MONTHLY_LIMIT, lastUsed: 0, exhausted: false, resetDate: nextResetDate() },
-          secondary: { requestsUsed: 0, requestsRemaining: MONTHLY_LIMIT, lastUsed: 0, exhausted: false, resetDate: nextResetDate() },
-          activeKey: "primary",
-        };
-        saveKeyUsage(fresh);
-        return fresh;
-      }
-      return parsed;
-    }
+    if (raw) return JSON.parse(raw) as KeyManager;
   } catch {}
   const init = defaultUsage();
   saveKeyUsage(init);
