@@ -34,6 +34,11 @@ export interface PolymarketGapInput {
   gap: number;
 }
 
+export interface PredictionMarketInput {
+  kalshi?: { name: string; homeMoneyline: number; awayMoneyline: number } | undefined;
+  polymarket?: { name: string; homeMoneyline: number; awayMoneyline: number } | undefined;
+}
+
 export function useGameAnalysis() {
   const settings = useAppStore((s) => s.settings);
   const trackedWallets = useAppStore((s) => s.trackedWallets ?? []);
@@ -43,7 +48,11 @@ export function useGameAnalysis() {
   const [errors, setErrors] = useState<Record<string, string>>({});
 
   const analyzeGame = useCallback(
-    async (game: FullGame, polymarketGap?: PolymarketGapInput | null) => {
+    async (
+      game: FullGame,
+      polymarketGap?: PolymarketGapInput | null,
+      predictionMarkets?: PredictionMarketInput,
+    ) => {
       const gameId = game.id;
       if (analyzing[gameId]) return;
 
@@ -68,6 +77,22 @@ export function useGameAnalysis() {
             spread: game.spread?.homeSpread ?? null,
             total: game.total?.line ?? null,
             polymarketGap: polymarketGap ?? null,
+            kalshi: predictionMarkets?.kalshi
+              ? {
+                  home: predictionMarkets.kalshi.homeMoneyline,
+                  away: predictionMarkets.kalshi.awayMoneyline,
+                  vegasHome: game.vegasConsensus?.home ?? null,
+                  vegasAway: game.vegasConsensus?.away ?? null,
+                }
+              : null,
+            polymarket: predictionMarkets?.polymarket
+              ? {
+                  home: predictionMarkets.polymarket.homeMoneyline,
+                  away: predictionMarkets.polymarket.awayMoneyline,
+                  vegasHome: game.vegasConsensus?.home ?? null,
+                  vegasAway: game.vegasConsensus?.away ?? null,
+                }
+              : null,
             wallets: trackedWallets
               .filter((w) => w.tier === "S" || w.tier === "A")
               .slice(0, 5)
