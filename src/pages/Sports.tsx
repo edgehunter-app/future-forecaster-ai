@@ -20,6 +20,8 @@ export default function Sports() {
   const markets = useAppStore((s) => s.markets);
   const triggerBestBetOnSports = useAppStore((s) => s.triggerBestBetOnSports);
   const setTriggerBestBetOnSports = useAppStore((s) => s.setTriggerBestBetOnSports);
+  const pendingBestBetScan = useAppStore((s) => s.pendingBestBetScan);
+  const setPendingBestBetScan = useAppStore((s) => s.setPendingBestBetScan);
   const navigate = useNavigate();
   const {
     mispricings,
@@ -68,6 +70,28 @@ export default function Sports() {
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [triggerBestBetOnSports]);
+
+  // If a Best Bet scan is pending and games are not loaded, trigger a refresh first.
+  useEffect(() => {
+    if (pendingBestBetScan && (fullGames?.length ?? 0) === 0 && !loading && activeKey) {
+      void scan("manual");
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [pendingBestBetScan]);
+
+  // Once games are loaded, run the pending Best Bet scan.
+  useEffect(() => {
+    if (
+      pendingBestBetScan &&
+      (fullGames?.length ?? 0) > 0 &&
+      !bestBetLoading &&
+      !loading
+    ) {
+      setPendingBestBetScan(false);
+      void handleBestBet();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [pendingBestBetScan, fullGames?.length, bestBetLoading, loading]);
 
   const filteredGames = useMemo(() => {
     const list = fullGames ?? [];
@@ -187,6 +211,15 @@ export default function Sports() {
       {bestBetError && (
         <div className="rounded-lg border border-destructive/40 bg-destructive/10 px-4 py-3 text-sm text-destructive">
           {bestBetError}
+        </div>
+      )}
+
+      {pendingBestBetScan && (
+        <div className="rounded-lg border border-purple/40 bg-purple/10 px-4 py-3 text-sm text-foreground flex items-center gap-2">
+          <Loader2 className="h-4 w-4 animate-spin text-purple" />
+          {(fullGames?.length ?? 0) === 0
+            ? "Loading games for Best Bet scan..."
+            : "Running Best Bet analysis..."}
         </div>
       )}
 
