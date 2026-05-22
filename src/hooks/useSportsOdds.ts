@@ -71,7 +71,8 @@ export function useSportsOdds(polymarkets: Market[]) {
   useEffect(() => { currentSportRef.current = currentSport; }, [currentSport]);
   const [nextScanAt, setNextScanAt] = useState<Date | null>(null);
 
-  const refreshMinutes = settings.sportsRefreshMinutes ?? 60;
+  // Default to MANUAL refresh only (0). Auto-scan burns through quota fast.
+  const refreshMinutes = settings.sportsRefreshMinutes ?? 0;
 
   const activeKey = getActiveKey(keyUsage);
   const usageSummary = useMemo(() => getUsageSummary(keyUsage), [keyUsage]);
