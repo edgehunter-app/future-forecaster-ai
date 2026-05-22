@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Brain, X, Shield, ChevronDown, ChevronUp, Save } from "lucide-react";
+import { Brain, X, Shield, ChevronDown, ChevronUp, Save, TrendingUp } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { ConfidenceBar } from "@/components/ui/ConfidenceBar";
 import type { FullGame } from "@/lib/oddsApi";
@@ -117,6 +117,32 @@ export default function GameAnalysisPanel({ result, game, onClear }: Props) {
         <div className="text-base sm:text-xl font-extrabold leading-tight">{headline}</div>
         <div className="mt-0.5 text-[11px] uppercase tracking-wide opacity-80">{betTypeLabel}</div>
       </div>
+
+      {/* Line Shopping callout — always shown when present */}
+      {result.lineShopping && (result.lineShopping.bestBook || result.lineShopping.recommendation) && (
+        <div className="rounded-md border border-success/40 bg-success/10 p-3">
+          <div className="flex items-center gap-1.5 text-success mb-1">
+            <TrendingUp className="h-3.5 w-3.5" />
+            <span className="text-[11px] font-bold uppercase tracking-wide">Best Line Available</span>
+          </div>
+          {result.lineShopping.bestBook && (
+            <div className="text-sm font-bold text-foreground">
+              {result.lineShopping.bestBook} offers{" "}
+              <span className="font-mono">{formatOdds(result.lineShopping.bestOdds)}</span>
+              {typeof result.lineShopping.edgeCents === "number" && result.lineShopping.worstBook && (
+                <>
+                  {" "}— {result.lineShopping.edgeCents} cents better than{" "}
+                  {result.lineShopping.worstBook} at{" "}
+                  <span className="font-mono">{formatOdds(result.lineShopping.worstOdds)}</span>
+                </>
+              )}
+            </div>
+          )}
+          {result.lineShopping.recommendation && (
+            <div className="mt-1 text-[11px] text-success/90">{result.lineShopping.recommendation}</div>
+          )}
+        </div>
+      )}
 
       {/* Metrics */}
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
