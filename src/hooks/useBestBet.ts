@@ -5,12 +5,6 @@ import type { FullGame } from "@/lib/oddsApi";
 import type { GameAnalysisResult, BestBetResult } from "@/types";
 import { bumpSportsAnalyses } from "@/lib/analysisCounter";
 
-export interface BestBetResult {
-  game: FullGame;
-  analysis: GameAnalysisResult;
-  scannedCount: number;
-  generatedAt: Date;
-}
 
 function isToday(iso: string): boolean {
   const d = new Date(iso);
