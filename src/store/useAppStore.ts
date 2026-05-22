@@ -162,6 +162,8 @@ export const useAppStore = create<AppState>()(
       crossMarketLastScanned: null,
       crossMarketLoading: false,
       propsCache: {},
+      lastBestBet: null,
+      triggerBestBetOnSports: false,
 
       setCachedMarkets: (m, isLive) =>
         set({ cachedMarkets: m, marketsIsLive: isLive, marketsLastUpdated: new Date() }),
@@ -174,6 +176,8 @@ export const useAppStore = create<AppState>()(
       setCrossMarketLastScanned: (d) => set({ crossMarketLastScanned: d }),
       setCrossMarketLoading: (b) => set({ crossMarketLoading: b }),
       setPropsCache: (c) => set({ propsCache: c }),
+      setLastBestBet: (r) => set({ lastBestBet: r }),
+      setTriggerBestBetOnSports: (val) => set({ triggerBestBetOnSports: val }),
 
       updateSettings: (partial) => set((s) => ({ settings: { ...s.settings, ...partial } })),
       updateAlerts: (channel, partial) =>
