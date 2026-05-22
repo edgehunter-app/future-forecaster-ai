@@ -25,6 +25,7 @@ export function useBestBet() {
   const fullGames = useAppStore((s) => s.fullGames);
   const settings = useAppStore((s) => s.settings);
   const trackedWallets = useAppStore((s) => s.trackedWallets ?? []);
+  const setLastBestBet = useAppStore((s) => s.setLastBestBet);
 
   const findBestBet = useCallback(async () => {
     if (!fullGames || fullGames.length === 0) {
