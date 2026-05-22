@@ -77,6 +77,21 @@ export function useGameAnalysis() {
             spread: game.spread?.homeSpread ?? null,
             total: game.total?.line ?? null,
             polymarketGap: polymarketGap ?? null,
+            // Full bookmaker array so Claude can see line shopping context
+            bookmakers: (game.bookmakers ?? []).map((b) => ({
+              name: b.name,
+              key: b.key,
+              category: b.category,
+              regulatoryNote: b.regulatoryNote,
+              moneyline: { home: b.homeMoneyline, away: b.awayMoneyline },
+              spread: b.homeSpread
+                ? { line: b.homeSpread, homeOdds: b.spreadHomeOdds, awayOdds: b.spreadAwayOdds }
+                : null,
+              total: b.totalLine
+                ? { line: b.totalLine, overOdds: b.overOdds, underOdds: b.underOdds }
+                : null,
+            })),
+            vegasConsensus: game.vegasConsensus ?? null,
             kalshi: predictionMarkets?.kalshi
               ? {
                   home: predictionMarkets.kalshi.homeMoneyline,

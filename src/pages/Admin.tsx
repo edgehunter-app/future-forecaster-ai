@@ -9,10 +9,14 @@ import { usePageTitle } from "@/hooks/usePageTitle";
 import { getAnalysisCounts } from "@/lib/analysisCounter";
 import { cn } from "@/lib/utils";
 import { useAppStore } from "@/store/useAppStore";
+import { loadKeyUsage } from "@/lib/oddsApiKeyManager";
 
 const CLAUDE_COST_PER_RUN = 0.003;
-const REFRESH_OPTIONS = [5, 10, 15, 30, 60];
-const RAPID_DAILY_LIMIT = 150;
+// 0 = Manual refresh only (no setInterval). Other values are minutes.
+const REFRESH_OPTIONS = [0, 15, 30, 60, 120];
+const RAPID_DAILY_LIMIT = 1000;   // Pro tier hard limit
+const RAPID_RATE_LIMIT = 60;      // requests / minute
+const ODDS_MONTHLY_LIMIT = 500;
 
 type PillState = "ok" | "warn" | "error";
 function StatusPill({ label, state, text }: { label: string; state: PillState; text: string }) {
@@ -40,6 +44,39 @@ function StatBlock({ label, value, hint }: { label: string; value: string | numb
   );
 }
 
+function OddsApiKeyStatus() {
+  const [usage, setUsage] = useState(() => loadKeyUsage());
+  useEffect(() => {
+    const id = setInterval(() => setUsage(loadKeyUsage()), 5000);
+    return () => clearInterval(id);
+  }, []);
+  const reset = new Date(usage.primary.resetDate);
+  const daysLeft = Math.max(0, Math.ceil((reset.getTime() - Date.now()) / 86_400_000));
+  const Row = ({ label, k }: { label: string; k: "primary" | "secondary" }) => {
+    const u = usage[k];
+    return (
+      <div className="flex items-center justify-between text-[11px]">
+        <span className="text-muted-foreground">{label}</span>
+        <span className={cn("font-mono", u.exhausted ? "text-destructive" : "text-foreground")}>
+          {u.requestsRemaining} remaining {u.exhausted ? "· exhausted" : ""}
+        </span>
+      </div>
+    );
+  };
+  return (
+    <div className="space-y-1">
+      <Row label="Key 1 (ODDS_API_KEY)" k="primary" />
+      <Row label="Key 2 (ODDS_API_KEY_2)" k="secondary" />
+      <div className="flex items-center justify-between text-[11px] pt-1 border-t border-border/40">
+        <span className="text-muted-foreground">Resets</span>
+        <span className="font-mono text-foreground">
+          {reset.toLocaleDateString()} · in {daysLeft}d
+        </span>
+      </div>
+    </div>
+  );
+}
+
 export default function Admin() {
   usePageTitle("Admin");
   const { isAdmin, loading } = useIsAdmin();
@@ -47,7 +84,7 @@ export default function Admin() {
   const [analysisCounts, setAnalysisCounts] = useState({ market: 0, sports: 0, total: 0 });
   const [rapidUsedToday, setRapidUsedToday] = useState<number>(0);
   const [lastCallAt, setLastCallAt] = useState<string | null>(null);
-  const refreshInterval = useAppStore((s) => s.settings.sportsRefreshMinutes ?? 60);
+  const refreshInterval = useAppStore((s) => s.settings.sportsRefreshMinutes ?? 0);
   const updateSettings = useAppStore((s) => s.updateSettings);
   const [stats, setStats] = useState({
     totalUsers: 0,
@@ -145,6 +182,10 @@ export default function Admin() {
         : "text-success";
   const rapidPct = Math.round((rapidUsedToday / RAPID_DAILY_LIMIT) * 100);
 
+  // Per-refresh cost estimate
+  const perRefreshOdds = 0;   // no longer primary
+  const perRefreshRapid = 2;  // advantages + 1 competition events
+
   const handleGrant = async () => {
     const email = grantEmail.trim();
     if (!email) return;
@@ -183,13 +224,13 @@ export default function Admin() {
         {/* Sportsbook API (RapidAPI) — active provider */}
         <div className="rounded-md border border-border bg-background/40 p-3 space-y-2">
           <div className="flex items-center justify-between">
-            <span className="text-xs font-semibold text-foreground">Sportsbook API (RapidAPI)</span>
+            <span className="text-xs font-semibold text-foreground">Sportsbook API (RapidAPI · Pro)</span>
             <span className="font-mono text-xs text-foreground">
               {rapidUsedToday} / {RAPID_DAILY_LIMIT} ({rapidPct}%)
             </span>
           </div>
           <div className="text-[11px] text-muted-foreground">
-            Free tier limit: {RAPID_DAILY_LIMIT} requests/day
+            Pro tier · $10/month · {RAPID_DAILY_LIMIT.toLocaleString()} req/day · rate limit {RAPID_RATE_LIMIT}/min
           </div>
           <div className="h-2 w-full overflow-hidden rounded-full bg-secondary">
             <div
@@ -233,13 +274,49 @@ export default function Admin() {
                       : "border-border text-muted-foreground hover:text-foreground",
                   )}
                 >
-                  {m}m
+                  {m === 0 ? "Manual" : `${m}m`}
                 </button>
               ))}
             </div>
             <span className="text-[10px] text-muted-foreground ml-auto">
-              60m recommended to stay under 150/day with multiple sports active
+              Manual recommended — auto-scan burns through quota fast
             </span>
+          </div>
+
+          {/* Scanning behavior */}
+          <div className="mt-3 pt-3 border-t border-border/60 grid grid-cols-2 md:grid-cols-3 gap-2 text-[11px]">
+            <div>
+              <div className="text-muted-foreground uppercase text-[9px]">Current mode</div>
+              <div className="font-mono text-foreground">
+                {refreshInterval === 0 ? "Manual only" : `Auto · every ${refreshInterval}m`}
+              </div>
+            </div>
+            <div>
+              <div className="text-muted-foreground uppercase text-[9px]">Per refresh cost</div>
+              <div className="font-mono text-foreground">
+                ~{perRefreshRapid} RapidAPI · {perRefreshOdds} Odds API
+              </div>
+            </div>
+            <div>
+              <div className="text-muted-foreground uppercase text-[9px]">Daily budget at pace</div>
+              <div className={cn("font-mono", projColor)}>
+                ~{projectedDaily} / {RAPID_DAILY_LIMIT.toLocaleString()}
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* The Odds API (legacy / fallback) */}
+        <div className="rounded-md border border-border bg-background/40 p-3 space-y-2">
+          <div className="flex items-center justify-between">
+            <span className="text-xs font-semibold text-foreground">The Odds API (legacy fallback)</span>
+            <span className="font-mono text-[11px] text-muted-foreground">
+              {ODDS_MONTHLY_LIMIT}/mo per key
+            </span>
+          </div>
+          <OddsApiKeyStatus />
+          <div className="text-[10px] text-muted-foreground">
+            Not used in active scans — kept as fallback. Monthly quota resets on the 1st.
           </div>
         </div>
       </section>

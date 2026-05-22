@@ -110,6 +110,24 @@ Polymarket is offshore retail — gaps are relevant but less regulated.
 `;
       })()
     : "No Polymarket market found for this game.";
+  const allBooks: Any[] = Array.isArray(p.bookmakers) ? p.bookmakers : [];
+  const vegasBooks = allBooks.filter(
+    (b) => b?.category !== "prediction_market" && (b?.moneyline?.home || b?.moneyline?.away),
+  );
+  const vegasBookTable = vegasBooks.length > 0
+    ? vegasBooks
+        .map((b: Any) => {
+          const ml = b.moneyline ?? {};
+          const sp = b.spread?.line ? ` | Spread ${b.spread.line}` : "";
+          const tot = b.total?.line ? ` | Total ${b.total.line}` : "";
+          return `  ${b.name}: Home ${ml.home ?? "N/A"} | Away ${ml.away ?? "N/A"}${sp}${tot}`;
+        })
+        .join("\n")
+    : "  (no per-book data)";
+  const homePrices = vegasBooks.map((b: Any) => Number(b?.moneyline?.home)).filter((n) => Number.isFinite(n) && n !== 0);
+  const awayPrices = vegasBooks.map((b: Any) => Number(b?.moneyline?.away)).filter((n) => Number.isFinite(n) && n !== 0);
+  const range = (arr: number[]) =>
+    arr.length ? `${Math.min(...arr)} to ${Math.max(...arr)} (${arr.length} books)` : "n/a";
   const walletBlock = wallets.length > 0
     ? `
 SMART WALLET SIGNALS:
@@ -126,7 +144,10 @@ GAME: ${p.homeTeam} vs ${p.awayTeam}
 League: ${p.league}
 Game time: ${p.gameTime}
 
-VEGAS CONSENSUS (across all books):
+VEGAS BOOK ODDS (${vegasBooks.length} books):
+${vegasBookTable}
+
+CONSENSUS (de-vigged average across all books):
   Home win probability: ${((p.homeImplied ?? 0) * 100).toFixed(1)}%
   Away win probability: ${((p.awayImplied ?? 0) * 100).toFixed(1)}%
   Spread: ${p.spread ?? "N/A"}
@@ -135,6 +156,10 @@ VEGAS CONSENSUS (across all books):
 BEST AVAILABLE ODDS:
   Home moneyline: ${p.bestHomeOdds} (${p.bestHomeBook})
   Away moneyline: ${p.bestAwayOdds} (${p.bestAwayBook})
+
+LINE SHOPPING RANGE:
+  Home: ${range(homePrices)}
+  Away: ${range(awayPrices)}
 ${polyBlock}
 ${kalshiBlock}
 ${polymarketBlock}
