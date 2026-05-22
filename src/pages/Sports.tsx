@@ -214,6 +214,15 @@ export default function Sports() {
         </div>
       )}
 
+      {pendingBestBetScan && (
+        <div className="rounded-lg border border-purple/40 bg-purple/10 px-4 py-3 text-sm text-foreground flex items-center gap-2">
+          <Loader2 className="h-4 w-4 animate-spin text-purple" />
+          {(fullGames?.length ?? 0) === 0
+            ? "Loading games for Best Bet scan..."
+            : "Running Best Bet analysis..."}
+        </div>
+      )}
+
       {bestBetResult && (
         <BestBetCard result={bestBetResult} onClear={clearBestBet} />
       )}
