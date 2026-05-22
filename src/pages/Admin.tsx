@@ -9,6 +9,7 @@ import { usePageTitle } from "@/hooks/usePageTitle";
 import { getAnalysisCounts } from "@/lib/analysisCounter";
 import { cn } from "@/lib/utils";
 import { useAppStore } from "@/store/useAppStore";
+import { loadKeyUsage } from "@/lib/oddsApiKeyManager";
 
 const CLAUDE_COST_PER_RUN = 0.003;
 // 0 = Manual refresh only (no setInterval). Other values are minutes.
@@ -39,6 +40,39 @@ function StatBlock({ label, value, hint }: { label: string; value: string | numb
       <div className="text-[10px] uppercase tracking-wide text-muted-foreground">{label}</div>
       <div className="mt-1 font-mono text-lg font-bold text-foreground">{value}</div>
       {hint ? <div className="mt-0.5 text-[10px] text-muted-foreground">{hint}</div> : null}
+    </div>
+  );
+}
+
+function OddsApiKeyStatus() {
+  const [usage, setUsage] = useState(() => loadKeyUsage());
+  useEffect(() => {
+    const id = setInterval(() => setUsage(loadKeyUsage()), 5000);
+    return () => clearInterval(id);
+  }, []);
+  const reset = new Date(usage.primary.resetDate);
+  const daysLeft = Math.max(0, Math.ceil((reset.getTime() - Date.now()) / 86_400_000));
+  const Row = ({ label, k }: { label: string; k: "primary" | "secondary" }) => {
+    const u = usage[k];
+    return (
+      <div className="flex items-center justify-between text-[11px]">
+        <span className="text-muted-foreground">{label}</span>
+        <span className={cn("font-mono", u.exhausted ? "text-destructive" : "text-foreground")}>
+          {u.requestsRemaining} remaining {u.exhausted ? "· exhausted" : ""}
+        </span>
+      </div>
+    );
+  };
+  return (
+    <div className="space-y-1">
+      <Row label="Key 1 (ODDS_API_KEY)" k="primary" />
+      <Row label="Key 2 (ODDS_API_KEY_2)" k="secondary" />
+      <div className="flex items-center justify-between text-[11px] pt-1 border-t border-border/40">
+        <span className="text-muted-foreground">Resets</span>
+        <span className="font-mono text-foreground">
+          {reset.toLocaleDateString()} · in {daysLeft}d
+        </span>
+      </div>
     </div>
   );
 }
