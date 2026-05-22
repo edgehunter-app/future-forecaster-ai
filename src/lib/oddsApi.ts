@@ -106,6 +106,8 @@ export function getLastGames(): OddsGame[] { return lastGames; }
 export interface FullBookmakerLine {
   name: string;
   key: string;
+  category: "vegas" | "prediction_market" | "synthetic";
+  regulatoryNote: string | null;
   homeMoneyline: number;
   awayMoneyline: number;
   homeSpread: number;     // e.g. -3.5
@@ -148,6 +150,12 @@ export interface FullGame {
     bestBook: string;
   } | null;
   bookmakers: FullBookmakerLine[];
+  vegasConsensus: {
+    home: number;            // American odds
+    away: number;
+    homeImplied: number;     // de-vigged implied probability
+    awayImplied: number;
+  } | null;
   polymarketMatch: Market | null;
   polymarketImplied: number | null;
   mispricingGap: number | null;
@@ -210,6 +218,8 @@ export async function fetchFullOdds(
       return {
         name: b.title ?? b.key,
         key: b.key,
+        category: (b.category as any) ?? "vegas",
+        regulatoryNote: b.regulatoryNote ?? null,
         homeMoneyline: homeML,
         awayMoneyline: awayML,
         homeSpread: homeSpOut?.point ?? 0,
@@ -236,6 +246,25 @@ export async function fetchFullOdds(
       ? books.reduce((s, b) => s + toImplied(b.awayMoneyline), 0) / books.length
       : 0.5;
     const consensus = removeVig(homeImpliedRaw, awayImpliedRaw);
+
+    // Vegas-only consensus, used as the reference for prediction-market gaps.
+    const vegasBooks = books.filter(
+      (b) => b.category === "vegas" && (b.homeMoneyline !== 0 || b.awayMoneyline !== 0),
+    );
+    let vegasConsensus: FullGame["vegasConsensus"] = null;
+    if (vegasBooks.length > 0) {
+      const hRaw = vegasBooks.reduce((s, b) => s + toImplied(b.homeMoneyline), 0) / vegasBooks.length;
+      const aRaw = vegasBooks.reduce((s, b) => s + toImplied(b.awayMoneyline), 0) / vegasBooks.length;
+      const dv = removeVig(hRaw, aRaw);
+      const impToAm = (p: number) =>
+        p <= 0 || p >= 1 ? 0 : p >= 0.5 ? -Math.round((p / (1 - p)) * 100) : Math.round(((1 - p) / p) * 100);
+      vegasConsensus = {
+        home: impToAm(dv.home),
+        away: impToAm(dv.away),
+        homeImplied: dv.home,
+        awayImplied: dv.away,
+      };
+    }
 
     const spreadBooks = books.filter((b) => b.homeSpread !== 0 || b.spreadHomeOdds !== 0);
     const spread = spreadBooks.length
@@ -282,6 +311,7 @@ export async function fetchFullOdds(
       spread,
       total,
       bookmakers: books,
+      vegasConsensus,
       polymarketMatch: null,
       polymarketImplied: null,
       mispricingGap: null,
