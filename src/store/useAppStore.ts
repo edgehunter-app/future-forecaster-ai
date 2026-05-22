@@ -79,6 +79,7 @@ export interface AppState {
   propsCache: Record<string, GameProps>;
   lastBestBet: BestBetResult | null;
   triggerBestBetOnSports: boolean;
+  pendingBestBetScan: boolean;
 
   setCachedMarkets: (m: Market[], isLive: boolean) => void;
   setMarketsLastUpdated: (d: Date) => void;
@@ -92,6 +93,7 @@ export interface AppState {
   setPropsCache: (c: Record<string, GameProps>) => void;
   setLastBestBet: (r: BestBetResult | null) => void;
   setTriggerBestBetOnSports: (val: boolean) => void;
+  setPendingBestBetScan: (val: boolean) => void;
 
   updateSettings: (partial: Partial<SettingsState>) => void;
   updateAlerts: (
@@ -164,6 +166,7 @@ export const useAppStore = create<AppState>()(
       propsCache: {},
       lastBestBet: null,
       triggerBestBetOnSports: false,
+      pendingBestBetScan: false,
 
       setCachedMarkets: (m, isLive) =>
         set({ cachedMarkets: m, marketsIsLive: isLive, marketsLastUpdated: new Date() }),
@@ -178,6 +181,7 @@ export const useAppStore = create<AppState>()(
       setPropsCache: (c) => set({ propsCache: c }),
       setLastBestBet: (r) => set({ lastBestBet: r }),
       setTriggerBestBetOnSports: (val) => set({ triggerBestBetOnSports: val }),
+      setPendingBestBetScan: (val) => set({ pendingBestBetScan: val }),
 
       updateSettings: (partial) => set((s) => ({ settings: { ...s.settings, ...partial } })),
       updateAlerts: (channel, partial) =>
