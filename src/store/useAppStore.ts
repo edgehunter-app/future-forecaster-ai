@@ -1,6 +1,6 @@
 import { create } from "zustand";
 import { persist, createJSONStorage } from "zustand/middleware";
-import type { Wallet, Suggestion, Market, CrossMarketOpp } from "@/types";
+import type { Wallet, Suggestion, Market, CrossMarketOpp, BestBetResult } from "@/types";
 import type { FullGame, GameProps, SportsMispricing } from "@/lib/oddsApi";
 
 export interface AlertChannelTelegram { enabled: boolean; chatId: string; }
