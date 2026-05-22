@@ -61,6 +61,14 @@ export default function Sports() {
     }, 100);
   };
 
+  useEffect(() => {
+    if (triggerBestBetOnSports) {
+      setTriggerBestBetOnSports(false);
+      void handleBestBet();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [triggerBestBetOnSports]);
+
   const filteredGames = useMemo(() => {
     const list = fullGames ?? [];
     if (!activeSport || activeSport === "all") return list;
