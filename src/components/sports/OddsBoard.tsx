@@ -1,5 +1,5 @@
 import { useMemo, useState } from "react";
-import { ChevronDown, ChevronUp, Brain, Loader2, AlertCircle } from "lucide-react";
+import { ChevronDown, ChevronUp, Brain, Loader2, AlertCircle, TrendingUp } from "lucide-react";
 import { cn } from "@/lib/utils";
 import {
   formatOdds,
@@ -119,7 +119,24 @@ function GameCard({ game, mispricings }: { game: FullGame; mispricings: SportsMi
       ? { polyImplied: game.polymarketImplied, gap: game.mispricingGap }
       : null;
 
-  const handleAnalyze = () => analyzeGame(game, polyGap);
+  // Detect prediction-market gaps for the header badge
+  const predictionMarketGaps = bookmakers
+    .filter((b) => b.category === "prediction_market" && game.vegasConsensus)
+    .map((b) => {
+      const home = b.homeMoneyline - (game.vegasConsensus!.home || 0);
+      const away = b.awayMoneyline - (game.vegasConsensus!.away || 0);
+      const maxAbs = Math.abs(home) >= Math.abs(away) ? home : away;
+      return { book: b.name, side: Math.abs(home) >= Math.abs(away) ? "Home" : "Away", cents: maxAbs };
+    })
+    .filter((g) => Math.abs(g.cents) > 5)
+    .sort((a, b) => Math.abs(b.cents) - Math.abs(a.cents));
+  const topGap = predictionMarketGaps[0];
+
+  const handleAnalyze = () => {
+    const kalshi = bookmakers.find((b) => b.key === "kalshi");
+    const polymarket = bookmakers.find((b) => b.key === "polymarket");
+    analyzeGame(game, polyGap, { kalshi, polymarket });
+  };
 
   return (
     <div className="rounded-lg border border-border bg-card p-4 space-y-3">
@@ -138,6 +155,18 @@ function GameCard({ game, mispricings }: { game: FullGame; mispricings: SportsMi
           <span className="text-[11px] font-mono text-muted-foreground">{formatGameTime(game.commenceTime)}</span>
         </div>
       </div>
+
+      {/* Prediction-market gap badge */}
+      {topGap && (
+        <button
+          type="button"
+          onClick={() => setExpanded(true)}
+          className="inline-flex items-center gap-1.5 rounded-full border border-warning/40 bg-warning/10 px-2 py-0.5 text-[10px] font-bold text-warning hover:bg-warning/20"
+        >
+          <TrendingUp className="h-3 w-3" />
+          {topGap.book} Gap: {topGap.cents > 0 ? "+" : ""}{topGap.cents} cents ({topGap.side})
+        </button>
+      )}
 
       {/* Matchup row */}
       <div className="grid grid-cols-[1fr_auto_1fr] items-center gap-3">
@@ -214,7 +243,14 @@ function GameCard({ game, mispricings }: { game: FullGame; mispricings: SportsMi
             <span>Compare {bookmakers.length} books</span>
             {expanded ? <ChevronUp className="h-3 w-3" /> : <ChevronDown className="h-3 w-3" />}
           </button>
-          {expanded && <BookTable books={bookmakers} bestHome={bestHome} bestAway={bestAway} />}
+          {expanded && (
+            <BookTable
+              books={bookmakers}
+              bestHome={bestHome}
+              bestAway={bestAway}
+              vegasConsensus={game.vegasConsensus}
+            />
+          )}
         </div>
       )}
 
@@ -296,37 +332,86 @@ function BookTable({
   books,
   bestHome,
   bestAway,
+  vegasConsensus,
 }: {
   books: FullBookmakerLine[];
   bestHome: { odds: number; book: string };
   bestAway: { odds: number; book: string };
+  vegasConsensus: FullGame["vegasConsensus"];
 }) {
   const bestTotal = books.reduce(
     (b, x) => (x.totalLine > b.line ? { line: x.totalLine, book: x.name } : b),
     { line: 0, book: "" },
   );
+  const vegasBooks = books.filter((b) => b.category !== "prediction_market");
+  const predBooks = books.filter((b) => b.category === "prediction_market");
+
+  const gapFor = (book: FullBookmakerLine): { value: number; side: string } | null => {
+    if (!vegasConsensus) return null;
+    const home = book.homeMoneyline - vegasConsensus.home;
+    const away = book.awayMoneyline - vegasConsensus.away;
+    const useHome = Math.abs(home) >= Math.abs(away);
+    return { value: useHome ? home : away, side: useHome ? "H" : "A" };
+  };
+
+  const renderRow = (b: FullBookmakerLine) => {
+    const isPred = b.category === "prediction_market";
+    const gap = isPred ? gapFor(b) : null;
+    return (
+      <tr key={b.key} className={cn("border-t border-border/40", isPred && "bg-info/5")}>
+        <td className="sticky left-0 z-10 bg-card px-2 py-1 text-foreground whitespace-nowrap">
+          <div className="flex items-center gap-1.5">
+            <span>{b.name}</span>
+            {b.key === "kalshi" && (
+              <span className="rounded-sm border border-info/40 bg-info/10 px-1 py-px text-[8px] font-bold text-info">CFTC</span>
+            )}
+            {b.key === "polymarket" && (
+              <span className="rounded-sm border border-warning/40 bg-warning/10 px-1 py-px text-[8px] font-bold text-warning">Offshore</span>
+            )}
+          </div>
+        </td>
+        <td className={cn("px-2 py-1", b.name === bestAway.book && "text-success font-bold")}>{formatOdds(b.awayMoneyline)}</td>
+        <td className={cn("px-2 py-1", b.name === bestHome.book && "text-success font-bold")}>{formatOdds(b.homeMoneyline)}</td>
+        <td className="px-2 py-1">{isPred ? "—" : b.homeSpread ? formatSpread(b.homeSpread) : "—"}</td>
+        <td className={cn("px-2 py-1", !isPred && b.name === bestTotal.book && "text-success font-bold")}>
+          {isPred ? "—" : b.totalLine || "—"}
+        </td>
+        <td className={cn(
+          "px-2 py-1 font-bold",
+          !gap ? "text-muted-foreground"
+            : gap.value > 0 ? "text-success"
+            : gap.value < 0 ? "text-destructive"
+            : "text-muted-foreground",
+        )}>
+          {gap ? `${gap.value > 0 ? "+" : ""}${gap.value} (${gap.side})` : "—"}
+        </td>
+      </tr>
+    );
+  };
+
   return (
     <div className="border-t border-border/60 overflow-x-auto">
-      <table className="w-full text-[10px] font-mono">
+      <table className="w-full min-w-[480px] text-[10px] font-mono">
         <thead className="bg-background/40">
           <tr className="text-left text-muted-foreground">
-            <th className="px-2 py-1">Book</th>
+            <th className="sticky left-0 z-10 bg-background/40 px-2 py-1">Book</th>
             <th className="px-2 py-1">Away ML</th>
             <th className="px-2 py-1">Home ML</th>
             <th className="px-2 py-1">Spread</th>
             <th className="px-2 py-1">Total</th>
+            <th className="px-2 py-1 whitespace-nowrap">vs Vegas</th>
           </tr>
         </thead>
         <tbody>
-          {books.map((b) => (
-            <tr key={b.key} className="border-t border-border/40">
-              <td className="px-2 py-1 text-foreground">{b.name}</td>
-              <td className={cn("px-2 py-1", b.name === bestAway.book && "text-success font-bold")}>{formatOdds(b.awayMoneyline)}</td>
-              <td className={cn("px-2 py-1", b.name === bestHome.book && "text-success font-bold")}>{formatOdds(b.homeMoneyline)}</td>
-              <td className="px-2 py-1">{b.homeSpread ? formatSpread(b.homeSpread) : "—"}</td>
-              <td className={cn("px-2 py-1", b.name === bestTotal.book && "text-success font-bold")}>{b.totalLine || "—"}</td>
+          {vegasBooks.map(renderRow)}
+          {predBooks.length > 0 && (
+            <tr className="border-t border-border/60 bg-background/40">
+              <td colSpan={6} className="px-2 py-1 text-center text-[9px] uppercase tracking-wider text-muted-foreground">
+                ── Prediction Markets ──
+              </td>
             </tr>
-          ))}
+          )}
+          {predBooks.map(renderRow)}
         </tbody>
       </table>
       <div className="border-t border-border/60 px-2 py-1.5 text-[10px] font-mono text-muted-foreground">

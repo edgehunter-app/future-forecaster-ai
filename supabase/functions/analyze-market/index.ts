@@ -82,6 +82,34 @@ Polymarket is pricing this event differently:
 This suggests potential mispricing between markets.
 `
     : "No Polymarket market found for this game.";
+  const fmtCents = (book: Any) => {
+    if (!book) return null;
+    const homeGap = (typeof book.vegasHome === "number") ? book.home - book.vegasHome : null;
+    const awayGap = (typeof book.vegasAway === "number") ? book.away - book.vegasAway : null;
+    return { homeGap, awayGap };
+  };
+  const kalshiBlock = p.kalshi
+    ? (() => {
+        const g = fmtCents(p.kalshi);
+        return `
+KALSHI (CFTC regulated prediction market):
+  Home: ${p.kalshi.home} American${g?.homeGap !== null ? ` (gap vs Vegas: ${g!.homeGap! > 0 ? "+" : ""}${g!.homeGap} cents)` : ""}
+  Away: ${p.kalshi.away} American${g?.awayGap !== null ? ` (gap vs Vegas: ${g!.awayGap! > 0 ? "+" : ""}${g!.awayGap} cents)` : ""}
+Kalshi is sharp regulated money — significant gaps are a strong signal.
+`;
+      })()
+    : "No Kalshi market found for this game.";
+  const polymarketBlock = p.polymarket
+    ? (() => {
+        const g = fmtCents(p.polymarket);
+        return `
+POLYMARKET (offshore prediction market):
+  Home: ${p.polymarket.home} American${g?.homeGap !== null ? ` (gap vs Vegas: ${g!.homeGap! > 0 ? "+" : ""}${g!.homeGap} cents)` : ""}
+  Away: ${p.polymarket.away} American${g?.awayGap !== null ? ` (gap vs Vegas: ${g!.awayGap! > 0 ? "+" : ""}${g!.awayGap} cents)` : ""}
+Polymarket is offshore retail — gaps are relevant but less regulated.
+`;
+      })()
+    : "No Polymarket market found for this game.";
   const walletBlock = wallets.length > 0
     ? `
 SMART WALLET SIGNALS:
@@ -108,6 +136,8 @@ BEST AVAILABLE ODDS:
   Home moneyline: ${p.bestHomeOdds} (${p.bestHomeBook})
   Away moneyline: ${p.bestAwayOdds} (${p.bestAwayBook})
 ${polyBlock}
+${kalshiBlock}
+${polymarketBlock}
 ${walletBlock}
 USER RISK PROFILE:
   Bankroll: $${bankroll}
