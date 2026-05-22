@@ -194,15 +194,7 @@ export default function Sports() {
               Refresh
             </button>
             <span className="text-[10px] text-muted-foreground">
-              {isAdmin
-                ? !activeKey
-                  ? `Auto-scan paused — resets ${usageSummary.resetDate}`
-                  : nextScanAt
-                    ? `Next auto-scan: ${nextScanAt.toLocaleTimeString([], { hour: "numeric", minute: "2-digit" })}`
-                    : scanInterval === Infinity
-                      ? "Auto-scan paused"
-                      : "Next auto-scan: pending"
-                : ""}
+              {isAdmin ? "Manual refresh only" : ""}
             </span>
           </div>
         </div>
