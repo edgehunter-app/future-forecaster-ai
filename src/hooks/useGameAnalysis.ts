@@ -2,6 +2,7 @@ import { useCallback, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAppStore } from "@/store/useAppStore";
 import type { FullGame } from "@/lib/oddsApi";
+import type { GameAnalysisResult } from "@/types";
 import { bumpSportsAnalyses } from "@/lib/analysisCounter";
 
 export interface GameAnalysisResult {
