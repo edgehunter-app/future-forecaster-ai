@@ -2,7 +2,26 @@ import { cn } from "@/lib/utils";
 import type { UsageSummary } from "@/lib/oddsApiKeyManager";
 
 export default function UsagePanel({ summary }: { summary: UsageSummary }) {
-  const { totalRemaining, totalUsed, totalLimit, daysLeft, willLastUntilReset, recommendedInterval } = summary;
+  const { totalRemaining, totalUsed, totalLimit, daysLeft, willLastUntilReset, recommendedInterval, resetDate } = summary;
+
+  if (totalRemaining <= 0) {
+    return (
+      <div className="rounded-lg border border-destructive/40 bg-destructive/10 p-3 flex flex-wrap items-center justify-between gap-2">
+        <div className="flex items-center gap-2">
+          <span className="inline-flex items-center rounded-full border border-destructive/40 bg-destructive/15 px-2 py-0.5 text-[10px] font-bold uppercase text-destructive">
+            Odds API · Exhausted
+          </span>
+          <span className="text-[11px] text-muted-foreground">
+            Both keys are out of quota. Sports board is served by RapidAPI.
+          </span>
+        </div>
+        <span className="text-[11px] font-mono text-muted-foreground">
+          Resets {new Date(resetDate).toLocaleDateString()} · in {daysLeft}d
+        </span>
+      </div>
+    );
+  }
+
   const pct = Math.min(100, Math.round((totalUsed / totalLimit) * 100));
   const colorBar =
     totalRemaining > 400 ? "bg-success"
