@@ -44,7 +44,6 @@ function StatBlock({ label, value, hint }: { label: string; value: string | numb
 }
 
 function OddsApiKeyStatus() {
-function OddsApiKeyStatus() {
   const daysLeft = Math.max(
     0,
     Math.ceil((ODDS_API_RESET_DATE.getTime() - Date.now()) / 86_400_000),
