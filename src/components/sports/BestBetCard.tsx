@@ -7,6 +7,7 @@ import { useSuggestionsDB } from "@/hooks/useSuggestionsDB";
 import { useAuth } from "@/hooks/useAuth";
 import { toast } from "sonner";
 import { useEffect, useState } from "react";
+import { buildBetHeadline } from "@/lib/betHeadline";
 
 interface Props {
   result: BestBetResult;
@@ -80,39 +81,15 @@ export default function BestBetCard({ result, onClear, onRescan }: Props) {
   }
 
   const tone = confidenceTone(analysis.confidence);
-  // Resolve the actual side being recommended. If Claude's `recommendedTeam`
-  // names the home or away team, that wins — it represents the side Claude's
-  // reasoning is actually about. Otherwise fall back to the side label.
-  const recTeamRaw = (analysis.recommendedTeam ?? "").trim();
-  const matchesHome =
-    !!recTeamRaw && game.homeTeam.toLowerCase().includes(recTeamRaw.toLowerCase());
-  const matchesAway =
-    !!recTeamRaw && game.awayTeam.toLowerCase().includes(recTeamRaw.toLowerCase());
-  const resolvedSide: "HOME" | "AWAY" | null = matchesHome
-    ? "HOME"
-    : matchesAway
-      ? "AWAY"
-      : analysis.recommendation === "HOME" || analysis.recommendation === "AWAY"
-        ? analysis.recommendation
+  // Resolve side + correct any team-name mismatch so Claude's reasoning,
+  // headline, and recommendedTeam all agree.
+  const { headline, sideLabel } = buildBetHeadline(analysis, game);
+  const resolvedSide: "HOME" | "AWAY" | null =
+    analysis.recommendation === "HOME"
+      ? "HOME"
+      : analysis.recommendation === "AWAY"
+        ? "AWAY"
         : null;
-
-  const team =
-    resolvedSide === "HOME"
-      ? game.homeTeam
-      : resolvedSide === "AWAY"
-        ? game.awayTeam
-        : recTeamRaw;
-
-  const headline =
-    resolvedSide === "HOME"
-      ? `BET HOME — ${game.homeTeam}`
-      : resolvedSide === "AWAY"
-        ? `BET AWAY — ${game.awayTeam}`
-        : analysis.recommendation === "OVER"
-          ? `BET OVER — ${team || game.total?.line || ""}`
-          : analysis.recommendation === "UNDER"
-            ? `BET UNDER — ${team || game.total?.line || ""}`
-            : `BET ${analysis.recommendation} — ${team}`;
 
   const betTypeLabel =
     analysis.betType === "moneyline"
@@ -256,7 +233,11 @@ export default function BestBetCard({ result, onClear, onRescan }: Props) {
       {/* Recommendation box */}
       <div className={cn("rounded-lg border-2 px-3 py-4 text-center", tone)}>
         <div className="text-lg sm:text-2xl font-extrabold leading-tight">{headline}</div>
-        <div className="mt-1 text-[11px] uppercase tracking-wide opacity-80">{betTypeLabel}</div>
+        <div className="mt-1 text-[11px] tracking-wide text-muted-foreground">
+          {sideLabel ? `${sideLabel} · ` : ""}
+          {betTypeLabel}
+          {bestOdds ? ` · ${formatOdds(bestOdds)}` : ""}
+        </div>
       </div>
 
       {/* Metrics row */}

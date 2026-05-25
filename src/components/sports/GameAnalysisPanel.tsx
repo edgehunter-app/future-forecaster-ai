@@ -8,6 +8,7 @@ import { useAppStore } from "@/store/useAppStore";
 import { useSuggestionsDB } from "@/hooks/useSuggestionsDB";
 import { useAuth } from "@/hooks/useAuth";
 import { toast } from "sonner";
+import { buildBetHeadline } from "@/lib/betHeadline";
 
 interface Props {
   result: GameAnalysisResult;
@@ -38,31 +39,16 @@ export default function GameAnalysisPanel({ result, game, onClear }: Props) {
 
   const noEdge = result.recommendation === "NO_EDGE";
   const tone = tierTone(result.confidence, noEdge);
-  // Resolve the actual side. If Claude's `recommendedTeam` names the home or
-  // away team, trust it over the side label (which sometimes disagrees).
-  const recTeamRaw = (result.recommendedTeam ?? "").trim();
-  const matchesHome =
-    !!recTeamRaw && game.homeTeam.toLowerCase().includes(recTeamRaw.toLowerCase());
-  const matchesAway =
-    !!recTeamRaw && game.awayTeam.toLowerCase().includes(recTeamRaw.toLowerCase());
-  const resolvedSide: "HOME" | "AWAY" | null = matchesHome
-    ? "HOME"
-    : matchesAway
-      ? "AWAY"
-      : result.recommendation === "HOME" || result.recommendation === "AWAY"
-        ? result.recommendation
+  const { headline: builtHeadline, sideLabel } = noEdge
+    ? { headline: "NO EDGE DETECTED", sideLabel: "" }
+    : buildBetHeadline(result, game);
+  const headline = builtHeadline;
+  const resolvedSide: "HOME" | "AWAY" | null =
+    result.recommendation === "HOME"
+      ? "HOME"
+      : result.recommendation === "AWAY"
+        ? "AWAY"
         : null;
-  const headline = noEdge
-    ? "NO EDGE DETECTED"
-    : resolvedSide === "HOME"
-      ? `BET HOME — ${game.homeTeam}`
-      : resolvedSide === "AWAY"
-        ? `BET AWAY — ${game.awayTeam}`
-        : result.recommendation === "OVER"
-          ? `BET OVER — ${recTeamRaw || game.total?.line || ""}`
-          : result.recommendation === "UNDER"
-            ? `BET UNDER — ${recTeamRaw || game.total?.line || ""}`
-            : `BET ${result.recommendation} — ${recTeamRaw}`;
 
   const betTypeLabel =
     result.betType === "moneyline"
@@ -136,7 +122,11 @@ export default function GameAnalysisPanel({ result, game, onClear }: Props) {
       {/* Recommendation */}
       <div className={cn("rounded-md border px-3 py-3 text-center", tone)}>
         <div className="text-base sm:text-xl font-extrabold leading-tight">{headline}</div>
-        <div className="mt-0.5 text-[11px] uppercase tracking-wide opacity-80">{betTypeLabel}</div>
+        <div className="mt-0.5 text-[11px] tracking-wide text-muted-foreground">
+          {sideLabel ? `${sideLabel} · ` : ""}
+          {betTypeLabel}
+          {result.odds ? ` · ${formatOdds(result.odds)}` : ""}
+        </div>
       </div>
 
       {/* Line Shopping callout — always shown when present */}
