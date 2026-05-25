@@ -1,4 +1,4 @@
-import { Trophy, X, TrendingUp, Save, AlertTriangle, Clock, RotateCw } from "lucide-react";
+import { Trophy, X, TrendingUp, Save, AlertTriangle, Clock, RotateCw, BarChart3, Whale } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { ConfidenceBar } from "@/components/ui/ConfidenceBar";
 import type { BestBetResult } from "@/types";
