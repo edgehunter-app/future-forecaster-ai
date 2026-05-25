@@ -43,8 +43,12 @@ export function resolveSide(
   analysis: HeadlineAnalysisLike,
   game: HeadlineGame,
 ): { side: "HOME" | "AWAY" | "OVER" | "UNDER" | null; team: string } {
-  const rec = analysis.recommendation;
-  const recTeamRaw = (analysis.recommendedTeam ?? "").trim();
+  // Normalize legacy formats like "AWAY — New York Yankees" or "AWAY - Yankees".
+  const rawRec = (analysis.recommendation ?? "").toString().trim();
+  const recParts = rawRec.split(/\s*[—–-]\s*/);
+  const rec = (recParts[0] ?? "").toUpperCase();
+  const inlineTeam = recParts.slice(1).join(" ").trim();
+  const recTeamRaw = (analysis.recommendedTeam ?? inlineTeam ?? "").trim();
 
   if (rec === "HOME") {
     if (recTeamRaw.toLowerCase() !== game.homeTeam.toLowerCase()) {

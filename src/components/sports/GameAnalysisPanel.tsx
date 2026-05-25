@@ -67,6 +67,15 @@ export default function GameAnalysisPanel({ result, game, onClear }: Props) {
 
   const canSave = !noEdge && result.confidence >= settings.minConfidence;
 
+  const vegasBookCount =
+    (game.bookmakers ?? []).filter(
+      (b) =>
+        b.key !== "kalshi" &&
+        b.key !== "polymarket" &&
+        (b.homeMoneyline || b.awayMoneyline),
+    ).length;
+  const showLineShopping = vegasBookCount >= 2;
+
   const handleSave = async () => {
     if (!user) {
       toast.error("Sign in to save suggestions");
@@ -129,8 +138,8 @@ export default function GameAnalysisPanel({ result, game, onClear }: Props) {
         </div>
       </div>
 
-      {/* Line Shopping callout — always shown when present */}
-      {result.lineShopping && (result.lineShopping.bestBook || result.lineShopping.recommendation) && (
+      {/* Line Shopping callout — only when 2+ vegas books available */}
+      {showLineShopping && result.lineShopping && (result.lineShopping.bestBook || result.lineShopping.recommendation) && (
         <div className="rounded-md border border-success/40 bg-success/10 p-3">
           <div className="flex items-center gap-1.5 text-success mb-1">
             <TrendingUp className="h-3.5 w-3.5" />
@@ -152,6 +161,12 @@ export default function GameAnalysisPanel({ result, game, onClear }: Props) {
           {result.lineShopping.recommendation && (
             <div className="mt-1 text-[11px] text-success/90">{result.lineShopping.recommendation}</div>
           )}
+        </div>
+      )}
+
+      {!showLineShopping && (
+        <div className="rounded-md border border-border bg-muted/20 p-3 text-[11px] text-muted-foreground">
+          Only one book available for this game. Check back after lines are posted.
         </div>
       )}
 
