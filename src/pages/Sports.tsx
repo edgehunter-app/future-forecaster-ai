@@ -49,6 +49,7 @@ export default function Sports() {
     findBestBet,
     loading: bestBetLoading,
     scannedSoFar,
+    scanProgress,
     result: bestBetResult,
     error: bestBetError,
     clear: clearBestBet,
@@ -170,8 +171,8 @@ export default function Sports() {
               <>
                 <Loader2 className="h-4 w-4 animate-spin" />
                 <span className="flex flex-col items-start leading-tight">
-                  <span>Scanning {scannedSoFar}/8…</span>
-                  <span className="text-[10px] font-normal opacity-80">Analyzing games</span>
+                  <span>Analyzing game {scanProgress.current} of {scanProgress.total}…</span>
+                  <span className="text-[10px] font-normal opacity-80">AI line shopping scan</span>
                 </span>
               </>
             ) : (
@@ -199,6 +200,20 @@ export default function Sports() {
           </div>
         </div>
       </div>
+
+      {bestBetLoading && scanProgress.total > 0 && (
+        <div className="space-y-1">
+          <div className="h-2 w-full overflow-hidden rounded-full bg-secondary">
+            <div
+              className="h-full bg-purple transition-all duration-300"
+              style={{ width: `${(scanProgress.current / scanProgress.total) * 100}%` }}
+            />
+          </div>
+          <div className="text-[10px] font-mono text-muted-foreground text-right">
+            {scanProgress.current} of {scanProgress.total} games analyzed
+          </div>
+        </div>
+      )}
 
       {bestBetError && (
         <div className="rounded-lg border border-destructive/40 bg-destructive/10 px-4 py-3 text-sm text-destructive">

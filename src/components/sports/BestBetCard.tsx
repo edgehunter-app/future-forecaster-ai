@@ -52,20 +52,22 @@ export default function BestBetCard({ result, onClear, onRescan }: Props) {
 
   let countdownLabel = "";
   let countdownTone = "";
+  let pulse = false;
   if (gameStarted) {
     countdownLabel = "Game in progress — do not bet";
-    countdownTone = "border-destructive/50 bg-destructive/10 text-destructive";
+    countdownTone = "border-destructive/50 bg-destructive/20 text-destructive";
   } else if (minutesUntil < 30) {
     countdownLabel = `⚡ Starting in ${minutesUntil}m — bet now`;
-    countdownTone = "border-destructive/50 bg-destructive/10 text-destructive";
-  } else if (minutesUntil < 60) {
-    countdownLabel = `Starting soon · ${minutesUntil}m left`;
-    countdownTone = "border-warning/50 bg-warning/10 text-warning";
+    countdownTone = "border-destructive/50 bg-destructive/20 text-destructive";
+    pulse = true;
+  } else if (minutesUntil < 120) {
+    countdownLabel = `Starting soon · ${Math.floor(minutesUntil / 60)}h ${minutesUntil % 60}m`;
+    countdownTone = "border-warning/50 bg-warning/20 text-warning";
   } else {
     const h = Math.floor(minutesUntil / 60);
     const m = minutesUntil % 60;
     countdownLabel = `Starts in ${h}h ${m}m`;
-    countdownTone = "border-success/50 bg-success/10 text-success";
+    countdownTone = "border-success/50 bg-success/20 text-success";
   }
 
   const tone = confidenceTone(analysis.confidence);
@@ -226,8 +228,8 @@ export default function BestBetCard({ result, onClear, onRescan }: Props) {
       </div>
 
       {/* Countdown badge */}
-      <div className={cn("flex items-center gap-1.5 rounded-md border px-2.5 py-1.5 text-xs font-bold", countdownTone)}>
-        <Clock className="h-3.5 w-3.5" />
+      <div className={cn("flex items-center gap-2 rounded-md border px-3 py-1.5 text-[15px] font-bold", countdownTone, pulse && "animate-pulse")}>
+        <Clock className="h-4 w-4" />
         <span>{countdownLabel}</span>
       </div>
 

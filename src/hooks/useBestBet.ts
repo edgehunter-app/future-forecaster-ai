@@ -9,6 +9,7 @@ import { bumpSportsAnalyses } from "@/lib/analysisCounter";
 export function useBestBet() {
   const [loading, setLoading] = useState(false);
   const [scannedSoFar, setScannedSoFar] = useState(0);
+  const [scanProgress, setScanProgress] = useState({ current: 0, total: 0 });
   const [result, setResult] = useState<BestBetResult | null>(null);
   const [error, setError] = useState<string | null>(null);
 
@@ -27,6 +28,7 @@ export function useBestBet() {
     setError(null);
     setResult(null);
     setScannedSoFar(0);
+    setScanProgress({ current: 0, total: 0 });
 
     try {
       // Filter out games that have already started (plus a 10 min buffer).
@@ -54,12 +56,14 @@ export function useBestBet() {
         return aTime - bTime;
       });
 
-      const sortedGames = sortedByUrgency.slice(0, 8);
+      const sortedGames = sortedByUrgency.slice(0, 5);
 
       const maxPositionPct = (settings.maxPosition ?? 0.05) * 100;
       let bestResult: GameAnalysisResult | null = null;
       let bestGame: FullGame | null = null;
       let bestScore = 0;
+
+      setScanProgress({ current: 0, total: sortedGames.length });
 
       for (let i = 0; i < sortedGames.length; i++) {
         const game = sortedGames[i];
@@ -104,6 +108,7 @@ export function useBestBet() {
           });
 
           setScannedSoFar(i + 1);
+          setScanProgress((prev) => ({ ...prev, current: prev.current + 1 }));
 
           if (invokeError || !data) continue;
           if ((data as any)?.code) continue;
@@ -160,8 +165,9 @@ export function useBestBet() {
     setResult(null);
     setError(null);
     setScannedSoFar(0);
+    setScanProgress({ current: 0, total: 0 });
     setLastBestBet(null);
   }, [setLastBestBet]);
 
-  return { findBestBet, loading, scannedSoFar, result, error, clear };
+  return { findBestBet, loading, scannedSoFar, scanProgress, result, error, clear };
 }
