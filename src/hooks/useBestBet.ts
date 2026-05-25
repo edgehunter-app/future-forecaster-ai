@@ -56,7 +56,7 @@ export function useBestBet() {
         return aTime - bTime;
       });
 
-      const sortedGames = sortedByUrgency.slice(0, 8);
+      const sortedGames = sortedByUrgency.slice(0, 5);
 
       const maxPositionPct = (settings.maxPosition ?? 0.05) * 100;
       let bestResult: GameAnalysisResult | null = null;
