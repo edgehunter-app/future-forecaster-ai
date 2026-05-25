@@ -49,6 +49,7 @@ export default function Sports() {
     findBestBet,
     loading: bestBetLoading,
     scannedSoFar,
+    scanProgress,
     result: bestBetResult,
     error: bestBetError,
     clear: clearBestBet,
