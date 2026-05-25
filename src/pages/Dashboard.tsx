@@ -572,11 +572,12 @@ function SportsEdgeStrip() {
     navigate("/sports");
   };
 
-  const gameStartMs = lastBestBet ? new Date(lastBestBet.game.commenceTime).getTime() : 0;
+  const isSportsBet = !!(lastBestBet && (!lastBestBet.source || lastBestBet.source === "sports") && lastBestBet.game && lastBestBet.analysis);
+  const gameStartMs = isSportsBet ? new Date(lastBestBet!.game!.commenceTime).getTime() : 0;
   const msUntilGame = gameStartMs - Date.now();
-  const gameStarted = lastBestBet ? msUntilGame <= 0 : false;
+  const gameStarted = isSportsBet ? msUntilGame <= 0 : false;
   const countdownText = (() => {
-    if (!lastBestBet) return "";
+    if (!isSportsBet) return "";
     if (gameStarted) return "Game in progress";
     const mins = Math.floor(msUntilGame / 60000);
     if (mins < 60) return `Starts in ${mins}m`;
@@ -617,22 +618,22 @@ function SportsEdgeStrip() {
             );
           })}
         </div>
-      ) : bestBetIsRecent && lastBestBet ? (
+      ) : bestBetIsRecent && lastBestBet && isSportsBet ? (
         <div className="rounded-lg border bg-card p-4 hover:border-foreground/20 transition-colors">
           <div className="flex items-center gap-2 mb-2">
             <Trophy className="h-4 w-4 text-warning" />
             <span className="text-xs font-bold uppercase tracking-wide text-foreground">Today's Best Bet</span>
           </div>
           <div className="text-sm font-semibold text-foreground">
-            {lastBestBet.analysis.recommendedTeam || lastBestBet.game.awayTeam} at {lastBestBet.analysis.bestBook || "best book"} {lastBestBet.analysis.odds > 0 ? `+${lastBestBet.analysis.odds}` : lastBestBet.analysis.odds}
+            {lastBestBet.analysis!.recommendedTeam || lastBestBet.game!.awayTeam} at {lastBestBet.analysis!.bestBook || "best book"} {lastBestBet.analysis!.odds > 0 ? `+${lastBestBet.analysis!.odds}` : lastBestBet.analysis!.odds}
             {!gameStarted && (
               <span className="ml-1 text-xs font-mono text-muted-foreground">· {countdownText}</span>
             )}
           </div>
           <div className="mt-1 flex items-center gap-3 text-xs font-mono text-muted-foreground">
-            <span className="text-success font-semibold">Edge: +{(lastBestBet.analysis.edge * 100).toFixed(1)}%</span>
+            <span className="text-success font-semibold">Edge: +{(lastBestBet.analysis!.edge * 100).toFixed(1)}%</span>
             <span>·</span>
-            <span>Confidence: {Math.round(lastBestBet.analysis.confidence)}%</span>
+            <span>Confidence: {Math.round(lastBestBet.analysis!.confidence)}%</span>
           </div>
           {gameStarted ? (
             <div className="mt-2 space-y-2">
@@ -655,6 +656,32 @@ function SportsEdgeStrip() {
             </Link>
           )}
         </div>
+      ) : bestBetIsRecent && lastBestBet && lastBestBet.source === "prediction_market" && lastBestBet.prediction ? (
+        <Link to="/sports" className="block rounded-lg border bg-card p-4 hover:border-foreground/20 transition-colors">
+          <div className="flex items-center gap-2 mb-2">
+            <Trophy className="h-4 w-4 text-info" />
+            <span className="text-xs font-bold uppercase tracking-wide text-foreground">Today's Best Bet</span>
+            <span className="rounded-full border border-info/40 bg-info/15 px-1.5 py-0.5 text-[9px] font-bold uppercase text-info">Cross-Market Gap</span>
+          </div>
+          <div className="text-sm font-semibold text-foreground line-clamp-2">{lastBestBet.prediction.market.question}</div>
+          <div className="mt-1 flex items-center gap-3 text-xs font-mono text-muted-foreground">
+            <span>{lastBestBet.prediction.bestPlatform} {lastBestBet.prediction.bestPriceCents}¢</span>
+            <span>·</span>
+            <span className="text-success font-semibold">Gap: {lastBestBet.prediction.gapCents}¢</span>
+          </div>
+        </Link>
+      ) : bestBetIsRecent && lastBestBet && lastBestBet.source === "wallet_signal" && lastBestBet.wallet ? (
+        <Link to="/sports" className="block rounded-lg border bg-card p-4 hover:border-foreground/20 transition-colors">
+          <div className="flex items-center gap-2 mb-2">
+            <Trophy className="h-4 w-4 text-purple" />
+            <span className="text-xs font-bold uppercase tracking-wide text-foreground">Today's Best Bet</span>
+            <span className="rounded-full border border-purple/40 bg-purple/15 px-1.5 py-0.5 text-[9px] font-bold uppercase text-purple">Smart Wallet Signal</span>
+          </div>
+          <div className="text-sm font-semibold text-foreground line-clamp-2">{lastBestBet.wallet.market.question}</div>
+          <div className="mt-1 flex items-center gap-3 text-xs font-mono text-muted-foreground">
+            <span>{lastBestBet.wallet.walletCount} elite wallets · ${Math.round(lastBestBet.wallet.totalValue).toLocaleString()}</span>
+          </div>
+        </Link>
       ) : (
         <div className="rounded-lg border border-dashed border-border bg-card/40 p-5 text-center">
           <Trophy className="h-8 w-8 mx-auto text-muted-foreground mb-2" />

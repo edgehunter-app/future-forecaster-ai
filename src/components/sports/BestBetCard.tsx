@@ -1,4 +1,4 @@
-import { Trophy, X, TrendingUp, Save, AlertTriangle, Clock, RotateCw } from "lucide-react";
+import { Trophy, X, TrendingUp, Save, AlertTriangle, Clock, RotateCw, BarChart3, Fish } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { ConfidenceBar } from "@/components/ui/ConfidenceBar";
 import type { BestBetResult } from "@/types";
@@ -29,7 +29,16 @@ function confidenceTone(c: number) {
 }
 
 export default function BestBetCard({ result, onClear, onRescan }: Props) {
+  // Route to alternate layouts based on source.
+  if (result.source === "prediction_market" && result.prediction) {
+    return <PredictionMarketBestBetCard result={result} onClear={onClear} onRescan={onRescan} />;
+  }
+  if (result.source === "wallet_signal" && result.wallet) {
+    return <WalletSignalBestBetCard result={result} onClear={onClear} onRescan={onRescan} />;
+  }
+
   const { game, analysis, scannedCount, generatedAt } = result;
+  if (!game || !analysis) return null;
   const settings = useAppStore((s) => s.settings);
   const { user } = useAuth();
   const { saveSuggestion } = useSuggestionsDB();
@@ -199,9 +208,14 @@ export default function BestBetCard({ result, onClear, onRescan }: Props) {
         <div className="flex items-center gap-2">
           <Trophy className="h-5 w-5 text-warning" />
           <div>
-            <div className="text-base font-extrabold text-foreground">Today's Best Bet</div>
+            <div className="flex items-center gap-2">
+              <div className="text-base font-extrabold text-foreground">Today's Best Bet</div>
+              <span className="rounded-full border border-warning/40 bg-warning/15 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-warning">
+                🏆 Line Shopping Edge
+              </span>
+            </div>
             <div className="text-[11px] text-muted-foreground">
-              Scanned {scannedCount} game{scannedCount === 1 ? "" : "s"} · {generated}
+              Best line shopping edge across {scannedCount} opportunit{scannedCount === 1 ? "y" : "ies"} today · {generated}
             </div>
           </div>
         </div>
@@ -356,6 +370,234 @@ function Metric({ label, value, tone }: { label: string; value: string; tone: st
         {label}
       </div>
       <div className={cn("mt-0.5 text-sm font-extrabold font-mono", tone)}>{value}</div>
+    </div>
+  );
+}
+
+// ============================================================================
+// Prediction-market (cross-market gap) layout
+// ============================================================================
+function PredictionMarketBestBetCard({ result, onClear, onRescan }: Props) {
+  const p = result.prediction!;
+  const { scannedCount, generatedAt } = result;
+  const generatedAtDate = generatedAt instanceof Date ? generatedAt : new Date(generatedAt);
+  const generated = generatedAtDate.toLocaleTimeString([], { hour: "numeric", minute: "2-digit" });
+  const tone = confidenceTone(p.confidence);
+  const ageMinutes = Math.floor((Date.now() - generatedAtDate.getTime()) / 60000);
+  const isStale = ageMinutes > 120;
+
+  return (
+    <div
+      id="best-bet-card"
+      className="rounded-xl border-2 border-info/40 bg-gradient-to-br from-info/10 via-card to-purple/5 p-4 sm:p-5 space-y-4 shadow-lg animate-in fade-in slide-in-from-top-2 duration-300"
+    >
+      {isStale && onRescan && (
+        <StaleBanner ageMinutes={ageMinutes} onRescan={onRescan} />
+      )}
+
+      <div className="flex items-start justify-between gap-3">
+        <div className="flex items-center gap-2">
+          <BarChart3 className="h-5 w-5 text-info" />
+          <div>
+            <div className="flex items-center gap-2">
+              <div className="text-base font-extrabold text-foreground">Today's Best Bet</div>
+              <span className="rounded-full border border-info/40 bg-info/15 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-info">
+                📊 Cross-Market Gap
+              </span>
+            </div>
+            <div className="text-[11px] text-muted-foreground">
+              Cross-market gap between Kalshi and Polymarket on this question · {generated}
+            </div>
+          </div>
+        </div>
+        <button
+          onClick={onClear}
+          className="rounded-md p-1 text-muted-foreground hover:bg-muted hover:text-foreground"
+          aria-label="Dismiss"
+        >
+          <X className="h-4 w-4" />
+        </button>
+      </div>
+
+      <div className="text-sm font-semibold text-foreground line-clamp-3">
+        {p.market.question}
+      </div>
+
+      <div className={cn("rounded-lg border-2 px-3 py-4 text-center", tone)}>
+        <div className="text-lg sm:text-2xl font-extrabold leading-tight">
+          BET {p.favoredSide} on {p.bestPlatform}
+        </div>
+        <div className="mt-1 text-[11px] uppercase tracking-wide opacity-80">
+          Best price: {p.bestPlatform} at {p.bestPriceCents}¢
+        </div>
+      </div>
+
+      <div className="grid grid-cols-3 gap-2">
+        <Metric label="Polymarket" value={`${p.polyPriceCents}¢`} tone="text-foreground" />
+        <Metric label="Kalshi" value={`${p.kalshiPriceCents}¢`} tone="text-foreground" />
+        <Metric label="Gap" value={`${p.gapCents}¢`} tone="text-success" />
+      </div>
+
+      <div className="grid grid-cols-3 gap-2">
+        <Metric label="Suggested" value={`$${p.suggestedAmount}`} tone="text-info" />
+        <Metric label="Edge" value={`${p.edge >= 0 ? "+" : ""}${(p.edge * 100).toFixed(1)}%`} tone="text-success" />
+        <Metric label="Risk" value={p.riskLevel.toUpperCase()} tone="text-foreground" />
+      </div>
+
+      <div>
+        <div className="mb-1 text-[10px] uppercase font-semibold text-muted-foreground">Confidence</div>
+        <ConfidenceBar value={p.confidence} />
+      </div>
+
+      {p.reasoning && (
+        <div className="rounded-md bg-background/60 border border-border/60 p-3">
+          <p className="text-xs italic text-foreground/90 leading-relaxed">{p.reasoning}</p>
+        </div>
+      )}
+
+      {p.keyFactors.length > 0 && (
+        <div className="flex flex-wrap gap-1.5">
+          {p.keyFactors.map((f, i) => (
+            <span key={i} className="rounded-full border border-info/30 bg-info/10 px-2 py-0.5 text-[10px] font-semibold text-info">
+              {f}
+            </span>
+          ))}
+        </div>
+      )}
+
+      <p className="text-[10px] text-muted-foreground text-center leading-snug">
+        Scanned {scannedCount} opportunities. AI suggestions are not financial advice.
+      </p>
+    </div>
+  );
+}
+
+// ============================================================================
+// Wallet-signal layout
+// ============================================================================
+function WalletSignalBestBetCard({ result, onClear, onRescan }: Props) {
+  const w = result.wallet!;
+  const { scannedCount, generatedAt } = result;
+  const generatedAtDate = generatedAt instanceof Date ? generatedAt : new Date(generatedAt);
+  const generated = generatedAtDate.toLocaleTimeString([], { hour: "numeric", minute: "2-digit" });
+  const tone = confidenceTone(w.confidence);
+  const ageMinutes = Math.floor((Date.now() - generatedAtDate.getTime()) / 60000);
+  const isStale = ageMinutes > 120;
+
+  return (
+    <div
+      id="best-bet-card"
+      className="rounded-xl border-2 border-purple/40 bg-gradient-to-br from-purple/10 via-card to-info/5 p-4 sm:p-5 space-y-4 shadow-lg animate-in fade-in slide-in-from-top-2 duration-300"
+    >
+      {isStale && onRescan && (
+        <StaleBanner ageMinutes={ageMinutes} onRescan={onRescan} />
+      )}
+
+      <div className="flex items-start justify-between gap-3">
+        <div className="flex items-center gap-2">
+          <Fish className="h-5 w-5 text-purple" />
+          <div>
+            <div className="flex items-center gap-2">
+              <div className="text-base font-extrabold text-foreground">Today's Best Bet</div>
+              <span className="rounded-full border border-purple/40 bg-purple/15 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-purple">
+                🐋 Smart Wallet Signal
+              </span>
+            </div>
+            <div className="text-[11px] text-muted-foreground">
+              {w.walletCount} elite wallets agree on this question — combined ${Math.round(w.totalValue).toLocaleString()} position · {generated}
+            </div>
+          </div>
+        </div>
+        <button
+          onClick={onClear}
+          className="rounded-md p-1 text-muted-foreground hover:bg-muted hover:text-foreground"
+          aria-label="Dismiss"
+        >
+          <X className="h-4 w-4" />
+        </button>
+      </div>
+
+      <div className="text-sm font-semibold text-foreground line-clamp-3">
+        {w.market.question}
+      </div>
+
+      <div className={cn("rounded-lg border-2 px-3 py-4 text-center", tone)}>
+        <div className="text-lg sm:text-2xl font-extrabold leading-tight">
+          BET {w.favoredSide}
+        </div>
+        <div className="mt-1 text-[11px] uppercase tracking-wide opacity-80">
+          {w.walletCount} top wallets positioned {w.favoredSide}
+        </div>
+      </div>
+
+      <div className="flex flex-wrap items-center gap-1.5">
+        <span className="text-[10px] uppercase font-semibold text-muted-foreground mr-1">Wallet tiers:</span>
+        {w.topWallets.map((tw, i) => (
+          <span
+            key={i}
+            className={cn(
+              "rounded-md border px-2 py-0.5 text-[11px] font-bold font-mono",
+              tw.tier === "S"
+                ? "border-warning/50 bg-warning/15 text-warning"
+                : "border-info/50 bg-info/15 text-info",
+            )}
+            title={`${tw.label} · $${Math.round(tw.positionValue).toLocaleString()}`}
+          >
+            {tw.tier}
+          </span>
+        ))}
+      </div>
+
+      <div className="grid grid-cols-3 gap-2">
+        <Metric label="Suggested" value={`$${w.suggestedAmount}`} tone="text-info" />
+        <Metric label="Combined" value={`$${Math.round(w.totalValue).toLocaleString()}`} tone="text-success" />
+        <Metric label="Confidence" value={`${w.confidence}%`} tone="text-foreground" />
+      </div>
+
+      <div>
+        <div className="mb-1 text-[10px] uppercase font-semibold text-muted-foreground">Confidence</div>
+        <ConfidenceBar value={w.confidence} />
+      </div>
+
+      {w.reasoning && (
+        <div className="rounded-md bg-background/60 border border-border/60 p-3">
+          <p className="text-xs italic text-foreground/90 leading-relaxed">{w.reasoning}</p>
+        </div>
+      )}
+
+      {w.keyFactors.length > 0 && (
+        <div className="flex flex-wrap gap-1.5">
+          {w.keyFactors.map((f, i) => (
+            <span key={i} className="rounded-full border border-purple/30 bg-purple/10 px-2 py-0.5 text-[10px] font-semibold text-purple">
+              {f}
+            </span>
+          ))}
+        </div>
+      )}
+
+      <p className="text-[10px] text-muted-foreground text-center leading-snug">
+        Scanned {scannedCount} opportunities. AI suggestions are not financial advice.
+      </p>
+    </div>
+  );
+}
+
+function StaleBanner({ ageMinutes, onRescan }: { ageMinutes: number; onRescan: () => void }) {
+  return (
+    <div className="rounded-md border border-warning/50 bg-warning/10 p-3 flex items-start gap-2">
+      <AlertTriangle className="h-4 w-4 text-warning shrink-0 mt-0.5" />
+      <div className="flex-1 text-xs text-warning">
+        <div className="font-bold">
+          ⚠️ This pick is {Math.floor(ageMinutes / 60)} hour{Math.floor(ageMinutes / 60) === 1 ? "" : "s"} old
+        </div>
+        <div className="opacity-90">Prices may have moved — rescan for the latest opportunity</div>
+      </div>
+      <button
+        onClick={onRescan}
+        className="inline-flex items-center gap-1 rounded-md border border-warning/50 bg-warning/20 px-2 py-1 text-[11px] font-bold text-warning hover:bg-warning/30"
+      >
+        <RotateCw className="h-3 w-3" /> Rescan Now
+      </button>
     </div>
   );
 }
