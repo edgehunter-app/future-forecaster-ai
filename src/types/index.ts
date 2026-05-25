@@ -188,8 +188,47 @@ export interface GameAnalysisResult {
 }
 
 export interface BestBetResult {
-  game: import("@/lib/oddsApi").FullGame;
-  analysis: GameAnalysisResult;
+  /** Source of the recommendation. Defaults to "sports" when omitted (legacy). */
+  source?: BestBetSource;
+  /** Present when source === "sports". */
+  game?: import("@/lib/oddsApi").FullGame;
+  analysis?: GameAnalysisResult;
+  /** Present when source === "prediction_market". */
+  prediction?: PredictionMarketBest;
+  /** Present when source === "wallet_signal". */
+  wallet?: WalletSignalBest;
   scannedCount: number;
   generatedAt: Date;
+}
+
+export type BestBetSource = "sports" | "prediction_market" | "wallet_signal";
+
+export interface PredictionMarketBest {
+  market: Market;
+  polyPriceCents: number;
+  kalshiPriceCents: number;
+  gapCents: number;
+  bestPlatform: "Polymarket" | "Kalshi";
+  bestPriceCents: number;
+  favoredSide: "YES" | "NO";
+  confidence: number;
+  edge: number;
+  suggestedAmount: number;
+  reasoning: string;
+  keyFactors: string[];
+  riskLevel: "low" | "medium" | "high";
+}
+
+export interface WalletSignalBest {
+  market: Market;
+  walletCount: number;
+  totalValue: number;
+  topWallets: { label: string; tier: string; winRate: number; positionValue: number }[];
+  favoredSide: "YES" | "NO";
+  confidence: number;
+  edge: number;
+  suggestedAmount: number;
+  reasoning: string;
+  keyFactors: string[];
+  riskLevel: "low" | "medium" | "high";
 }
