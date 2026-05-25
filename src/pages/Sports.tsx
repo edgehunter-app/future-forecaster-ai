@@ -36,10 +36,7 @@ export default function Sports() {
     scan,
     loadGamesForSport,
     loadedSports,
-    activeKey,
-    usageSummary,
     nextScanAt,
-    scanInterval,
     setCurrentSport,
   } = useSportsOdds(markets);
 
@@ -74,7 +71,7 @@ export default function Sports() {
 
   // If a Best Bet scan is pending and games are not loaded, trigger a refresh first.
   useEffect(() => {
-    if (pendingBestBetScan && (fullGames?.length ?? 0) === 0 && !loading && activeKey) {
+    if (pendingBestBetScan && (fullGames?.length ?? 0) === 0 && !loading) {
       void scan("manual");
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -198,7 +195,7 @@ export default function Sports() {
           <div className="flex flex-col items-end gap-0.5">
             <button
               onClick={() => void scan("manual")}
-              disabled={loading || !activeKey}
+            disabled={loading}
               className="inline-flex items-center gap-1.5 rounded-md bg-info px-3 py-1.5 text-xs font-semibold text-white hover:bg-info/90 disabled:opacity-50"
             >
               <RotateCw className={cn("h-3.5 w-3.5", loading && "animate-spin")} />
@@ -252,16 +249,7 @@ export default function Sports() {
         <BestBetCard result={bestBetResult} onClear={clearBestBet} onRescan={handleBestBet} />
       )}
 
-      {isAdmin && !activeKey && (
-        <div className="rounded-lg border border-destructive/40 bg-destructive/10 px-4 py-2 text-sm flex items-start gap-2 text-destructive">
-          <AlertTriangle className="h-4 w-4 mt-0.5 shrink-0" />
-          <span>All Odds API keys exhausted. Auto-scan paused until reset on {usageSummary.resetDate}.</span>
-        </div>
-      )}
-
-      {isAdmin && usageSummary && (
-        <UsagePanel summary={usageSummary} />
-      )}
+      {isAdmin && <UsagePanel />}
 
       {/* Sport selector */}
       <div className="flex gap-1.5 overflow-x-auto scrollbar-thin pb-1">
@@ -280,11 +268,11 @@ export default function Sports() {
                 if (s.key !== "all") {
                   setCurrentSport(s.key);
                 }
-                if (s.key !== "all" && !loadedSports.has(s.key) && activeKey) {
+                if (s.key !== "all" && !loadedSports.has(s.key)) {
                   void loadGamesForSport(s.key);
                 }
               }}
-              disabled={s.key !== "all" && !isLoaded && !activeKey}
+              disabled={false}
               className={cn(
                 "shrink-0 inline-flex items-center gap-1.5 rounded-full border px-3 py-1 text-xs font-semibold transition-colors disabled:opacity-50",
                 active
