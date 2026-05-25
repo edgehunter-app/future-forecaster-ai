@@ -656,6 +656,32 @@ function SportsEdgeStrip() {
             </Link>
           )}
         </div>
+      ) : bestBetIsRecent && lastBestBet && lastBestBet.source === "prediction_market" && lastBestBet.prediction ? (
+        <Link to="/sports" className="block rounded-lg border bg-card p-4 hover:border-foreground/20 transition-colors">
+          <div className="flex items-center gap-2 mb-2">
+            <Trophy className="h-4 w-4 text-info" />
+            <span className="text-xs font-bold uppercase tracking-wide text-foreground">Today's Best Bet</span>
+            <span className="rounded-full border border-info/40 bg-info/15 px-1.5 py-0.5 text-[9px] font-bold uppercase text-info">Cross-Market Gap</span>
+          </div>
+          <div className="text-sm font-semibold text-foreground line-clamp-2">{lastBestBet.prediction.market.question}</div>
+          <div className="mt-1 flex items-center gap-3 text-xs font-mono text-muted-foreground">
+            <span>{lastBestBet.prediction.bestPlatform} {lastBestBet.prediction.bestPriceCents}¢</span>
+            <span>·</span>
+            <span className="text-success font-semibold">Gap: {lastBestBet.prediction.gapCents}¢</span>
+          </div>
+        </Link>
+      ) : bestBetIsRecent && lastBestBet && lastBestBet.source === "wallet_signal" && lastBestBet.wallet ? (
+        <Link to="/sports" className="block rounded-lg border bg-card p-4 hover:border-foreground/20 transition-colors">
+          <div className="flex items-center gap-2 mb-2">
+            <Trophy className="h-4 w-4 text-purple" />
+            <span className="text-xs font-bold uppercase tracking-wide text-foreground">Today's Best Bet</span>
+            <span className="rounded-full border border-purple/40 bg-purple/15 px-1.5 py-0.5 text-[9px] font-bold uppercase text-purple">Smart Wallet Signal</span>
+          </div>
+          <div className="text-sm font-semibold text-foreground line-clamp-2">{lastBestBet.wallet.market.question}</div>
+          <div className="mt-1 flex items-center gap-3 text-xs font-mono text-muted-foreground">
+            <span>{lastBestBet.wallet.walletCount} elite wallets · ${Math.round(lastBestBet.wallet.totalValue).toLocaleString()}</span>
+          </div>
+        </Link>
       ) : (
         <div className="rounded-lg border border-dashed border-border bg-card/40 p-5 text-center">
           <Trophy className="h-8 w-8 mx-auto text-muted-foreground mb-2" />
