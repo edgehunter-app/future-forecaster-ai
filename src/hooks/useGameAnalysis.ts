@@ -38,6 +38,25 @@ export function useGameAnalysis() {
 
       try {
         const maxPositionPct = (settings.maxPosition ?? 0.05) * 100;
+        const mappedBookmakers = (game.bookmakers ?? []).map((b) => ({
+          name: b.name,
+          key: b.key,
+          category: b.category,
+          regulatoryNote: b.regulatoryNote,
+          moneyline: { home: b.homeMoneyline, away: b.awayMoneyline },
+          spread: b.homeSpread
+            ? { line: b.homeSpread, homeOdds: b.spreadHomeOdds, awayOdds: b.spreadAwayOdds }
+            : null,
+          total: b.totalLine
+            ? { line: b.totalLine, overOdds: b.overOdds, underOdds: b.underOdds }
+            : null,
+        }));
+        // eslint-disable-next-line no-console
+        console.log(
+          "[useGameAnalysis] sending bookmakers:",
+          mappedBookmakers.length,
+          mappedBookmakers.map((b) => `${b.name}(${b.category})`),
+        );
         const { data, error } = await supabase.functions.invoke("analyze-market", {
           body: {
             type: "sports",
@@ -55,19 +74,7 @@ export function useGameAnalysis() {
             total: game.total?.line ?? null,
             polymarketGap: polymarketGap ?? null,
             // Full bookmaker array so Claude can see line shopping context
-            bookmakers: (game.bookmakers ?? []).map((b) => ({
-              name: b.name,
-              key: b.key,
-              category: b.category,
-              regulatoryNote: b.regulatoryNote,
-              moneyline: { home: b.homeMoneyline, away: b.awayMoneyline },
-              spread: b.homeSpread
-                ? { line: b.homeSpread, homeOdds: b.spreadHomeOdds, awayOdds: b.spreadAwayOdds }
-                : null,
-              total: b.totalLine
-                ? { line: b.totalLine, overOdds: b.overOdds, underOdds: b.underOdds }
-                : null,
-            })),
+            bookmakers: mappedBookmakers,
             vegasConsensus: game.vegasConsensus ?? null,
             kalshi: predictionMarkets?.kalshi
               ? {
