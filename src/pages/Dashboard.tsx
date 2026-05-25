@@ -572,11 +572,12 @@ function SportsEdgeStrip() {
     navigate("/sports");
   };
 
-  const gameStartMs = lastBestBet ? new Date(lastBestBet.game.commenceTime).getTime() : 0;
+  const isSportsBet = !!(lastBestBet && (!lastBestBet.source || lastBestBet.source === "sports") && lastBestBet.game && lastBestBet.analysis);
+  const gameStartMs = isSportsBet ? new Date(lastBestBet!.game!.commenceTime).getTime() : 0;
   const msUntilGame = gameStartMs - Date.now();
-  const gameStarted = lastBestBet ? msUntilGame <= 0 : false;
+  const gameStarted = isSportsBet ? msUntilGame <= 0 : false;
   const countdownText = (() => {
-    if (!lastBestBet) return "";
+    if (!isSportsBet) return "";
     if (gameStarted) return "Game in progress";
     const mins = Math.floor(msUntilGame / 60000);
     if (mins < 60) return `Starts in ${mins}m`;
