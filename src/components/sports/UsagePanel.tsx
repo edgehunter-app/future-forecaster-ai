@@ -55,6 +55,13 @@ export default function UsagePanel(_props: { summary: UsageSummary }) {
         <div className={cn("text-sm font-bold", colorText)}>{pct}% used</div>
         <div className="text-[11px] text-muted-foreground">Manual refresh only</div>
       </div>
+      <div className="md:col-span-3 border-t border-border/60 pt-2 mt-1 text-[11px] text-muted-foreground flex flex-wrap items-center gap-x-4 gap-y-1">
+        <span className="font-semibold text-foreground">Best Bet scan cost:</span>
+        <span>Sports only: ~$0.015</span>
+        <span>Prediction markets: ~$0.015</span>
+        <span>Wallet signals: ~$0.009</span>
+        <span className="text-foreground font-semibold">Full scan (all sources): ~$0.04</span>
+      </div>
     </div>
   );
 }
