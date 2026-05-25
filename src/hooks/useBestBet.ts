@@ -108,6 +108,7 @@ export function useBestBet() {
           });
 
           setScannedSoFar(i + 1);
+          setScanProgress((prev) => ({ ...prev, current: prev.current + 1 }));
 
           if (invokeError || !data) continue;
           if ((data as any)?.code) continue;
