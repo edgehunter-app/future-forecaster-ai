@@ -14,8 +14,6 @@ const CLAUDE_COST_PER_RUN = 0.003;
 const REFRESH_OPTIONS = [0, 15, 30, 60, 120];
 const RAPID_DAILY_LIMIT = 1000;   // Pro tier hard limit
 const RAPID_RATE_LIMIT = 60;      // requests / minute
-// Both legacy Odds API keys are exhausted until this date.
-const ODDS_API_RESET_DATE = new Date("2026-06-01T00:00:00Z");
 
 type PillState = "ok" | "warn" | "error";
 function StatusPill({ label, state, text }: { label: string; state: PillState; text: string }) {
@@ -39,33 +37,6 @@ function StatBlock({ label, value, hint }: { label: string; value: string | numb
       <div className="text-[10px] uppercase tracking-wide text-muted-foreground">{label}</div>
       <div className="mt-1 font-mono text-lg font-bold text-foreground">{value}</div>
       {hint ? <div className="mt-0.5 text-[10px] text-muted-foreground">{hint}</div> : null}
-    </div>
-  );
-}
-
-function OddsApiKeyStatus() {
-  const daysLeft = Math.max(
-    0,
-    Math.ceil((ODDS_API_RESET_DATE.getTime() - Date.now()) / 86_400_000),
-  );
-  const Row = ({ label }: { label: string }) => (
-    <div className="flex items-center justify-between text-[11px]">
-      <span className="text-muted-foreground">{label}</span>
-      <span className="inline-flex items-center rounded-full border border-destructive/40 bg-destructive/10 px-2 py-0.5 font-mono text-[10px] font-semibold uppercase text-destructive">
-        Exhausted
-      </span>
-    </div>
-  );
-  return (
-    <div className="space-y-1">
-      <Row label="Key 1 (ODDS_API_KEY)" />
-      <Row label="Key 2 (ODDS_API_KEY_2)" />
-      <div className="flex items-center justify-between text-[11px] pt-1 border-t border-border/40">
-        <span className="text-muted-foreground">Resets</span>
-        <span className="font-mono text-foreground">
-          {ODDS_API_RESET_DATE.toLocaleDateString()} · in {daysLeft}d
-        </span>
-      </div>
     </div>
   );
 }
@@ -287,7 +258,7 @@ export default function Admin() {
             <div>
               <div className="text-muted-foreground uppercase text-[9px]">Per refresh cost</div>
               <div className="font-mono text-foreground">
-                ~{perRefreshRapid} RapidAPI · {perRefreshOdds} Odds API
+                ~{perRefreshRapid} RapidAPI requests
               </div>
             </div>
             <div>
@@ -296,20 +267,6 @@ export default function Admin() {
                 ~{projectedDaily} / {RAPID_DAILY_LIMIT.toLocaleString()}
               </div>
             </div>
-          </div>
-        </div>
-
-        {/* The Odds API (legacy / fallback) */}
-        <div className="rounded-md border border-border bg-background/40 p-3 space-y-2">
-          <div className="flex items-center justify-between">
-            <span className="text-xs font-semibold text-foreground">The Odds API (legacy fallback)</span>
-            <span className="inline-flex items-center rounded-full border border-destructive/40 bg-destructive/10 px-2 py-0.5 font-mono text-[10px] font-semibold uppercase text-destructive">
-              Both keys exhausted
-            </span>
-          </div>
-          <OddsApiKeyStatus />
-          <div className="text-[10px] text-muted-foreground">
-            Not used in active scans — both keys are out of quota until June 1, 2026.
           </div>
         </div>
       </section>

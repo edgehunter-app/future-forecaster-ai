@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import type { Market } from "@/types";
 import {
   findSportsMispricings,
@@ -20,16 +20,6 @@ import {
 import { useAppStore } from "@/store/useAppStore";
 import { SPORTS } from "@/lib/oddsApi";
 import { getDailyCount, DAILY_CAP } from "@/lib/oddsDailyCap";
-import {
-  loadKeyUsage,
-  saveKeyUsage,
-  getActiveKey,
-  markKeyExhausted,
-  updateKeyUsage,
-  getOptimalInterval,
-  getUsageSummary,
-  type KeyManager,
-} from "@/lib/oddsApiKeyManager";
 
 const DEFAULT_SPORT = "americanfootball_nfl";
 
@@ -63,10 +53,7 @@ export function useSportsOdds(polymarkets: Market[]) {
   const [fromCache, setFromCache] = useState(false);
   const [loadedSports, setLoadedSports] = useState<Set<string>>(new Set([DEFAULT_SPORT]));
   const [currentSport, setCurrentSport] = useState<string>(DEFAULT_SPORT);
-  const [keyUsage, setKeyUsage] = useState<KeyManager>(loadKeyUsage);
   const fetchingRef = useRef(false);
-  const keyUsageRef = useRef<KeyManager>(keyUsage);
-  useEffect(() => { keyUsageRef.current = keyUsage; }, [keyUsage]);
   const currentSportRef = useRef(currentSport);
   useEffect(() => { currentSportRef.current = currentSport; }, [currentSport]);
   const [nextScanAt, setNextScanAt] = useState<Date | null>(null);
@@ -74,50 +61,23 @@ export function useSportsOdds(polymarkets: Market[]) {
   // Default to MANUAL refresh only (0). Auto-scan burns through quota fast.
   const refreshMinutes = settings.sportsRefreshMinutes ?? 0;
 
-  const activeKey = getActiveKey(keyUsage);
-  const usageSummary = useMemo(() => getUsageSummary(keyUsage), [keyUsage]);
-  const scanInterval = usageSummary.intervalMs;
-
-  const persistUsage = useCallback((updater: (u: KeyManager) => KeyManager) => {
-    setKeyUsage((prev) => {
-      const next = updater(prev);
-      saveKeyUsage(next);
-      keyUsageRef.current = next;
-      return next;
-    });
-  }, []);
-
   const fetchOneSport = useCallback(
     async (sport: string, trigger: string = "unknown"): Promise<FullGame[]> => {
-      // RapidAPI/Sportsbook quota is enforced inside the edge function; do
-      // not gate on the legacy TheOddsAPI key manager.
-      const ak = getActiveKey(keyUsageRef.current);
-      const games = await fetchFullOdds(sport, ak === "secondary", trigger);
-      const last = getLastKeyResponse();
-      if (last.code === "QUOTA_EXHAUSTED") {
-        if (ak) persistUsage((u) => markKeyExhausted(u, ak));
-        return [];
-      }
-      if (last.keyUsed && typeof last.remaining === "number") {
-        persistUsage((u) => updateKeyUsage(u, last.keyUsed!, last.remaining!));
-      }
+      // RapidAPI/Sportsbook quota is enforced inside the edge function.
+      const games = await fetchFullOdds(sport, false, trigger);
       return games ?? [];
     },
-    [persistUsage],
+    [],
   );
 
   const scan = useCallback(async (trigger: string = "manual") => {
     if (fetchingRef.current) return;
-    const ak = getActiveKey(keyUsageRef.current);
     console.log("Sports scan starting...", {
       trigger,
-      activeKey: ak,
       dailyCount: `${getDailyCount()}/${DAILY_CAP}`,
       fullGamesInStore: useAppStore.getState().fullGames?.length ?? 0,
       lastScanned: useAppStore.getState().sportsLastScanned,
     });
-    // No longer gate on the legacy TheOddsAPI key manager — the Sportsbook
-    // edge function enforces its own daily limit.
     fetchingRef.current = true;
     setSportsLoading(true);
     setSportsError(null);
@@ -172,7 +132,7 @@ export function useSportsOdds(polymarkets: Market[]) {
       setFromCache(false);
       setRemainingRequests(getRemainingRequests());
     } catch {
-      setSportsError("Sports odds unavailable right now. Try again shortly.");
+      setSportsError("scan_failed");
     } finally {
       setSportsLoading(false);
       fetchingRef.current = false;
@@ -256,10 +216,6 @@ export function useSportsOdds(polymarkets: Market[]) {
     hasApiKey: true,
     scan,
     loadGamesForSport,
-    keyUsage,
-    usageSummary,
-    scanInterval,
-    activeKey,
     loadedSports,
     nextScanAt,
     currentSport,

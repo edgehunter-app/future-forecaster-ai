@@ -1,13 +1,10 @@
 import { useEffect, useState } from "react";
 import { cn } from "@/lib/utils";
 import { supabase } from "@/integrations/supabase/client";
-import type { UsageSummary } from "@/lib/oddsApiKeyManager";
 
 const RAPID_DAILY_LIMIT = 1000;
 
-// `summary` is accepted for compatibility but no longer rendered — the legacy
-// Odds API quota is exhausted and tracked separately in Admin.
-export default function UsagePanel(_props: { summary: UsageSummary }) {
+export default function UsagePanel() {
   const [usedToday, setUsedToday] = useState<number>(0);
 
   useEffect(() => {
