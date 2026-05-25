@@ -9,6 +9,7 @@ import { bumpSportsAnalyses } from "@/lib/analysisCounter";
 export function useBestBet() {
   const [loading, setLoading] = useState(false);
   const [scannedSoFar, setScannedSoFar] = useState(0);
+  const [scanProgress, setScanProgress] = useState({ current: 0, total: 0 });
   const [result, setResult] = useState<BestBetResult | null>(null);
   const [error, setError] = useState<string | null>(null);
 
