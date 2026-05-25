@@ -114,6 +114,13 @@ Polymarket is offshore retail — gaps are relevant but less regulated.
   const vegasBooks = allBooks.filter(
     (b) => b?.category !== "prediction_market" && (b?.moneyline?.home || b?.moneyline?.away),
   );
+  const vegasBookCount = vegasBooks.length;
+  const singleBookNote = vegasBookCount < 2
+    ? `\nNOTE: Only ${vegasBookCount} Vegas book(s) available for this game.
+Do not make line shopping comparisons. Base your recommendation on implied
+probability vs your model only. Do not reference line shopping in your
+response and leave the "lineShopping" field with empty strings.\n`
+    : "";
   const vegasBookTable = vegasBooks.length > 0
     ? vegasBooks
         .map((b: Any) => {
@@ -169,6 +176,7 @@ BEST AVAILABLE ODDS:
 LINE SHOPPING RANGE:
   Home: ${range(homePrices)}
   Away: ${range(awayPrices)}
+${singleBookNote}
 ${polyBlock}
 ${kalshiBlock}
 ${polymarketBlock}
