@@ -258,7 +258,7 @@ export default function Admin() {
             <div>
               <div className="text-muted-foreground uppercase text-[9px]">Per refresh cost</div>
               <div className="font-mono text-foreground">
-                ~{perRefreshRapid} RapidAPI · {perRefreshOdds} Odds API
+                ~{perRefreshRapid} RapidAPI requests
               </div>
             </div>
             <div>
@@ -267,20 +267,6 @@ export default function Admin() {
                 ~{projectedDaily} / {RAPID_DAILY_LIMIT.toLocaleString()}
               </div>
             </div>
-          </div>
-        </div>
-
-        {/* The Odds API (legacy / fallback) */}
-        <div className="rounded-md border border-border bg-background/40 p-3 space-y-2">
-          <div className="flex items-center justify-between">
-            <span className="text-xs font-semibold text-foreground">The Odds API (legacy fallback)</span>
-            <span className="inline-flex items-center rounded-full border border-destructive/40 bg-destructive/10 px-2 py-0.5 font-mono text-[10px] font-semibold uppercase text-destructive">
-              Both keys exhausted
-            </span>
-          </div>
-          <OddsApiKeyStatus />
-          <div className="text-[10px] text-muted-foreground">
-            Not used in active scans — both keys are out of quota until June 1, 2026.
           </div>
         </div>
       </section>
