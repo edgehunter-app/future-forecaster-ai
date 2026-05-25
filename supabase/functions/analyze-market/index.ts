@@ -146,10 +146,12 @@ MATCHUP: ${p.awayTeam} (AWAY) @ ${p.homeTeam} (HOME)
 League: ${p.league}
 Game time: ${p.gameTime}
 
-IMPORTANT: "HOME" always refers to ${p.homeTeam} and "AWAY" always
-refers to ${p.awayTeam}. When you set "recommendation" to HOME or AWAY,
-"recommendedTeam" MUST be the exact team name for that side, and your
-"reasoning" MUST discuss that same team. Do not mix them up.
+CRITICAL: "recommendedTeam" must be the EXACT team name you are
+recommending to bet ON.
+  - If recommendation is "HOME", recommendedTeam MUST be "${p.homeTeam}".
+  - If recommendation is "AWAY", recommendedTeam MUST be "${p.awayTeam}".
+  - Never put the opposing team in recommendedTeam.
+  - Your "reasoning" MUST discuss that same team.
 
 VEGAS BOOK ODDS (${vegasBooks.length} books):
 ${vegasBookTable}
