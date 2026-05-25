@@ -216,7 +216,7 @@ export default function Sports() {
       )}
 
       {bestBetResult && (
-        <BestBetCard result={bestBetResult} onClear={clearBestBet} />
+        <BestBetCard result={bestBetResult} onClear={clearBestBet} onRescan={handleBestBet} />
       )}
 
       {isAdmin && !activeKey && (
