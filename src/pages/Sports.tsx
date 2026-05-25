@@ -171,8 +171,18 @@ export default function Sports() {
               <>
                 <Loader2 className="h-4 w-4 animate-spin" />
                 <span className="flex flex-col items-start leading-tight">
-                  <span>Analyzing game {scanProgress.current} of {scanProgress.total}…</span>
-                  <span className="text-[10px] font-normal opacity-80">AI line shopping scan</span>
+                  <span>
+                    {scanProgress.stage === "sports" && "Scanning sports lines… (1/3)"}
+                    {scanProgress.stage === "prediction_markets" && "Scanning prediction markets… (2/3)"}
+                    {scanProgress.stage === "wallet_signals" && "Scanning wallet signals… (3/3)"}
+                    {scanProgress.stage === "ranking" && "Finding best opportunity…"}
+                    {(scanProgress.stage === "idle" || !scanProgress.stage) && "Analyzing…"}
+                  </span>
+                  <span className="text-[10px] font-normal opacity-80">
+                    {scanProgress.total > 0
+                      ? `${scanProgress.current} of ${scanProgress.total} analyzed`
+                      : "AI multi-source scan"}
+                  </span>
                 </span>
               </>
             ) : (
@@ -210,7 +220,15 @@ export default function Sports() {
             />
           </div>
           <div className="text-[10px] font-mono text-muted-foreground text-right">
-            {scanProgress.current} of {scanProgress.total} games analyzed
+            {scanProgress.current} of {scanProgress.total} analyzed
+            {scanProgress.stage && scanProgress.stage !== "idle" && (
+              <span className="ml-2 opacity-70">
+                · {scanProgress.stage === "sports" && "sports"}
+                {scanProgress.stage === "prediction_markets" && "prediction markets"}
+                {scanProgress.stage === "wallet_signals" && "wallet signals"}
+                {scanProgress.stage === "ranking" && "ranking"}
+              </span>
+            )}
           </div>
         </div>
       )}
