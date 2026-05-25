@@ -120,6 +120,15 @@ export default function BestBetCard({ result, onClear, onRescan }: Props) {
   });
   const generated = generatedAt.toLocaleTimeString([], { hour: "numeric", minute: "2-digit" });
 
+  const vegasBookCount =
+    (game.bookmakers ?? []).filter(
+      (b: any) =>
+        b.key !== "kalshi" &&
+        b.key !== "polymarket" &&
+        (b.homeMoneyline || b.awayMoneyline),
+    ).length;
+  const showLineShopping = vegasBookCount >= 2;
+
   const handleSave = async () => {
     if (gameStarted) {
       toast.error("This game has already started.");
@@ -267,8 +276,8 @@ export default function BestBetCard({ result, onClear, onRescan }: Props) {
         <ConfidenceBar value={analysis.confidence} />
       </div>
 
-      {/* Line shopping */}
-      {analysis.lineShopping &&
+      {/* Line shopping — only when 2+ vegas books available */}
+      {showLineShopping && analysis.lineShopping &&
         (analysis.lineShopping.bestBook || analysis.lineShopping.recommendation) && (
           <div className="rounded-md border border-success/40 bg-success/10 p-3">
             <div className="flex items-center gap-1.5 text-success mb-1">
