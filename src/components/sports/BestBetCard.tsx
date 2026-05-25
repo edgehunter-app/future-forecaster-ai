@@ -29,7 +29,16 @@ function confidenceTone(c: number) {
 }
 
 export default function BestBetCard({ result, onClear, onRescan }: Props) {
+  // Route to alternate layouts based on source.
+  if (result.source === "prediction_market" && result.prediction) {
+    return <PredictionMarketBestBetCard result={result} onClear={onClear} onRescan={onRescan} />;
+  }
+  if (result.source === "wallet_signal" && result.wallet) {
+    return <WalletSignalBestBetCard result={result} onClear={onClear} onRescan={onRescan} />;
+  }
+
   const { game, analysis, scannedCount, generatedAt } = result;
+  if (!game || !analysis) return null;
   const settings = useAppStore((s) => s.settings);
   const { user } = useAuth();
   const { saveSuggestion } = useSuggestionsDB();
