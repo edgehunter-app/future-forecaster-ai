@@ -39,11 +39,32 @@ export function useBestBet() {
     setScannedSoFar(0);
 
     try {
-      const todayGames = fullGames.filter((g) => isToday(g.commenceTime));
-      const eligible = todayGames.length > 0 ? todayGames : fullGames.slice(0, 10);
-      const sortedGames = [...eligible]
-        .sort((a, b) => (b.bookmakers?.length ?? 0) - (a.bookmakers?.length ?? 0))
-        .slice(0, 8);
+      // Filter out games that have already started (plus a 10 min buffer).
+      const now = Date.now();
+      const buffer = 10 * 60 * 1000;
+      const upcomingGames = fullGames.filter((g) => {
+        const t = new Date(g.commenceTime).getTime();
+        return Number.isFinite(t) && t > now + buffer;
+      });
+
+      if (upcomingGames.length === 0) {
+        setError("No upcoming games available right now. Check back later today or tomorrow.");
+        setLoading(false);
+        return;
+      }
+
+      // Sort by urgency: games in next 4 hours first, then by start time.
+      const sortedByUrgency = [...upcomingGames].sort((a, b) => {
+        const aTime = new Date(a.commenceTime).getTime();
+        const bTime = new Date(b.commenceTime).getTime();
+        const aIn4h = aTime < now + 4 * 3600000;
+        const bIn4h = bTime < now + 4 * 3600000;
+        if (aIn4h && !bIn4h) return -1;
+        if (!aIn4h && bIn4h) return 1;
+        return aTime - bTime;
+      });
+
+      const sortedGames = sortedByUrgency.slice(0, 8);
 
       const maxPositionPct = (settings.maxPosition ?? 0.05) * 100;
       let bestResult: GameAnalysisResult | null = null;
