@@ -6,16 +6,6 @@ import type { GameAnalysisResult, BestBetResult } from "@/types";
 import { bumpSportsAnalyses } from "@/lib/analysisCounter";
 
 
-function isToday(iso: string): boolean {
-  const d = new Date(iso);
-  const t = new Date();
-  return (
-    d.getFullYear() === t.getFullYear() &&
-    d.getMonth() === t.getMonth() &&
-    d.getDate() === t.getDate()
-  );
-}
-
 export function useBestBet() {
   const [loading, setLoading] = useState(false);
   const [scannedSoFar, setScannedSoFar] = useState(0);
