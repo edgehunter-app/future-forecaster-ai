@@ -165,6 +165,7 @@ export function useBestBet() {
     setResult(null);
     setError(null);
     setScannedSoFar(0);
+    setScanProgress({ current: 0, total: 0 });
     setLastBestBet(null);
   }, [setLastBestBet]);
 
