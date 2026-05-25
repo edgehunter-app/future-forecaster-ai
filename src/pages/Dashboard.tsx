@@ -618,22 +618,22 @@ function SportsEdgeStrip() {
             );
           })}
         </div>
-      ) : bestBetIsRecent && lastBestBet ? (
+      ) : bestBetIsRecent && lastBestBet && isSportsBet ? (
         <div className="rounded-lg border bg-card p-4 hover:border-foreground/20 transition-colors">
           <div className="flex items-center gap-2 mb-2">
             <Trophy className="h-4 w-4 text-warning" />
             <span className="text-xs font-bold uppercase tracking-wide text-foreground">Today's Best Bet</span>
           </div>
           <div className="text-sm font-semibold text-foreground">
-            {lastBestBet.analysis.recommendedTeam || lastBestBet.game.awayTeam} at {lastBestBet.analysis.bestBook || "best book"} {lastBestBet.analysis.odds > 0 ? `+${lastBestBet.analysis.odds}` : lastBestBet.analysis.odds}
+            {lastBestBet.analysis!.recommendedTeam || lastBestBet.game!.awayTeam} at {lastBestBet.analysis!.bestBook || "best book"} {lastBestBet.analysis!.odds > 0 ? `+${lastBestBet.analysis!.odds}` : lastBestBet.analysis!.odds}
             {!gameStarted && (
               <span className="ml-1 text-xs font-mono text-muted-foreground">· {countdownText}</span>
             )}
           </div>
           <div className="mt-1 flex items-center gap-3 text-xs font-mono text-muted-foreground">
-            <span className="text-success font-semibold">Edge: +{(lastBestBet.analysis.edge * 100).toFixed(1)}%</span>
+            <span className="text-success font-semibold">Edge: +{(lastBestBet.analysis!.edge * 100).toFixed(1)}%</span>
             <span>·</span>
-            <span>Confidence: {Math.round(lastBestBet.analysis.confidence)}%</span>
+            <span>Confidence: {Math.round(lastBestBet.analysis!.confidence)}%</span>
           </div>
           {gameStarted ? (
             <div className="mt-2 space-y-2">
