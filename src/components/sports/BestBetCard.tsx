@@ -1,4 +1,4 @@
-import { Trophy, X, TrendingUp, Save } from "lucide-react";
+import { Trophy, X, TrendingUp, Save, AlertTriangle, Clock, RotateCw } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { ConfidenceBar } from "@/components/ui/ConfidenceBar";
 import type { BestBetResult } from "@/types";
@@ -6,11 +6,12 @@ import { useAppStore } from "@/store/useAppStore";
 import { useSuggestionsDB } from "@/hooks/useSuggestionsDB";
 import { useAuth } from "@/hooks/useAuth";
 import { toast } from "sonner";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 
 interface Props {
   result: BestBetResult;
   onClear: () => void;
+  onRescan?: () => void;
 }
 
 function formatOdds(v: number | string | undefined): string {
@@ -27,12 +28,45 @@ function confidenceTone(c: number) {
   return "border-border bg-muted/40 text-foreground";
 }
 
-export default function BestBetCard({ result, onClear }: Props) {
+export default function BestBetCard({ result, onClear, onRescan }: Props) {
   const { game, analysis, scannedCount, generatedAt } = result;
   const settings = useAppStore((s) => s.settings);
   const { user } = useAuth();
   const { saveSuggestion } = useSuggestionsDB();
   const [saved, setSaved] = useState(false);
+  const [now, setNow] = useState(() => new Date());
+
+  useEffect(() => {
+    const i = setInterval(() => setNow(new Date()), 60000);
+    return () => clearInterval(i);
+  }, []);
+
+  const gameStartMs = new Date(game.commenceTime).getTime();
+  const msUntil = gameStartMs - now.getTime();
+  const minutesUntil = Math.floor(msUntil / 60000);
+  const gameStarted = msUntil <= 0;
+
+  const generatedAtDate = generatedAt instanceof Date ? generatedAt : new Date(generatedAt);
+  const ageMinutes = Math.floor((now.getTime() - generatedAtDate.getTime()) / 60000);
+  const isStale = ageMinutes > 120;
+
+  let countdownLabel = "";
+  let countdownTone = "";
+  if (gameStarted) {
+    countdownLabel = "Game in progress — do not bet";
+    countdownTone = "border-destructive/50 bg-destructive/10 text-destructive";
+  } else if (minutesUntil < 30) {
+    countdownLabel = `⚡ Starting in ${minutesUntil}m — bet now`;
+    countdownTone = "border-destructive/50 bg-destructive/10 text-destructive";
+  } else if (minutesUntil < 60) {
+    countdownLabel = `Starting soon · ${minutesUntil}m left`;
+    countdownTone = "border-warning/50 bg-warning/10 text-warning";
+  } else {
+    const h = Math.floor(minutesUntil / 60);
+    const m = minutesUntil % 60;
+    countdownLabel = `Starts in ${h}h ${m}m`;
+    countdownTone = "border-success/50 bg-success/10 text-success";
+  }
 
   const tone = confidenceTone(analysis.confidence);
   // Resolve the actual side being recommended. If Claude's `recommendedTeam`
@@ -99,6 +133,10 @@ export default function BestBetCard({ result, onClear }: Props) {
   const generated = generatedAt.toLocaleTimeString([], { hour: "numeric", minute: "2-digit" });
 
   const handleSave = async () => {
+    if (gameStarted) {
+      toast.error("This game has already started.");
+      return;
+    }
     if (!user) {
       toast.error("Sign in to save suggestions");
       return;
@@ -134,6 +172,26 @@ export default function BestBetCard({ result, onClear }: Props) {
       id="best-bet-card"
       className="rounded-xl border-2 border-purple/40 bg-gradient-to-br from-purple/10 via-card to-warning/5 p-4 sm:p-5 space-y-4 shadow-lg animate-in fade-in slide-in-from-top-2 duration-300"
     >
+      {isStale && (
+        <div className="rounded-md border border-warning/50 bg-warning/10 p-3 flex items-start gap-2">
+          <AlertTriangle className="h-4 w-4 text-warning shrink-0 mt-0.5" />
+          <div className="flex-1 text-xs text-warning">
+            <div className="font-bold">
+              ⚠️ This pick is {Math.floor(ageMinutes / 60)} hour{Math.floor(ageMinutes / 60) === 1 ? "" : "s"} old
+            </div>
+            <div className="opacity-90">Lines may have moved — rescan for the latest opportunity</div>
+          </div>
+          {onRescan && (
+            <button
+              onClick={onRescan}
+              className="inline-flex items-center gap-1 rounded-md border border-warning/50 bg-warning/20 px-2 py-1 text-[11px] font-bold text-warning hover:bg-warning/30"
+            >
+              <RotateCw className="h-3 w-3" /> Rescan Now
+            </button>
+          )}
+        </div>
+      )}
+
       {/* Header */}
       <div className="flex items-start justify-between gap-3">
         <div className="flex items-center gap-2">
@@ -166,6 +224,18 @@ export default function BestBetCard({ result, onClear }: Props) {
         </span>
         <span className="text-muted-foreground">· {gameTime}</span>
       </div>
+
+      {/* Countdown badge */}
+      <div className={cn("flex items-center gap-1.5 rounded-md border px-2.5 py-1.5 text-xs font-bold", countdownTone)}>
+        <Clock className="h-3.5 w-3.5" />
+        <span>{countdownLabel}</span>
+      </div>
+
+      {gameStarted && (
+        <div className="rounded-md border border-destructive/50 bg-destructive/10 p-3 text-xs text-destructive">
+          This game has started. Run a new scan for current opportunities.
+        </div>
+      )}
 
       {/* Recommendation box */}
       <div className={cn("rounded-lg border-2 px-3 py-4 text-center", tone)}>
@@ -258,14 +328,14 @@ export default function BestBetCard({ result, onClear }: Props) {
       {/* Log bet button */}
       <button
         onClick={handleSave}
-        disabled={saved}
+        disabled={saved || gameStarted}
         className={cn(
           "w-full inline-flex items-center justify-center gap-2 rounded-lg px-4 py-3 text-sm font-bold text-white shadow-md transition-opacity disabled:opacity-60",
           "bg-gradient-to-r from-purple to-purple/80 hover:opacity-90",
         )}
       >
         <Save className="h-4 w-4" />
-        {saved ? "Logged" : "Log This Bet"}
+        {gameStarted ? "Game Started" : saved ? "Logged" : "Log This Bet"}
       </button>
 
       {/* Disclaimer */}
