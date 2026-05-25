@@ -208,9 +208,14 @@ export default function BestBetCard({ result, onClear, onRescan }: Props) {
         <div className="flex items-center gap-2">
           <Trophy className="h-5 w-5 text-warning" />
           <div>
-            <div className="text-base font-extrabold text-foreground">Today's Best Bet</div>
+            <div className="flex items-center gap-2">
+              <div className="text-base font-extrabold text-foreground">Today's Best Bet</div>
+              <span className="rounded-full border border-warning/40 bg-warning/15 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-warning">
+                🏆 Line Shopping Edge
+              </span>
+            </div>
             <div className="text-[11px] text-muted-foreground">
-              Scanned {scannedCount} game{scannedCount === 1 ? "" : "s"} · {generated}
+              Best line shopping edge across {scannedCount} opportunit{scannedCount === 1 ? "y" : "ies"} today · {generated}
             </div>
           </div>
         </div>
