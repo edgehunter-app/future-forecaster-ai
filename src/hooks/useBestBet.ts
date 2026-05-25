@@ -63,6 +63,8 @@ export function useBestBet() {
       let bestGame: FullGame | null = null;
       let bestScore = 0;
 
+      setScanProgress({ current: 0, total: sortedGames.length });
+
       for (let i = 0; i < sortedGames.length; i++) {
         const game = sortedGames[i];
         try {
