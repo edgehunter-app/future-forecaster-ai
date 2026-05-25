@@ -55,6 +55,24 @@ function AppRoutes() {
     }
   }, []);
 
+  // Clear stale Best Bet results when the user returns to the app.
+  useEffect(() => {
+    const onVisibility = () => {
+      if (document.visibilityState !== "visible") return;
+      const lastBet = useAppStore.getState().lastBestBet;
+      if (!lastBet) return;
+      const generated = lastBet.generatedAt instanceof Date
+        ? lastBet.generatedAt
+        : new Date(lastBet.generatedAt as unknown as string);
+      const ageMinutes = Math.floor((Date.now() - generated.getTime()) / 60000);
+      if (ageMinutes > 120) {
+        useAppStore.getState().setLastBestBet(null);
+      }
+    };
+    document.addEventListener("visibilitychange", onVisibility);
+    return () => document.removeEventListener("visibilitychange", onVisibility);
+  }, []);
+
   // Note: demo mode is user-controlled via Settings. We do NOT auto-clear it
   // for logged-in users — that would make the Settings toggle un-toggleable.
 

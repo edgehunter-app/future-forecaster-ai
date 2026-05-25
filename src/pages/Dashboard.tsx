@@ -572,6 +572,17 @@ function SportsEdgeStrip() {
     navigate("/sports");
   };
 
+  const gameStartMs = lastBestBet ? new Date(lastBestBet.game.commenceTime).getTime() : 0;
+  const msUntilGame = gameStartMs - Date.now();
+  const gameStarted = lastBestBet ? msUntilGame <= 0 : false;
+  const countdownText = (() => {
+    if (!lastBestBet) return "";
+    if (gameStarted) return "Game in progress";
+    const mins = Math.floor(msUntilGame / 60000);
+    if (mins < 60) return `Starts in ${mins}m`;
+    return `Starts in ${Math.floor(mins / 60)}h ${mins % 60}m`;
+  })();
+
   return (
     <div>
       <div className="mb-3 flex items-center gap-2">
@@ -614,18 +625,35 @@ function SportsEdgeStrip() {
           </div>
           <div className="text-sm font-semibold text-foreground">
             {lastBestBet.analysis.recommendedTeam || lastBestBet.game.awayTeam} at {lastBestBet.analysis.bestBook || "best book"} {lastBestBet.analysis.odds > 0 ? `+${lastBestBet.analysis.odds}` : lastBestBet.analysis.odds}
+            {!gameStarted && (
+              <span className="ml-1 text-xs font-mono text-muted-foreground">· {countdownText}</span>
+            )}
           </div>
           <div className="mt-1 flex items-center gap-3 text-xs font-mono text-muted-foreground">
             <span className="text-success font-semibold">Edge: +{(lastBestBet.analysis.edge * 100).toFixed(1)}%</span>
             <span>·</span>
             <span>Confidence: {Math.round(lastBestBet.analysis.confidence)}%</span>
           </div>
-          <Link
-            to="/sports"
-            className="mt-3 inline-flex items-center gap-1 text-xs font-semibold text-info hover:text-info/80"
-          >
-            View Full Analysis <ArrowRight className="h-3 w-3" />
-          </Link>
+          {gameStarted ? (
+            <div className="mt-2 space-y-2">
+              <div className="rounded-md border border-destructive/40 bg-destructive/10 px-2 py-1 text-[11px] font-semibold text-destructive">
+                Game in progress — do not bet
+              </div>
+              <button
+                onClick={handleRunAnalysis}
+                className="inline-flex items-center gap-1 text-xs font-semibold text-info hover:text-info/80"
+              >
+                Find New Best Bet <ArrowRight className="h-3 w-3" />
+              </button>
+            </div>
+          ) : (
+            <Link
+              to="/sports"
+              className="mt-3 inline-flex items-center gap-1 text-xs font-semibold text-info hover:text-info/80"
+            >
+              View Full Analysis <ArrowRight className="h-3 w-3" />
+            </Link>
+          )}
         </div>
       ) : (
         <div className="rounded-lg border border-dashed border-border bg-card/40 p-5 text-center">
