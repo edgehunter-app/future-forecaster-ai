@@ -28,6 +28,7 @@ export function useBestBet() {
     setError(null);
     setResult(null);
     setScannedSoFar(0);
+    setScanProgress({ current: 0, total: 0 });
 
     try {
       // Filter out games that have already started (plus a 10 min buffer).
