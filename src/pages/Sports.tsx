@@ -304,7 +304,7 @@ export default function Sports() {
       )}
 
       {/* Main odds board */}
-      <OddsBoard games={filteredGames} loading={loading} mispricings={mispricings} />
+      <OddsBoard games={filteredGames} loading={loading} mispricings={mispricings} onRefresh={() => void scan("manual")} />
 
       {/* Mispricings section */}
       <div className="space-y-3">
