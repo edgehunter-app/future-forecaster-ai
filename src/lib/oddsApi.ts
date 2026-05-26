@@ -194,6 +194,9 @@ export async function fetchFullOdds(
     "data isArray:", Array.isArray(resp?.data), "length:", resp?.data?.length);
   if (resp?.data?.[0]) {
     console.log("[oddsApi] first game:", JSON.stringify(resp.data[0]).slice(0, 400));
+    console.log("[useSportsOdds] first game bookmakers:",
+      resp.data[0]?.bookmakers?.length,
+      resp.data[0]?.bookmakers?.map((b: any) => b.key ?? b.name));
   }
   if (resp && typeof resp.remainingRequests === "number") {
     lastRemaining = resp.remainingRequests;
@@ -202,7 +205,7 @@ export async function fetchFullOdds(
   const data = resp?.data;
   if (!Array.isArray(data)) return [];
 
-  return data.map((g: any): FullGame => {
+  const mapped = data.map((g: any): FullGame => {
     const home = g.home_team ?? "Home";
     const away = g.away_team ?? "Away";
     const books: FullBookmakerLine[] = (g.bookmakers ?? []).map((b: any) => {
@@ -317,6 +320,12 @@ export async function fetchFullOdds(
       mispricingGap: null,
     };
   });
+  if (mapped[0]) {
+    console.log("[useSportsOdds] stored game bookmakers:",
+      mapped[0].bookmakers?.length,
+      mapped[0].bookmakers?.map((b: any) => b.key ?? b.name));
+  }
+  return mapped;
 }
 
 let lastFullGames: FullGame[] = [];

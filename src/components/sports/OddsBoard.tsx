@@ -100,6 +100,9 @@ function GameCard({ game, mispricings }: { game: FullGame; mispricings: SportsMi
   const [expanded, setExpanded] = useState(false);
   const [showProps, setShowProps] = useState(false);
   const bookmakers = game.bookmakers ?? [];
+  console.log("[GameCard] bookmakers received:",
+    bookmakers.length,
+    bookmakers.map((b) => b.key ?? b.name));
   const hasBookmakers = bookmakers.length > 0;
   const homeOdds = game.moneyline?.home ?? 0;
   const awayOdds = game.moneyline?.away ?? 0;
