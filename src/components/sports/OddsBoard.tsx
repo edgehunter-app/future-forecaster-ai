@@ -240,23 +240,28 @@ function GameCard({ game, mispricings }: { game: FullGame; mispricings: SportsMi
       )}
 
       {/* Compare books */}
-      {bookmakers.length > 0 && (
+      {booksWithOdds.length >= 2 ? (
         <div className="rounded-md border border-border/60">
           <button
             onClick={() => setExpanded((v) => !v)}
             className="flex w-full items-center justify-between gap-2 px-3 py-2 text-[11px] font-semibold text-muted-foreground hover:text-foreground"
           >
-            <span>Compare {bookmakers.length} books</span>
+            <span>Compare {booksWithOdds.length} books</span>
             {expanded ? <ChevronUp className="h-3 w-3" /> : <ChevronDown className="h-3 w-3" />}
           </button>
           {expanded && (
             <BookTable
-              books={bookmakers}
+              books={booksWithOdds}
               bestHome={bestHome}
               bestAway={bestAway}
               vegasConsensus={game.vegasConsensus}
             />
           )}
+        </div>
+      ) : (
+        <div className="rounded-md border border-border/40 bg-muted/30 px-3 py-2 text-center space-y-0.5">
+          <p className="text-[11px] text-muted-foreground">Full lines not yet available</p>
+          <p className="text-[10px] text-muted-foreground/70">Check back closer to game time</p>
         </div>
       )}
 
