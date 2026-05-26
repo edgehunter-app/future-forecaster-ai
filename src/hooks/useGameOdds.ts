@@ -1,4 +1,4 @@
-import { useCallback, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import type { FullGame, FullBookmakerLine } from "@/lib/oddsApi";
 
@@ -22,6 +22,22 @@ export function useGameOdds(game: FullGame) {
   );
   const [loading, setLoading] = useState(false);
   const [fetched, setFetched] = useState(false);
+
+  // When the parent re-fetches the slate (manual Refresh), the game prop may
+  // arrive with more bookmakers than what we had cached locally. Sync in that
+  // case and reset the lazy-fetch gate so we can try again if still sparse.
+  const lastSeenRef = useRef(game.bookmakers);
+  useEffect(() => {
+    if (game.bookmakers === lastSeenRef.current) return;
+    lastSeenRef.current = game.bookmakers;
+    const incoming = game.bookmakers ?? [];
+    const incomingVegas = vegasBooksWithOdds(incoming).length;
+    const currentVegas = vegasBooksWithOdds(bookmakers).length;
+    if (incomingVegas > currentVegas) {
+      setBookmakers(incoming);
+      setFetched(false);
+    }
+  }, [game.bookmakers, bookmakers]);
 
   const fetchOdds = useCallback(async () => {
     if (loading || fetched) return;

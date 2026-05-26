@@ -1,5 +1,5 @@
 import { useMemo, useState } from "react";
-import { ChevronDown, ChevronUp, Brain, Loader2, AlertCircle, TrendingUp } from "lucide-react";
+import { ChevronDown, ChevronUp, Brain, Loader2, AlertCircle, TrendingUp, Clock } from "lucide-react";
 import { cn } from "@/lib/utils";
 import {
   formatOdds,
@@ -140,6 +140,9 @@ function GameCard({ game, mispricings }: { game: FullGame; mispricings: SportsMi
     .sort((a, b) => Math.abs(b.cents) - Math.abs(a.cents));
   const topGap = predictionMarketGaps[0];
 
+  const linesPending = vegasBookCount < 2;
+  const kalshiBook = bookmakers.find((b) => b.key === "kalshi");
+
   const handleAnalyze = () => {
     void fetchOdds();
     const kalshi = bookmakers.find((b) => b.key === "kalshi");
@@ -250,7 +253,32 @@ function GameCard({ game, mispricings }: { game: FullGame; mispricings: SportsMi
         </div>
       )}
 
-      {/* Compare books — always show button, lazy-fetch on expand if sparse */}
+      {/* Compare books — hidden entirely while lines are pending */}
+      {linesPending ? (
+        <div className="rounded-md border border-dashed border-border/60 bg-background/30 px-3 py-2 space-y-1.5">
+          <div className="flex items-center gap-1.5 text-[11px] font-semibold text-muted-foreground">
+            <Clock className="h-3 w-3" />
+            <span>Lines posting soon</span>
+          </div>
+          <p className="text-[10px] text-muted-foreground/70 leading-snug">
+            Vegas books typically post 24–36h before first pitch.
+          </p>
+          {kalshiBook && (kalshiBook.homeMoneyline !== 0 || kalshiBook.awayMoneyline !== 0) && (
+            <div className="mt-1.5 rounded-md border border-info/30 bg-info/5 px-2 py-1.5 space-y-0.5">
+              <div className="flex items-center justify-between gap-2">
+                <span className="text-[10px] font-mono text-foreground">
+                  Kalshi: {game.awayTeam.split(" ").pop()} {formatOdds(kalshiBook.awayMoneyline)}
+                  {" · "}
+                  {game.homeTeam.split(" ").pop()} {formatOdds(kalshiBook.homeMoneyline)}
+                </span>
+                <span className="rounded-sm border border-info/40 bg-info/10 px-1 py-px text-[8px] font-bold text-info whitespace-nowrap">
+                  Prediction market only
+                </span>
+              </div>
+            </div>
+          )}
+        </div>
+      ) : (
       <div className="rounded-md border border-border/60">
         <button
           onClick={handleCompareToggle}
@@ -294,10 +322,16 @@ function GameCard({ game, mispricings }: { game: FullGame; mispricings: SportsMi
           )
         )}
       </div>
+      )}
 
       {/* Claude AI Analysis */}
       {result ? (
         <GameAnalysisPanel result={result} game={game} onClear={() => clearResult(game.id)} />
+      ) : linesPending ? (
+        <div className="flex w-full items-center justify-center gap-2 rounded-md border border-dashed border-border bg-background/30 px-3 h-[52px] sm:h-11 text-muted-foreground">
+          <Clock className="h-4 w-4" />
+          <span className="text-[11px] font-semibold">Analysis available once lines post</span>
+        </div>
       ) : (
         <>
           <button
