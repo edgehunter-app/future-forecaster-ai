@@ -24,6 +24,7 @@ interface Props {
   games: FullGame[];
   loading: boolean;
   mispricings?: SportsMispricing[];
+  onRefresh?: () => void;
 }
 
 type Tab = "games" | "best" | "spreads" | "totals" | "props";
