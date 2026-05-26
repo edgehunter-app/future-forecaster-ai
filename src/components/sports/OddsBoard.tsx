@@ -272,10 +272,11 @@ function GameCard({ game, mispricings }: { game: FullGame; mispricings: SportsMi
         <>
           <button
             onClick={handleAnalyze}
-            disabled={analyzing}
+            disabled={analyzing || booksWithOdds.length < 2}
             className={cn(
               "flex w-full items-center justify-center gap-2 rounded-md bg-purple px-3 text-white font-semibold transition-colors hover:bg-purple/90 disabled:opacity-60",
               "h-[52px] sm:h-11",
+              booksWithOdds.length < 2 && "cursor-not-allowed opacity-60",
             )}
           >
             {analyzing ? (
@@ -287,8 +288,14 @@ function GameCard({ game, mispricings }: { game: FullGame; mispricings: SportsMi
               <div className="flex items-center gap-2 text-left">
                 <Brain className="h-4 w-4" />
                 <div>
-                  <div className="text-sm leading-tight">Analyze with Claude</div>
-                  <div className="text-[10px] opacity-80 leading-tight">AI edge detection for this game</div>
+                  <div className="text-sm leading-tight">
+                    {booksWithOdds.length < 2 ? "Waiting for sportsbook lines" : "Analyze with Claude"}
+                  </div>
+                  <div className="text-[10px] opacity-80 leading-tight">
+                    {booksWithOdds.length < 2
+                      ? "AI analysis requires 2+ books"
+                      : "AI edge detection for this game"}
+                  </div>
                 </div>
               </div>
             )}
