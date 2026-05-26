@@ -130,7 +130,9 @@ export function useSportsOdds(polymarkets: Market[]) {
       // fully repopulates the board across all leagues.
       let allFull: FullGame[] = [];
       try {
-        allFull = await fetchOneSport(currentSportRef.current, trigger);
+        const rawGames = await fetchOneSport(currentSportRef.current, trigger);
+        allFull = filterRelevantGames(rawGames);
+        console.log("Relevant games today:", allFull.length, "of", rawGames.length);
       } catch (e) {
         console.warn("fetchFullOdds failed", e);
       }
