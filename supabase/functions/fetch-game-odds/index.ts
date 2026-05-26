@@ -200,6 +200,7 @@ Deno.serve(async (req) => {
     const eventId: string | undefined = body.eventId;
     const homeTeam: string = body.homeTeam ?? "";
     const awayTeam: string = body.awayTeam ?? "";
+    const sport: string = body.sport ?? "";
 
     const key = Deno.env.get("RAPID_API_KEY");
     if (!key) {
@@ -208,37 +209,103 @@ Deno.serve(async (req) => {
       });
     }
 
-    console.log("fetch-game-odds called", JSON.stringify({ eventId, homeTeam, awayTeam }));
+    console.log("=== fetch-game-odds debug ===");
+    console.log("eventId:", eventId);
+    console.log("homeTeam:", homeTeam);
+    console.log("awayTeam:", awayTeam);
+    console.log("sport:", sport);
 
-    let source = "per-event";
-    let json: any = null;
+    const debug: Record<string, any> = { eventId, homeTeam, awayTeam, sport };
+    let bookmakers: any[] = [];
+    let source = "none";
 
+    // ---- Test 1: per-event /odds ----
     if (eventId) {
-      const r = await rapidGet(`/v1/events/${encodeURIComponent(eventId)}/odds`, key);
-      if (r.json) json = r.json;
+      const r1 = await rapidGet(`/v1/events/${encodeURIComponent(eventId)}/odds`, key);
+      debug.url1Status = r1.status;
+      debug.url1Body = r1.json ? JSON.stringify(r1.json).slice(0, 300) : null;
+      console.log("URL 1 status:", r1.status, "preview:", debug.url1Body);
+      if (r1.json) {
+        const built = buildBookmakers(r1.json, homeTeam, awayTeam);
+        if (built.length) { bookmakers = built; source = "per-event-odds"; }
+      }
     }
 
-    if (!json && homeTeam && awayTeam) {
-      source = "fallback-search";
-      const qs = `?homeTeam=${encodeURIComponent(homeTeam)}&awayTeam=${encodeURIComponent(awayTeam)}`;
-      const r = await rapidGet(`/v1/odds${qs}`, key);
-      if (r.json) json = r.json;
+    // ---- Test 2: per-event bare ----
+    if (!bookmakers.length && eventId) {
+      const r2 = await rapidGet(`/v1/events/${encodeURIComponent(eventId)}`, key);
+      debug.url2Status = r2.status;
+      debug.url2Body = r2.json ? JSON.stringify(r2.json).slice(0, 300) : null;
+      console.log("URL 2 status:", r2.status, "preview:", debug.url2Body);
+      if (r2.json) {
+        const built = buildBookmakers(r2.json, homeTeam, awayTeam);
+        if (built.length) { bookmakers = built; source = "per-event"; }
+      }
     }
 
-    if (!json) {
-      return new Response(JSON.stringify({ bookmakers: [], error: "NOT_FOUND", eventId }), {
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
+    // ---- Test 3: competition events, find by team name ----
+    const leagueMap: Record<string, string> = {
+      baseball_mlb: "MLB",
+      basketball_nba: "NBA",
+      icehockey_nhl: "NHL",
+      americanfootball_nfl: "NFL",
+      soccer_epl: "EPL",
+      soccer_usa_mls: "MLS",
+    };
+    const league = leagueMap[sport] ?? "MLB";
+    const from = new Date(Date.now() - 24 * 3600 * 1000).toISOString();
+    const to = new Date(Date.now() + 8 * 24 * 3600 * 1000).toISOString();
+    const r3 = await rapidGet(
+      `/v1/competitions/${league}/events?startTimeFrom=${encodeURIComponent(from)}&startTimeTo=${encodeURIComponent(to)}`,
+      key,
+    );
+    debug.url3Status = r3.status;
+    if (r3.json) {
+      const events: any[] = r3.json?.events ?? r3.json?.data ?? (Array.isArray(r3.json) ? r3.json : []);
+      debug.url3EventCount = events.length;
+      console.log("URL 3 keys:", Object.keys(r3.json), "event count:", events.length);
+      const homeLast = homeTeam.split(" ").pop()?.toLowerCase() ?? "";
+      const awayLast = awayTeam.split(" ").pop()?.toLowerCase() ?? "";
+      const match = events.find((e) => {
+        const name = (e.name ?? e.event?.name ?? "").toLowerCase();
+        if (e.key && e.key === eventId) return true;
+        return (homeLast && name.includes(homeLast)) || (awayLast && name.includes(awayLast));
       });
+      debug.url3MatchKey = match?.key ?? match?.id ?? null;
+      console.log("URL 3 match:", debug.url3MatchKey ?? "NOT FOUND");
+      if (match) {
+        debug.url3MatchPreview = JSON.stringify(match).slice(0, 500);
+        console.log("URL 3 match preview:", debug.url3MatchPreview);
+        if (!bookmakers.length) {
+          const built = buildBookmakers(match, homeTeam, awayTeam);
+          if (built.length) { bookmakers = built; source = "competition-events"; }
+        }
+      }
     }
 
-    console.log("Response keys:", Object.keys(json));
-    console.log("Response preview:", JSON.stringify(json).slice(0, 500));
+    // ---- Test 4: advantages ----
+    const r4 = await rapidGet(`/v0/advantages/?type=ARBITRAGE`, key);
+    debug.url4Status = r4.status;
+    if (r4.json) {
+      const advantages: any[] = r4.json?.advantages ?? [];
+      const homeLast = homeTeam.split(" ").pop()?.toLowerCase() ?? "";
+      const match4 = advantages.find((a) => {
+        const name = (a?.market?.event?.name ?? "").toLowerCase();
+        return homeLast && name.includes(homeLast);
+      });
+      debug.url4Found = !!match4;
+      console.log("URL 4 advantages: total", advantages.length, "found for game:", !!match4);
+      if (match4) {
+        const sources = (match4.outcomes ?? []).map((o: any) => o.source);
+        debug.url4Sources = sources;
+        console.log("URL 4 advantage sources:", sources);
+      }
+    }
 
-    const bookmakers = buildBookmakers(json, homeTeam, awayTeam);
-    console.log("Built bookmakers:", bookmakers.length,
+    console.log("Built bookmakers:", bookmakers.length, "source:", source,
       "→", bookmakers.map((b) => b.key).join(","));
 
-    return new Response(JSON.stringify({ bookmakers, source }), {
+    return new Response(JSON.stringify({ bookmakers, source, debug }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
   } catch (e) {
