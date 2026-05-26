@@ -2,6 +2,7 @@ import { useCallback, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAppStore } from "@/store/useAppStore";
 import type { FullGame } from "@/lib/oddsApi";
+import type { FullBookmakerLine } from "@/lib/oddsApi";
 import type { GameAnalysisResult } from "@/types";
 import { bumpSportsAnalyses } from "@/lib/analysisCounter";
 
@@ -29,6 +30,7 @@ export function useGameAnalysis() {
       game: FullGame,
       polymarketGap?: PolymarketGapInput | null,
       predictionMarkets?: PredictionMarketInput,
+      overrideBookmakers?: FullBookmakerLine[],
     ) => {
       const gameId = game.id;
       if (analyzing[gameId]) return;
@@ -38,7 +40,8 @@ export function useGameAnalysis() {
 
       try {
         const maxPositionPct = (settings.maxPosition ?? 0.05) * 100;
-        const mappedBookmakers = (game.bookmakers ?? []).map((b) => ({
+        const sourceBookmakers = overrideBookmakers ?? game.bookmakers ?? [];
+        const mappedBookmakers = sourceBookmakers.map((b) => ({
           name: b.name,
           key: b.key,
           category: b.category,
