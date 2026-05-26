@@ -103,13 +103,16 @@ function GameCard({ game, mispricings }: { game: FullGame; mispricings: SportsMi
   console.log("[GameCard] bookmakers received:",
     bookmakers.length,
     bookmakers.map((b) => b.key ?? b.name));
-  const hasBookmakers = bookmakers.length > 0;
+  const booksWithOdds = bookmakers.filter(
+    (b) => b.homeMoneyline !== 0 || b.awayMoneyline !== 0,
+  );
+  const hasBookmakers = booksWithOdds.length > 0;
   const homeOdds = game.moneyline?.home ?? 0;
   const awayOdds = game.moneyline?.away ?? 0;
   const homeImplied = game.moneyline?.homeImplied ?? 0;
   const awayImplied = game.moneyline?.awayImplied ?? 0;
-  const bestHome = hasBookmakers ? getBestMoneyline(bookmakers, "home") : { odds: homeOdds, book: "" };
-  const bestAway = hasBookmakers ? getBestMoneyline(bookmakers, "away") : { odds: awayOdds, book: "" };
+  const bestHome = hasBookmakers ? getBestMoneyline(booksWithOdds, "home") : { odds: homeOdds, book: "" };
+  const bestAway = hasBookmakers ? getBestMoneyline(booksWithOdds, "away") : { odds: awayOdds, book: "" };
   const { analyzeGame, clearResult, isAnalyzing, getResult, getError } = useGameAnalysis();
   const result = getResult(game.id);
   const analyzing = isAnalyzing(game.id);
