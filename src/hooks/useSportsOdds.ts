@@ -91,9 +91,9 @@ export function useSportsOdds(polymarkets: Market[]) {
     async (sport: string, trigger: string = "unknown"): Promise<FullGame[]> => {
       // RapidAPI/Sportsbook quota is enforced inside the edge function.
       const games = await fetchFullOdds(sport, false, trigger);
-      return filterRelevantGames(games ?? []);
+      return games ?? [];
     },
-    [filterRelevantGames],
+    [],
   );
 
   const scan = useCallback(async (trigger: string = "manual") => {
