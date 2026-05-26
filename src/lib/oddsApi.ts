@@ -194,6 +194,9 @@ export async function fetchFullOdds(
     "data isArray:", Array.isArray(resp?.data), "length:", resp?.data?.length);
   if (resp?.data?.[0]) {
     console.log("[oddsApi] first game:", JSON.stringify(resp.data[0]).slice(0, 400));
+    console.log("[useSportsOdds] first game bookmakers:",
+      resp.data[0]?.bookmakers?.length,
+      resp.data[0]?.bookmakers?.map((b: any) => b.key ?? b.name));
   }
   if (resp && typeof resp.remainingRequests === "number") {
     lastRemaining = resp.remainingRequests;
