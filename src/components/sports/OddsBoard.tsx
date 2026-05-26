@@ -103,13 +103,16 @@ function GameCard({ game, mispricings }: { game: FullGame; mispricings: SportsMi
   console.log("[GameCard] bookmakers received:",
     bookmakers.length,
     bookmakers.map((b) => b.key ?? b.name));
-  const hasBookmakers = bookmakers.length > 0;
+  const booksWithOdds = bookmakers.filter(
+    (b) => b.homeMoneyline !== 0 || b.awayMoneyline !== 0,
+  );
+  const hasBookmakers = booksWithOdds.length > 0;
   const homeOdds = game.moneyline?.home ?? 0;
   const awayOdds = game.moneyline?.away ?? 0;
   const homeImplied = game.moneyline?.homeImplied ?? 0;
   const awayImplied = game.moneyline?.awayImplied ?? 0;
-  const bestHome = hasBookmakers ? getBestMoneyline(bookmakers, "home") : { odds: homeOdds, book: "" };
-  const bestAway = hasBookmakers ? getBestMoneyline(bookmakers, "away") : { odds: awayOdds, book: "" };
+  const bestHome = hasBookmakers ? getBestMoneyline(booksWithOdds, "home") : { odds: homeOdds, book: "" };
+  const bestAway = hasBookmakers ? getBestMoneyline(booksWithOdds, "away") : { odds: awayOdds, book: "" };
   const { analyzeGame, clearResult, isAnalyzing, getResult, getError } = useGameAnalysis();
   const result = getResult(game.id);
   const analyzing = isAnalyzing(game.id);
@@ -237,23 +240,28 @@ function GameCard({ game, mispricings }: { game: FullGame; mispricings: SportsMi
       )}
 
       {/* Compare books */}
-      {bookmakers.length > 0 && (
+      {booksWithOdds.length >= 2 ? (
         <div className="rounded-md border border-border/60">
           <button
             onClick={() => setExpanded((v) => !v)}
             className="flex w-full items-center justify-between gap-2 px-3 py-2 text-[11px] font-semibold text-muted-foreground hover:text-foreground"
           >
-            <span>Compare {bookmakers.length} books</span>
+            <span>Compare {booksWithOdds.length} books</span>
             {expanded ? <ChevronUp className="h-3 w-3" /> : <ChevronDown className="h-3 w-3" />}
           </button>
           {expanded && (
             <BookTable
-              books={bookmakers}
+              books={booksWithOdds}
               bestHome={bestHome}
               bestAway={bestAway}
               vegasConsensus={game.vegasConsensus}
             />
           )}
+        </div>
+      ) : (
+        <div className="rounded-md border border-border/40 bg-muted/30 px-3 py-2 text-center space-y-0.5">
+          <p className="text-[11px] text-muted-foreground">Full lines not yet available</p>
+          <p className="text-[10px] text-muted-foreground/70">Check back closer to game time</p>
         </div>
       )}
 
@@ -264,10 +272,11 @@ function GameCard({ game, mispricings }: { game: FullGame; mispricings: SportsMi
         <>
           <button
             onClick={handleAnalyze}
-            disabled={analyzing}
+            disabled={analyzing || booksWithOdds.length < 2}
             className={cn(
               "flex w-full items-center justify-center gap-2 rounded-md bg-purple px-3 text-white font-semibold transition-colors hover:bg-purple/90 disabled:opacity-60",
               "h-[52px] sm:h-11",
+              booksWithOdds.length < 2 && "cursor-not-allowed opacity-60",
             )}
           >
             {analyzing ? (
@@ -279,8 +288,14 @@ function GameCard({ game, mispricings }: { game: FullGame; mispricings: SportsMi
               <div className="flex items-center gap-2 text-left">
                 <Brain className="h-4 w-4" />
                 <div>
-                  <div className="text-sm leading-tight">Analyze with Claude</div>
-                  <div className="text-[10px] opacity-80 leading-tight">AI edge detection for this game</div>
+                  <div className="text-sm leading-tight">
+                    {booksWithOdds.length < 2 ? "Waiting for sportsbook lines" : "Analyze with Claude"}
+                  </div>
+                  <div className="text-[10px] opacity-80 leading-tight">
+                    {booksWithOdds.length < 2
+                      ? "AI analysis requires 2+ books"
+                      : "AI edge detection for this game"}
+                  </div>
                 </div>
               </div>
             )}
