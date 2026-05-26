@@ -169,6 +169,7 @@ export function useSportsOdds(polymarkets: Market[]) {
     polymarkets,
     threshold,
     fetchOneSport,
+    filterRelevantGames,
     setFullGames,
     setMispricings,
     setSportsError,
