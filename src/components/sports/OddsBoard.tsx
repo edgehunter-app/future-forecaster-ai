@@ -1,5 +1,5 @@
 import { useMemo, useState } from "react";
-import { ChevronDown, ChevronUp, Brain, Loader2, AlertCircle, TrendingUp, Clock } from "lucide-react";
+import { ChevronDown, ChevronUp, Brain, Loader2, AlertCircle, TrendingUp, Clock, RotateCw } from "lucide-react";
 import { cn } from "@/lib/utils";
 import {
   formatOdds,
@@ -24,6 +24,7 @@ interface Props {
   games: FullGame[];
   loading: boolean;
   mispricings?: SportsMispricing[];
+  onRefresh?: () => void;
 }
 
 type Tab = "games" | "best" | "spreads" | "totals" | "props";
@@ -41,7 +42,7 @@ function oddsClass(odds: number): string {
   return odds > 0 ? "text-success" : "text-destructive";
 }
 
-export default function OddsBoard({ games, loading, mispricings = [] }: Props) {
+export default function OddsBoard({ games, loading, mispricings = [], onRefresh }: Props) {
   const [tab, setTab] = useState<Tab>("games");
 
   if (loading && games.length === 0) {
@@ -56,8 +57,18 @@ export default function OddsBoard({ games, loading, mispricings = [] }: Props) {
 
   if (games.length === 0) {
     return (
-      <div className="rounded-lg border border-dashed border-border bg-card/40 p-8 text-center">
-        <p className="text-sm text-muted-foreground">No games available right now for this selection.</p>
+      <div className="rounded-lg border border-dashed border-border bg-card/40 p-8 text-center space-y-3">
+        <p className="text-sm font-semibold text-foreground">No games with live odds right now</p>
+        <p className="text-sm text-muted-foreground">Check back later today for tonight's slate</p>
+        {onRefresh && (
+          <button
+            onClick={onRefresh}
+            className="inline-flex items-center gap-1.5 rounded-md bg-info px-3 py-1.5 text-xs font-semibold text-white hover:bg-info/90"
+          >
+            <RotateCw className="h-3.5 w-3.5" />
+            Refresh
+          </button>
+        )}
       </div>
     );
   }

@@ -61,6 +61,32 @@ export function useSportsOdds(polymarkets: Market[]) {
   // Default to MANUAL refresh only (0). Auto-scan burns through quota fast.
   const refreshMinutes = settings.sportsRefreshMinutes ?? 0;
 
+  const filterRelevantGames = useCallback((games: FullGame[]): FullGame[] => {
+    const now = new Date();
+    const tomorrow = new Date(now);
+    tomorrow.setDate(tomorrow.getDate() + 1);
+    tomorrow.setHours(6, 0, 0, 0);
+
+    return games.filter((game) => {
+      const gameTime = new Date(game.commenceTime);
+
+      // Must start before tomorrow 6am
+      if (gameTime > tomorrow) return false;
+
+      // Must not have started more than 3 hours ago
+      const threeHoursAgo = new Date(now.getTime() - 3 * 60 * 60 * 1000);
+      if (gameTime < threeHoursAgo) return false;
+
+      // Must have at least 1 book with odds
+      const hasOdds = game.bookmakers?.some(
+        (b) => b.homeMoneyline !== 0 || b.awayMoneyline !== 0,
+      );
+      if (!hasOdds) return false;
+
+      return true;
+    });
+  }, []);
+
   const fetchOneSport = useCallback(
     async (sport: string, trigger: string = "unknown"): Promise<FullGame[]> => {
       // RapidAPI/Sportsbook quota is enforced inside the edge function.
@@ -104,7 +130,9 @@ export function useSportsOdds(polymarkets: Market[]) {
       // fully repopulates the board across all leagues.
       let allFull: FullGame[] = [];
       try {
-        allFull = await fetchOneSport(currentSportRef.current, trigger);
+        const rawGames = await fetchOneSport(currentSportRef.current, trigger);
+        allFull = filterRelevantGames(rawGames);
+        console.log("Relevant games today:", allFull.length, "of", rawGames.length);
       } catch (e) {
         console.warn("fetchFullOdds failed", e);
       }
@@ -141,6 +169,7 @@ export function useSportsOdds(polymarkets: Market[]) {
     polymarkets,
     threshold,
     fetchOneSport,
+    filterRelevantGames,
     setFullGames,
     setMispricings,
     setSportsError,
@@ -154,7 +183,8 @@ export function useSportsOdds(polymarkets: Market[]) {
       if (loadedSports.has(sportKey)) return;
       setSportsLoading(true);
       try {
-        const got = await fetchOneSport(sportKey, "tab-click");
+        const raw = await fetchOneSport(sportKey, "tab-click");
+        const got = filterRelevantGames(raw);
         if (got.length) {
           const merged = [...(useAppStore.getState().fullGames ?? []), ...got];
           setFullGames(merged);
@@ -165,7 +195,7 @@ export function useSportsOdds(polymarkets: Market[]) {
         setSportsLoading(false);
       }
     },
-    [loadedSports, fetchOneSport, setFullGames, setSportsLoading],
+    [loadedSports, fetchOneSport, filterRelevantGames, setFullGames, setSportsLoading],
   );
 
   // Mount-only fetch: fire ONCE per mount, only if store is empty AND last

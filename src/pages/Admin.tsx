@@ -271,8 +271,8 @@ export default function Admin() {
         </div>
 
         <div className="rounded-md border border-info/30 bg-info/5 px-3 py-2 text-[11px] text-info/90 leading-snug">
-          <span className="font-semibold">Note:</span> Early-window games show Kalshi only.
-          Vegas lines typically appear 24–36h before first pitch via the arbitrage feed.
+          <span className="font-semibold">Note:</span> Board shows today's games with live odds only.
+          Games 2+ days out are excluded until lines post.
         </div>
       </section>
 
