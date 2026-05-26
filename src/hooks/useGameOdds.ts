@@ -32,6 +32,14 @@ export function useGameOdds(game: FullGame) {
 
     setLoading(true);
     try {
+      console.log(
+        "[useGameOdds] fetching for:",
+        game.homeTeam,
+        "vs",
+        game.awayTeam,
+        "eventId:",
+        game.id,
+      );
       const { data, error } = await supabase.functions.invoke("fetch-game-odds", {
         body: {
           eventId: game.id,
