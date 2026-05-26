@@ -182,7 +182,8 @@ export function useSportsOdds(polymarkets: Market[]) {
       if (loadedSports.has(sportKey)) return;
       setSportsLoading(true);
       try {
-        const got = await fetchOneSport(sportKey, "tab-click");
+        const raw = await fetchOneSport(sportKey, "tab-click");
+        const got = filterRelevantGames(raw);
         if (got.length) {
           const merged = [...(useAppStore.getState().fullGames ?? []), ...got];
           setFullGames(merged);
@@ -193,7 +194,7 @@ export function useSportsOdds(polymarkets: Market[]) {
         setSportsLoading(false);
       }
     },
-    [loadedSports, fetchOneSport, setFullGames, setSportsLoading],
+    [loadedSports, fetchOneSport, filterRelevantGames, setFullGames, setSportsLoading],
   );
 
   // Mount-only fetch: fire ONCE per mount, only if store is empty AND last
