@@ -17,6 +17,7 @@ import GamblingDisclaimer from "./GamblingDisclaimer";
 import PlayerPropsPanel from "./PlayerPropsPanel";
 import { useGameProps } from "@/hooks/useGameProps";
 import { useGameAnalysis } from "@/hooks/useGameAnalysis";
+import { useGameOdds } from "@/hooks/useGameOdds";
 import GameAnalysisPanel from "./GameAnalysisPanel";
 
 interface Props {
@@ -99,13 +100,14 @@ export default function OddsBoard({ games, loading, mispricings = [] }: Props) {
 function GameCard({ game, mispricings }: { game: FullGame; mispricings: SportsMispricing[] }) {
   const [expanded, setExpanded] = useState(false);
   const [showProps, setShowProps] = useState(false);
-  const bookmakers = game.bookmakers ?? [];
+  const { bookmakers, loading: oddsLoading, fetched: oddsFetched, fetchOdds } = useGameOdds(game);
   console.log("[GameCard] bookmakers received:",
     bookmakers.length,
     bookmakers.map((b) => b.key ?? b.name));
   const booksWithOdds = bookmakers.filter(
     (b) => b.homeMoneyline !== 0 || b.awayMoneyline !== 0,
   );
+  const vegasBookCount = booksWithOdds.filter((b) => b.category !== "prediction_market").length;
   const hasBookmakers = booksWithOdds.length > 0;
   const homeOdds = game.moneyline?.home ?? 0;
   const awayOdds = game.moneyline?.away ?? 0;
@@ -139,9 +141,18 @@ function GameCard({ game, mispricings }: { game: FullGame; mispricings: SportsMi
   const topGap = predictionMarketGaps[0];
 
   const handleAnalyze = () => {
+    void fetchOdds();
     const kalshi = bookmakers.find((b) => b.key === "kalshi");
     const polymarket = bookmakers.find((b) => b.key === "polymarket");
-    analyzeGame(game, polyGap, { kalshi, polymarket });
+    analyzeGame(game, polyGap, { kalshi, polymarket }, bookmakers);
+  };
+
+  const handleCompareToggle = () => {
+    setExpanded((v) => {
+      const next = !v;
+      if (next) void fetchOdds();
+      return next;
+    });
   };
 
   return (
@@ -239,31 +250,50 @@ function GameCard({ game, mispricings }: { game: FullGame; mispricings: SportsMi
         </div>
       )}
 
-      {/* Compare books */}
-      {booksWithOdds.length >= 2 ? (
-        <div className="rounded-md border border-border/60">
-          <button
-            onClick={() => setExpanded((v) => !v)}
-            className="flex w-full items-center justify-between gap-2 px-3 py-2 text-[11px] font-semibold text-muted-foreground hover:text-foreground"
-          >
-            <span>Compare {booksWithOdds.length} books</span>
-            {expanded ? <ChevronUp className="h-3 w-3" /> : <ChevronDown className="h-3 w-3" />}
-          </button>
-          {expanded && (
+      {/* Compare books — always show button, lazy-fetch on expand if sparse */}
+      <div className="rounded-md border border-border/60">
+        <button
+          onClick={handleCompareToggle}
+          className="flex w-full items-center justify-between gap-2 px-3 py-2 text-[11px] font-semibold text-muted-foreground hover:text-foreground"
+        >
+          <span>
+            {oddsLoading
+              ? "Loading lines…"
+              : booksWithOdds.length >= 2
+                ? `Compare ${booksWithOdds.length} books`
+                : "Compare books"}
+          </span>
+          {oddsLoading ? (
+            <Loader2 className="h-3 w-3 animate-spin" />
+          ) : expanded ? (
+            <ChevronUp className="h-3 w-3" />
+          ) : (
+            <ChevronDown className="h-3 w-3" />
+          )}
+        </button>
+        {expanded && (
+          oddsLoading ? (
+            <div className="border-t border-border/60 px-3 py-4 text-center text-[11px] text-muted-foreground">
+              <Loader2 className="inline h-3 w-3 animate-spin mr-1.5" />
+              Loading sportsbook lines…
+            </div>
+          ) : booksWithOdds.length >= 2 ? (
             <BookTable
               books={booksWithOdds}
               bestHome={bestHome}
               bestAway={bestAway}
               vegasConsensus={game.vegasConsensus}
             />
-          )}
-        </div>
-      ) : (
-        <div className="rounded-md border border-border/40 bg-muted/30 px-3 py-2 text-center space-y-0.5">
-          <p className="text-[11px] text-muted-foreground">Full lines not yet available</p>
-          <p className="text-[10px] text-muted-foreground/70">Check back closer to game time</p>
-        </div>
-      )}
+          ) : (
+            <div className="border-t border-border/60 px-3 py-4 text-center space-y-0.5">
+              <p className="text-[11px] text-muted-foreground">
+                {oddsFetched ? "No sportsbook lines posted yet" : "Full lines not yet available"}
+              </p>
+              <p className="text-[10px] text-muted-foreground/70">Check back closer to game time</p>
+            </div>
+          )
+        )}
+      </div>
 
       {/* Claude AI Analysis */}
       {result ? (
@@ -272,28 +302,27 @@ function GameCard({ game, mispricings }: { game: FullGame; mispricings: SportsMi
         <>
           <button
             onClick={handleAnalyze}
-            disabled={analyzing || booksWithOdds.length < 2}
+            disabled={analyzing || oddsLoading}
             className={cn(
               "flex w-full items-center justify-center gap-2 rounded-md bg-purple px-3 text-white font-semibold transition-colors hover:bg-purple/90 disabled:opacity-60",
               "h-[52px] sm:h-11",
-              booksWithOdds.length < 2 && "cursor-not-allowed opacity-60",
             )}
           >
-            {analyzing ? (
+            {analyzing || oddsLoading ? (
               <>
                 <Loader2 className="h-4 w-4 animate-spin" />
-                <span className="text-sm">Analyzing…</span>
+                <span className="text-sm">{oddsLoading ? "Loading lines…" : "Analyzing…"}</span>
               </>
             ) : (
               <div className="flex items-center gap-2 text-left">
                 <Brain className="h-4 w-4" />
                 <div>
                   <div className="text-sm leading-tight">
-                    {booksWithOdds.length < 2 ? "Waiting for sportsbook lines" : "Analyze with Claude"}
+                    Analyze with Claude
                   </div>
                   <div className="text-[10px] opacity-80 leading-tight">
-                    {booksWithOdds.length < 2
-                      ? "AI analysis requires 2+ books"
+                    {vegasBookCount < 2
+                      ? "Fetches full sportsbook lines on demand"
                       : "AI edge detection for this game"}
                   </div>
                 </div>
