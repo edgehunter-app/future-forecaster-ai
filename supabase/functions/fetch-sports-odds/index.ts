@@ -519,6 +519,16 @@ Deno.serve(async (req) => {
       return g;
     }).filter((g: any) => g.bookmakers.length > 0);
 
+    // Debug: per-game bookmaker counts so we can confirm Vegas + prediction
+    // markets are both flowing through.
+    for (const g of allGames.slice(0, 5)) {
+      console.log(
+        "Game:", (g as any).home_team, "vs", (g as any).away_team,
+        "| bookmakers:", (g as any).bookmakers?.length,
+        "→", ((g as any).bookmakers ?? []).map((b: any) => b.key).join(","),
+      );
+    }
+
     const games = matcher
       ? allGames.filter((g: any) => matcher(g.sport_title))
       : allGames;
