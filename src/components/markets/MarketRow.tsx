@@ -13,6 +13,7 @@ import { Brain, Loader2 } from "lucide-react";
 import { useAIAnalysis } from "@/hooks/useAIAnalysis";
 import AnalysisResultPanel from "@/components/ui/AnalysisResultPanel";
 import { useAppStore } from "@/store/useAppStore";
+import { cleanMarketTitle } from "@/lib/cleanMarketTitle";
 
 interface Props { market: Market; }
 
@@ -71,7 +72,7 @@ export function MarketRow({ market: m }: Props) {
           </Badge>
           <span className="text-[11px] font-mono text-muted-foreground">Ends {m.endDate}</span>
         </div>
-        <h3 className="text-sm font-semibold leading-snug text-foreground line-clamp-2">{m.question}</h3>
+        <h3 className="text-sm font-semibold leading-snug text-foreground line-clamp-2">{cleanMarketTitle(m.question)}</h3>
       </div>
 
       {/* MIDDLE */}
