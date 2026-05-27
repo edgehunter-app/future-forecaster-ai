@@ -206,6 +206,19 @@ async function scanSportsGames(
   for (let i = 0; i < sortedGames.length; i++) {
     const game = sortedGames[i];
     try {
+      const vegasOnly = (game.bookmakers ?? []).filter((b) => b.category !== "prediction_market");
+      const bestOver = vegasOnly
+        .filter((b) => b.totalLine && Number.isFinite(b.overOdds) && b.overOdds !== 0)
+        .reduce(
+          (a, b) => (b.overOdds > a.odds ? { odds: b.overOdds, book: b.name } : a),
+          { odds: -99999, book: "" },
+        );
+      const bestUnder = vegasOnly
+        .filter((b) => b.totalLine && Number.isFinite(b.underOdds) && b.underOdds !== 0)
+        .reduce(
+          (a, b) => (b.underOdds > a.odds ? { odds: b.underOdds, book: b.name } : a),
+          { odds: -99999, book: "" },
+        );
       const { data, error: invokeError } = await supabase.functions.invoke("analyze-market", {
         body: {
           type: "sports",
@@ -221,6 +234,10 @@ async function scanSportsGames(
           bestAwayBook: game.moneyline?.bestAwayBook ?? "",
           spread: game.spread?.homeSpread ?? null,
           total: game.total?.line ?? null,
+          bestOverOdds: bestOver.book ? bestOver.odds : null,
+          bestOverBook: bestOver.book || null,
+          bestUnderOdds: bestUnder.book ? bestUnder.odds : null,
+          bestUnderBook: bestUnder.book || null,
           bookmakers: (game.bookmakers ?? []).map((b) => ({
             name: b.name,
             key: b.key,
@@ -231,7 +248,7 @@ async function scanSportsGames(
               ? { line: b.homeSpread, homeOdds: b.spreadHomeOdds, awayOdds: b.spreadAwayOdds }
               : null,
             total: b.totalLine
-              ? { line: b.totalLine, overOdds: b.overOdds, underOdds: b.underOdds }
+              ? { line: b.totalLine, over: b.overOdds, under: b.underOdds, overOdds: b.overOdds, underOdds: b.underOdds }
               : null,
           })),
           vegasConsensus: game.vegasConsensus ?? null,
