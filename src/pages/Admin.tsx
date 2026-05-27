@@ -9,6 +9,7 @@ import { usePageTitle } from "@/hooks/usePageTitle";
 import { getAnalysisCounts } from "@/lib/analysisCounter";
 import { cn } from "@/lib/utils";
 import { useAppStore } from "@/store/useAppStore";
+import Toggle from "@/components/ui/AppToggle";
 const CLAUDE_COST_PER_RUN = 0.003;
 // 0 = Manual refresh only (no setInterval). Other values are minutes.
 const REFRESH_OPTIONS = [0, 15, 30, 60, 120];
@@ -44,6 +45,8 @@ function StatBlock({ label, value, hint }: { label: string; value: string | numb
 export default function Admin() {
   usePageTitle("Admin");
   const { isAdmin, loading } = useIsAdmin();
+  const isDemoMode = useAppStore((s) => s.isDemoMode);
+  const setDemoMode = useAppStore((s) => s.setDemoMode);
 
   const [analysisCounts, setAnalysisCounts] = useState({ market: 0, sports: 0, total: 0 });
   const [rapidUsedToday, setRapidUsedToday] = useState<number>(0);
@@ -402,6 +405,38 @@ export default function Admin() {
           >
             {granting ? <Loader2 className="h-4 w-4 animate-spin" /> : <ShieldCheck className="h-4 w-4" />}
             Grant Admin Access
+          </button>
+        </div>
+      </section>
+
+      {/* Developer Tools */}
+      <section className="rounded-lg border border-border bg-card p-5 space-y-3">
+        <div className="flex items-center gap-2">
+          <FlaskConical className="h-4 w-4 text-purple" />
+          <h2 className="text-sm font-bold uppercase tracking-wide text-foreground">Developer Tools</h2>
+        </div>
+        <div className="flex items-center justify-between py-2 border-t border-border">
+          <div>
+            <div className="text-sm font-semibold text-foreground">Demo Mode</div>
+            <p className="text-xs text-muted-foreground">Shows mock data instead of real wallets and live markets. Admin-only.</p>
+          </div>
+          <Toggle enabled={isDemoMode} onChange={(v) => setDemoMode(v)} />
+        </div>
+        <div className="flex items-center justify-between py-2 border-t border-border">
+          <div>
+            <div className="text-sm font-semibold text-foreground">Reset App Data</div>
+            <p className="text-xs text-muted-foreground">Clears all local cached data and reloads. Account data is not affected.</p>
+          </div>
+          <button
+            onClick={() => {
+              if (confirm("Clear all local app data and reload?")) {
+                localStorage.clear();
+                window.location.reload();
+              }
+            }}
+            className="rounded-md border border-destructive/40 px-3 py-1.5 text-xs font-semibold text-destructive hover:bg-destructive/10"
+          >
+            Reset App Data
           </button>
         </div>
       </section>

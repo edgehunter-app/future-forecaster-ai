@@ -54,7 +54,7 @@ export default function Auth() {
   };
 
   return (
-    <div className="min-h-screen w-full flex items-center justify-center bg-background px-4">
+    <div className="min-h-dvh w-full flex items-center justify-center bg-background px-4">
       <div className="w-full max-w-md">
         <div className="flex flex-col items-center gap-3 mb-6">
           <EdgeHunterLogo size={64} variant="icon" />

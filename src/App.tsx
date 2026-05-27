@@ -30,7 +30,9 @@ const queryClient = new QueryClient();
 
 const wrap = (node: React.ReactNode) => (
   <Layout>
-    <Suspense fallback={<PageLoadingSkeleton />}>{node}</Suspense>
+    <ErrorBoundary>
+      <Suspense fallback={<PageLoadingSkeleton />}>{node}</Suspense>
+    </ErrorBoundary>
   </Layout>
 );
 
@@ -103,7 +105,7 @@ function AppRoutes() {
         <Route path="/sports" element={wrap(<Sports />)} />
         <Route path="/tracker" element={wrap(<BetTracker />)} />
         <Route path="/history" element={wrap(<History />)} />
-        <Route path="/settings" element={wrap(<ErrorBoundary><Settings /></ErrorBoundary>)} />
+        <Route path="/settings" element={wrap(<Settings />)} />
         <Route path="/admin" element={wrap(<Admin />)} />
         <Route path="*" element={<Suspense fallback={<PageLoadingSkeleton />}><NotFound /></Suspense>} />
       </Routes>

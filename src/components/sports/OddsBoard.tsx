@@ -112,9 +112,11 @@ function GameCard({ game, mispricings }: { game: FullGame; mispricings: SportsMi
   const [expanded, setExpanded] = useState(false);
   const [showProps, setShowProps] = useState(false);
   const { bookmakers, loading: oddsLoading, fetched: oddsFetched, fetchOdds } = useGameOdds(game);
-  console.log("[GameCard] bookmakers received:",
-    bookmakers.length,
-    bookmakers.map((b) => b.key ?? b.name));
+  if (import.meta.env.DEV) {
+    console.log("[GameCard] bookmakers received:",
+      bookmakers.length,
+      bookmakers.map((b) => b.key ?? b.name));
+  }
   const booksWithOdds = bookmakers.filter(
     (b) => b.homeMoneyline !== 0 || b.awayMoneyline !== 0,
   );

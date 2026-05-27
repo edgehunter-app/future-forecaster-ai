@@ -26,17 +26,12 @@ export function useTrackedWallets() {
   const [loading, setLoading] = useState(true);
 
   const load = useCallback(async () => {
-    console.log("useTrackedWallets: loading...");
-    console.log("User:", user?.id);
-    console.log("isDemoMode:", isDemoMode);
     if (isDemoMode) {
-      console.log("Demo mode — using MOCK_WALLETS");
       setWallets(MOCK_WALLETS);
       setLoading(false);
       return;
     }
     if (!user) {
-      console.log("No user — cannot fetch wallets");
       setWallets([]);
       setLoading(false);
       return;
@@ -46,12 +41,10 @@ export function useTrackedWallets() {
       .select("*")
       .eq("user_id", user.id)
       .order("created_at", { ascending: false });
-    console.log("DB result — rows:", data?.length, "error:", error);
-    if (data && data.length > 0) {
-      console.log("First row:", JSON.stringify(data[0]));
+    if (import.meta.env.DEV) {
+      console.log("[useTrackedWallets] rows:", data?.length, "error:", error);
     }
     const mapped = data ? data.map(mapWalletRow) : [];
-    console.log("Mapped wallets:", mapped.length);
     setWallets(mapped);
     setLoading(false);
   }, [isDemoMode, user]);

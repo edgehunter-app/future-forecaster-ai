@@ -9,10 +9,11 @@ import Badge from "@/components/ui/Badge";
 import ConfidenceBar from "@/components/ui/ConfidenceBar";
 import { useAppStore } from "@/store/useAppStore";
 import { useToast } from "@/components/ui/AppToast";
-import { useBreakpoint } from "@/hooks/useBreakpoint";
+import { useIsMobile } from "@/hooks/use-mobile";
 import { useSwipe } from "@/hooks/useSwipe";
 import LogBetModal from "@/components/tracker/LogBetModal";
 import { useBetTracker, type NewBetInput } from "@/hooks/useBetTracker";
+import { cleanMarketTitle } from "@/lib/cleanMarketTitle";
 import {
   getConfidenceColor,
   getConfidenceBg,
@@ -45,7 +46,7 @@ export function SuggestionCard({ suggestion: s, bankroll, onDismiss, onMarkOutco
   const [logOpen, setLogOpen] = useState(false);
   const [logged, setLogged] = useState(false);
   const { logBet } = useBetTracker();
-  const { isMobile } = useBreakpoint();
+  const isMobile = useIsMobile();
   const ageMs = (() => {
     const m = /(\d+)\s*h/.exec(s.createdAt);
     if (m) return Number(m[1]) * 3600000;
@@ -208,7 +209,7 @@ export function SuggestionCard({ suggestion: s, bankroll, onDismiss, onMarkOutco
         <span className="text-xs text-muted-foreground font-mono">{s.createdAt}</span>
       </div>
 
-      <h3 className="mt-3 text-sm font-semibold leading-snug text-foreground">{s.question}</h3>
+      <h3 className="mt-3 text-sm font-semibold leading-snug text-foreground">{cleanMarketTitle(s.question)}</h3>
 
       {/* Action strip */}
       <div

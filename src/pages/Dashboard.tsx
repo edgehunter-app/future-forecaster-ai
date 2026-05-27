@@ -22,6 +22,7 @@ import type { ClaudeAnalysis, Market } from "@/types";
 import { KNOWN_TOP_WALLETS } from "@/data/knownTopWallets";
 import { usePageTitle } from "@/hooks/usePageTitle";
 import { useIsAdmin } from "@/hooks/useIsAdmin";
+import { cleanMarketTitle } from "@/lib/cleanMarketTitle";
 
 const TIER_COLORS: Record<string, string> = {
   S: "#f59e0b",
@@ -246,7 +247,7 @@ export default function Dashboard() {
             {analyzedMarket && (
               <div className="rounded-md border border-info/30 bg-info/5 px-3 py-2">
                 <div className="text-[10px] uppercase tracking-wide text-muted-foreground font-semibold">Best signal found in</div>
-                <div className="mt-0.5 text-sm font-bold text-foreground">{analyzedMarket.question}</div>
+                <div className="mt-0.5 text-sm font-bold text-foreground">{cleanMarketTitle(analyzedMarket.question)}</div>
                 <span className="mt-1 inline-block rounded-full border border-border bg-background/60 px-2 py-0.5 text-[10px] font-mono text-muted-foreground">{analyzedMarket.category}</span>
               </div>
             )}
@@ -364,7 +365,7 @@ export default function Dashboard() {
               {markets.slice(0, 5).map((m) => (
                 <li key={m.id} className="flex items-center gap-3 px-5 py-2.5">
                   <div className="flex-1 min-w-0">
-                    <div className="text-sm font-medium text-foreground truncate">{m.question}</div>
+                    <div className="text-sm font-medium text-foreground truncate">{cleanMarketTitle(m.question)}</div>
                     <div className="text-[11px] font-mono text-muted-foreground">{m.category}</div>
                   </div>
                   <div className="flex items-center gap-2 text-xs font-mono">
@@ -663,7 +664,7 @@ function SportsEdgeStrip() {
             <span className="text-xs font-bold uppercase tracking-wide text-foreground">Today's Best Bet</span>
             <span className="rounded-full border border-info/40 bg-info/15 px-1.5 py-0.5 text-[9px] font-bold uppercase text-info">Cross-Market Gap</span>
           </div>
-          <div className="text-sm font-semibold text-foreground line-clamp-2">{lastBestBet.prediction.market.question}</div>
+          <div className="text-sm font-semibold text-foreground line-clamp-2">{cleanMarketTitle(lastBestBet.prediction.market.question)}</div>
           <div className="mt-1 flex items-center gap-3 text-xs font-mono text-muted-foreground">
             <span>{lastBestBet.prediction.bestPlatform} {lastBestBet.prediction.bestPriceCents}¢</span>
             <span>·</span>
@@ -677,7 +678,7 @@ function SportsEdgeStrip() {
             <span className="text-xs font-bold uppercase tracking-wide text-foreground">Today's Best Bet</span>
             <span className="rounded-full border border-purple/40 bg-purple/15 px-1.5 py-0.5 text-[9px] font-bold uppercase text-purple">Smart Wallet Signal</span>
           </div>
-          <div className="text-sm font-semibold text-foreground line-clamp-2">{lastBestBet.wallet.market.question}</div>
+          <div className="text-sm font-semibold text-foreground line-clamp-2">{cleanMarketTitle(lastBestBet.wallet.market.question)}</div>
           <div className="mt-1 flex items-center gap-3 text-xs font-mono text-muted-foreground">
             <span>{lastBestBet.wallet.walletCount} elite wallets · ${Math.round(lastBestBet.wallet.totalValue).toLocaleString()}</span>
           </div>
@@ -735,7 +736,7 @@ function CrossMarketStrip() {
             return (
               <Link to="/cross-market" key={o.question}
                 className="min-w-[280px] max-w-[320px] flex-1 rounded-lg border border-border bg-card p-4 hover:border-foreground/20 transition-colors">
-                <div className="text-xs font-semibold text-foreground line-clamp-2 min-h-[32px]">{o.question}</div>
+                <div className="text-xs font-semibold text-foreground line-clamp-2 min-h-[32px]">{cleanMarketTitle(o.question)}</div>
                 <div className="mt-3 flex items-center justify-between">
                   <span className={cn(
                     "rounded-full border px-2 py-0.5 text-[10px] font-bold uppercase",

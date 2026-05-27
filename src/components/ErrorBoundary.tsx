@@ -16,7 +16,7 @@ export default class ErrorBoundary extends Component<{ children: ReactNode }, St
   render() {
     if (!this.state.error) return this.props.children;
     return (
-      <div className="flex min-h-screen items-center justify-center bg-background p-6">
+      <div className="flex min-h-dvh items-center justify-center bg-background p-6">
         <div className="max-w-lg w-full rounded-lg border border-border bg-card p-6 shadow-card">
           <h1 className="text-xl font-bold text-foreground">Something went wrong</h1>
           <p className="mt-2 text-sm text-muted-foreground">An unexpected error was caught while rendering.</p>

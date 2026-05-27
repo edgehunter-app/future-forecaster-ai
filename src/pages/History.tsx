@@ -36,7 +36,7 @@ export default function History() {
         <div className="rounded-md border border-destructive/40 bg-destructive/10 px-3 py-2 text-sm text-destructive">{error}</div>
       )}
 
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
+      <div className="grid grid-cols-2 gap-3 mb-2">
         <StatCard label="Total Trades" value={stats.totalTrades} icon={Activity} color="#8b5cf6" />
         <StatCard label="Win Rate" value={hasResolved ? `${(stats.winRate * 100).toFixed(1)}%` : "--"} icon={Target} color="#3b82f6" sub={hasResolved ? `${stats.wins} / ${stats.totalTrades} resolved` : "No resolved trades"} />
         <StatCard label="Total P&L" value={hasResolved ? fmtSign(Math.round(stats.totalPnL)) : "--"} icon={TrendingUp} color={stats.totalPnL >= 0 ? "#10b981" : "#ef4444"} />
@@ -156,7 +156,7 @@ function ActiveRow({ entry, onMark }: { entry: HistoryEntry; onMark: (id: string
             >
               Confirm {mode === "won" ? "Win" : "Loss"}
             </button>
-            <button onClick={() => { setMode(null); setPnl(""); }} className="text-xs text-muted-foreground hover:text-foreground">Cancel</button>
+            <button onClick={() => { setMode(null); setPnl(""); }} className="px-4 py-3 text-xs text-muted-foreground hover:text-foreground">Cancel</button>
           </div>
         )}
       </div>

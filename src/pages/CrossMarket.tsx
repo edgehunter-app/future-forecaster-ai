@@ -10,6 +10,7 @@ import type { CrossMarketOpp, ClaudeAnalysis } from "@/types";
 import { usePageTitle } from "@/hooks/usePageTitle";
 import SportsMispricingCard from "@/components/sports/SportsMispricingCard";
 import GamblingDisclaimer from "@/components/sports/GamblingDisclaimer";
+import { cleanMarketTitle } from "@/lib/cleanMarketTitle";
 
 export default function CrossMarket() {
   usePageTitle("Cross-Market");
@@ -170,7 +171,7 @@ function OpportunityCard({ opp }: { opp: CrossMarketOpp }) {
 
   return (
     <div className="rounded-lg border border-border bg-card p-5 shadow-card">
-      <h3 className="text-sm font-semibold leading-snug text-foreground">{opp.question}</h3>
+      <h3 className="text-sm font-semibold leading-snug text-foreground">{cleanMarketTitle(opp.question)}</h3>
 
       <div className="mt-4 grid grid-cols-1 items-center gap-4 md:grid-cols-[1fr_auto_1fr]">
         <PlatformCol name="Polymarket" yes={opp.polyYes} no={1 - opp.polyYes}

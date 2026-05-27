@@ -5,7 +5,7 @@ import { useAppStore } from "@/store/useAppStore";
 import { fmtUSD } from "@/lib/utils";
 import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
-import { useBreakpoint } from "@/hooks/useBreakpoint";
+import { useIsMobile } from "@/hooks/use-mobile";
 import { EdgeHunterLogo } from "@/components/brand/EdgeHunterLogo";
 
 const cnHeader = (m: boolean) =>
@@ -23,11 +23,16 @@ const cnAvatarBtn = (m: boolean) =>
 
 const titles: Record<string, { title: string; subtitle?: string }> = {
   "/": { title: "Dashboard", subtitle: "Overview of suggestions and signals" },
-  "/suggestions": { title: "Suggestions", subtitle: "Live trade ideas from smart wallet activity" },
-  "/wallets": { title: "Smart Wallets", subtitle: "Tracked top performers" },
+  "/suggestions": { title: "Signals", subtitle: "Live trade ideas from smart wallet activity" },
+  "/signals": { title: "Signals", subtitle: "Live trade ideas from smart wallet activity" },
+  "/sports": { title: "Sports", subtitle: "Live odds board and Vegas comparisons" },
   "/markets": { title: "Markets", subtitle: "Polymarket markets you're watching" },
+  "/wallets": { title: "Smart Wallets", subtitle: "Tracked top performers" },
+  "/cross-market": { title: "Cross-Market Radar", subtitle: "Polymarket vs Kalshi & Vegas" },
   "/history": { title: "History", subtitle: "Past suggestions and outcomes" },
+  "/tracker": { title: "Bet Tracker", subtitle: "Log and review your bets" },
   "/settings": { title: "Settings", subtitle: "Bankroll, alerts and preferences" },
+  "/admin": { title: "Admin", subtitle: "System monitoring and tools" },
 };
 
 export function TopBar(_: { onMenuClick?: () => void } = {}) {
@@ -36,8 +41,16 @@ export function TopBar(_: { onMenuClick?: () => void } = {}) {
   const { bankroll, kellyMultiplier } = useAppStore((s) => s.settings);
   const isDemoMode = useAppStore((s) => s.isDemoMode);
   const setDemoMode = useAppStore((s) => s.setDemoMode);
+  const suggestions = useAppStore((s) => s.suggestions);
+  const unreadCount = (() => {
+    const cutoff = Date.now() - 24 * 60 * 60 * 1000;
+    return suggestions.filter((s) => {
+      const t = Date.parse(s.createdAt);
+      return !isNaN(t) && t >= cutoff && s.status === "active";
+    }).length;
+  })();
   const { user } = useAuth();
-  const { isMobile } = useBreakpoint();
+  const isMobile = useIsMobile();
   const [menuOpen, setMenuOpen] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
 
@@ -125,11 +138,16 @@ export function TopBar(_: { onMenuClick?: () => void } = {}) {
         </span>
         )}
         <button
-          aria-label="Notifications"
+          aria-label={unreadCount > 0 ? `Notifications, ${unreadCount} new` : "Notifications"}
+          onClick={() => navigate("/suggestions")}
           className={cnIconBtn(isMobile)}
         >
           <Bell className="h-4 w-4" />
-          <span className="absolute right-2 top-2 h-1.5 w-1.5 rounded-full bg-info" />
+          {unreadCount > 0 && (
+            <span className="absolute -right-0.5 -top-0.5 min-w-[16px] h-4 px-1 inline-flex items-center justify-center rounded-full bg-info text-[10px] font-bold text-white">
+              {unreadCount > 9 ? "9+" : unreadCount}
+            </span>
+          )}
         </button>
         {!user ? (
           <Link
