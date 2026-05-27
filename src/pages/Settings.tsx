@@ -1,4 +1,4 @@
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import {
   Bell, Brain, Calculator, Check, Info, Key, Moon, Save, Sliders, Sun, TrendingUp, Trophy,
 } from "lucide-react";
