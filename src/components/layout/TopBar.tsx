@@ -23,11 +23,16 @@ const cnAvatarBtn = (m: boolean) =>
 
 const titles: Record<string, { title: string; subtitle?: string }> = {
   "/": { title: "Dashboard", subtitle: "Overview of suggestions and signals" },
-  "/suggestions": { title: "Suggestions", subtitle: "Live trade ideas from smart wallet activity" },
-  "/wallets": { title: "Smart Wallets", subtitle: "Tracked top performers" },
+  "/suggestions": { title: "Signals", subtitle: "Live trade ideas from smart wallet activity" },
+  "/signals": { title: "Signals", subtitle: "Live trade ideas from smart wallet activity" },
+  "/sports": { title: "Sports", subtitle: "Live odds board and Vegas comparisons" },
   "/markets": { title: "Markets", subtitle: "Polymarket markets you're watching" },
+  "/wallets": { title: "Smart Wallets", subtitle: "Tracked top performers" },
+  "/cross-market": { title: "Cross-Market Radar", subtitle: "Polymarket vs Kalshi & Vegas" },
   "/history": { title: "History", subtitle: "Past suggestions and outcomes" },
+  "/tracker": { title: "Bet Tracker", subtitle: "Log and review your bets" },
   "/settings": { title: "Settings", subtitle: "Bankroll, alerts and preferences" },
+  "/admin": { title: "Admin", subtitle: "System monitoring and tools" },
 };
 
 export function TopBar(_: { onMenuClick?: () => void } = {}) {
