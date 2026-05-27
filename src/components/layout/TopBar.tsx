@@ -5,7 +5,7 @@ import { useAppStore } from "@/store/useAppStore";
 import { fmtUSD } from "@/lib/utils";
 import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
-import { useBreakpoint } from "@/hooks/useBreakpoint";
+import { useIsMobile } from "@/hooks/use-mobile";
 import { EdgeHunterLogo } from "@/components/brand/EdgeHunterLogo";
 
 const cnHeader = (m: boolean) =>
@@ -37,7 +37,7 @@ export function TopBar(_: { onMenuClick?: () => void } = {}) {
   const isDemoMode = useAppStore((s) => s.isDemoMode);
   const setDemoMode = useAppStore((s) => s.setDemoMode);
   const { user } = useAuth();
-  const { isMobile } = useBreakpoint();
+  const isMobile = useIsMobile();
   const [menuOpen, setMenuOpen] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
 
