@@ -2,11 +2,12 @@ import { useState } from "react";
 import { NavLink, useNavigate, useLocation } from "react-router-dom";
 import {
   House, Zap, Trophy, TrendingUp, LayoutGrid,
-  Users, Clock, ArrowLeftRight, Settings as SettingsIcon, ChevronRight, BarChart2,
+  Users, Clock, ArrowLeftRight, Settings as SettingsIcon, ChevronRight, BarChart2, Shield,
 } from "lucide-react";
 import BottomSheet from "@/components/ui/BottomSheet";
 import { useAppStore } from "@/store/useAppStore";
 import { cn } from "@/lib/utils";
+import { useIsAdmin } from "@/hooks/useIsAdmin";
 
 const MORE_ITEMS = [
   { to: "/tracker", label: "Bet Tracker", icon: BarChart2 },
@@ -16,17 +17,21 @@ const MORE_ITEMS = [
   { to: "/settings", label: "Settings", icon: SettingsIcon },
 ] as const;
 
+const ADMIN_ITEM = { to: "/admin", label: "Admin", icon: Shield } as const;
+
 export default function BottomTabBar() {
   const [moreOpen, setMoreOpen] = useState(false);
   const navigate = useNavigate();
   const { pathname } = useLocation();
   const suggestionsCount = useAppStore((s) => s.suggestions.length);
+  const { isAdmin } = useIsAdmin();
+  const moreItems = isAdmin ? [...MORE_ITEMS, ADMIN_ITEM] : MORE_ITEMS;
   const fullGames = useAppStore((s) => s.fullGames);
   const strongMispricings = useAppStore((s) => s.sportsMispricings).filter(
     (m) => m.edge >= 0.05,
   ).length || (fullGames?.length ?? 0 > 0 ? 0 : 0);
 
-  const isMoreActive = MORE_ITEMS.some((i) => pathname.startsWith(i.to));
+  const isMoreActive = moreItems.some((i) => pathname.startsWith(i.to));
 
   const tabs = [
     { to: "/", label: "Home", icon: House, end: true, badge: 0 },
@@ -94,7 +99,7 @@ export default function BottomTabBar() {
 
       <BottomSheet isOpen={moreOpen} onClose={() => setMoreOpen(false)} title="More">
         <ul className="divide-y divide-border -m-4">
-          {MORE_ITEMS.map((item) => {
+          {moreItems.map((item) => {
             const active = pathname.startsWith(item.to);
             return (
               <li key={item.to}>
