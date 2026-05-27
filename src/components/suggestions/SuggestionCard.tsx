@@ -13,6 +13,7 @@ import { useBreakpoint } from "@/hooks/useBreakpoint";
 import { useSwipe } from "@/hooks/useSwipe";
 import LogBetModal from "@/components/tracker/LogBetModal";
 import { useBetTracker, type NewBetInput } from "@/hooks/useBetTracker";
+import { cleanMarketTitle } from "@/lib/cleanMarketTitle";
 import {
   getConfidenceColor,
   getConfidenceBg,
@@ -208,7 +209,7 @@ export function SuggestionCard({ suggestion: s, bankroll, onDismiss, onMarkOutco
         <span className="text-xs text-muted-foreground font-mono">{s.createdAt}</span>
       </div>
 
-      <h3 className="mt-3 text-sm font-semibold leading-snug text-foreground">{s.question}</h3>
+      <h3 className="mt-3 text-sm font-semibold leading-snug text-foreground">{cleanMarketTitle(s.question)}</h3>
 
       {/* Action strip */}
       <div
