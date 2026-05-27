@@ -22,6 +22,7 @@ import type { ClaudeAnalysis, Market } from "@/types";
 import { KNOWN_TOP_WALLETS } from "@/data/knownTopWallets";
 import { usePageTitle } from "@/hooks/usePageTitle";
 import { useIsAdmin } from "@/hooks/useIsAdmin";
+import { cleanMarketTitle } from "@/lib/cleanMarketTitle";
 
 const TIER_COLORS: Record<string, string> = {
   S: "#f59e0b",
@@ -246,7 +247,7 @@ export default function Dashboard() {
             {analyzedMarket && (
               <div className="rounded-md border border-info/30 bg-info/5 px-3 py-2">
                 <div className="text-[10px] uppercase tracking-wide text-muted-foreground font-semibold">Best signal found in</div>
-                <div className="mt-0.5 text-sm font-bold text-foreground">{analyzedMarket.question}</div>
+                <div className="mt-0.5 text-sm font-bold text-foreground">{cleanMarketTitle(analyzedMarket.question)}</div>
                 <span className="mt-1 inline-block rounded-full border border-border bg-background/60 px-2 py-0.5 text-[10px] font-mono text-muted-foreground">{analyzedMarket.category}</span>
               </div>
             )}
