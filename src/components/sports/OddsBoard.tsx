@@ -438,6 +438,20 @@ function BookTable({
   const vegasBooks = books.filter((b) => b.category !== "prediction_market");
   const predBooks = books.filter((b) => b.category === "prediction_market");
 
+  // Best Over/Under across vegas books only (highest American odds wins).
+  const bestOver = vegasBooks
+    .filter((b) => b.totalLine && Number.isFinite(b.overOdds) && b.overOdds !== 0)
+    .reduce(
+      (a, b) => (b.overOdds > a.odds ? { odds: b.overOdds, book: b.name } : a),
+      { odds: -99999, book: "" },
+    );
+  const bestUnder = vegasBooks
+    .filter((b) => b.totalLine && Number.isFinite(b.underOdds) && b.underOdds !== 0)
+    .reduce(
+      (a, b) => (b.underOdds > a.odds ? { odds: b.underOdds, book: b.name } : a),
+      { odds: -99999, book: "" },
+    );
+
   const gapFor = (book: FullBookmakerLine): { value: number; side: string } | null => {
     if (!vegasConsensus) return null;
     const home = book.homeMoneyline - vegasConsensus.home;
@@ -465,8 +479,29 @@ function BookTable({
         <td className={cn("px-2 py-1", b.name === bestAway.book && "text-success font-bold")}>{formatOdds(b.awayMoneyline)}</td>
         <td className={cn("px-2 py-1", b.name === bestHome.book && "text-success font-bold")}>{formatOdds(b.homeMoneyline)}</td>
         <td className="px-2 py-1">{isPred ? "—" : b.homeSpread ? formatSpread(b.homeSpread) : "—"}</td>
-        <td className={cn("px-2 py-1", !isPred && b.name === bestTotal.book && "text-success font-bold")}>
-          {isPred ? "—" : b.totalLine || "—"}
+        <td className="px-2 py-1 whitespace-nowrap">
+          {isPred || !b.totalLine ? (
+            "—"
+          ) : (
+            <span>
+              <span className="text-muted-foreground">o{b.totalLine}</span>{" "}
+              <span
+                className={cn(
+                  b.name === bestOver.book && b.overOdds === bestOver.odds && "text-success font-bold",
+                )}
+              >
+                {formatOdds(b.overOdds)}
+              </span>
+              <span className="text-muted-foreground"> / </span>
+              <span
+                className={cn(
+                  b.name === bestUnder.book && b.underOdds === bestUnder.odds && "text-success font-bold",
+                )}
+              >
+                u{formatOdds(b.underOdds)}
+              </span>
+            </span>
+          )}
         </td>
         <td className={cn(
           "px-2 py-1 font-bold",
@@ -490,7 +525,7 @@ function BookTable({
             <th className="px-2 py-1">Away ML</th>
             <th className="px-2 py-1">Home ML</th>
             <th className="px-2 py-1">Spread</th>
-            <th className="px-2 py-1">Total</th>
+            <th className="px-2 py-1 whitespace-nowrap">Total (O/U)</th>
             <th className="px-2 py-1 whitespace-nowrap">vs Vegas</th>
           </tr>
         </thead>
@@ -508,6 +543,16 @@ function BookTable({
       </table>
       <div className="border-t border-border/60 px-2 py-1.5 text-[10px] font-mono text-muted-foreground">
         Best: Away ML <span className="text-success">{bestAway.book} {formatOdds(bestAway.odds)}</span> · Home ML <span className="text-success">{bestHome.book} {formatOdds(bestHome.odds)}</span>
+        {bestOver.book && (
+          <>
+            {" · "}Over <span className="text-success">{bestOver.book} {formatOdds(bestOver.odds)}</span>
+          </>
+        )}
+        {bestUnder.book && (
+          <>
+            {" · "}Under <span className="text-success">{bestUnder.book} {formatOdds(bestUnder.odds)}</span>
+          </>
+        )}
       </div>
     </div>
   );
