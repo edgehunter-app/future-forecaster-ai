@@ -131,6 +131,19 @@ response and leave the "lineShopping" field with empty strings.\n`
         })
         .join("\n")
     : "  (no per-book data)";
+  const totalsRows = vegasBooks
+    .filter((b: Any) => b.total?.line)
+    .map((b: Any) =>
+      `  ${b.name}: o${b.total.line} Over ${b.total.over ?? b.total.overOdds ?? "N/A"} | Under ${b.total.under ?? b.total.underOdds ?? "N/A"}`,
+    )
+    .join("\n");
+  const totalsBlock = `
+TOTALS (Over/Under):
+${totalsRows || "  (no totals data)"}
+Best Over: ${p.bestOverOdds ?? "N/A"} at ${p.bestOverBook ?? "N/A"}
+Best Under: ${p.bestUnderOdds ?? "N/A"} at ${p.bestUnderBook ?? "N/A"}
+Total line consensus: ${p.total ?? "N/A"}
+`;
   const homePrices = vegasBooks.map((b: Any) => Number(b?.moneyline?.home)).filter((n) => Number.isFinite(n) && n !== 0);
   const awayPrices = vegasBooks.map((b: Any) => Number(b?.moneyline?.away)).filter((n) => Number.isFinite(n) && n !== 0);
   const range = (arr: number[]) =>
@@ -172,7 +185,7 @@ CONSENSUS (de-vigged average across all books):
 BEST AVAILABLE ODDS:
   Home moneyline: ${p.bestHomeOdds} (${p.bestHomeBook})
   Away moneyline: ${p.bestAwayOdds} (${p.bestAwayBook})
-
+${totalsBlock}
 LINE SHOPPING RANGE:
   Home: ${range(homePrices)}
   Away: ${range(awayPrices)}
