@@ -19,6 +19,7 @@ import { useGameProps } from "@/hooks/useGameProps";
 import { useGameAnalysis } from "@/hooks/useGameAnalysis";
 import { useGameOdds } from "@/hooks/useGameOdds";
 import GameAnalysisPanel from "./GameAnalysisPanel";
+import { hasPropsSupport } from "@/lib/oddsApi";
 
 interface Props {
   games: FullGame[];
