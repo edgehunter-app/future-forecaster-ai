@@ -30,10 +30,41 @@ function mapSuggestionRow(row: any): Suggestion {
 
 const SEVEN_DAYS_MS = 7 * 24 * 60 * 60 * 1000;
 
+const MONTH_RE = "(?:Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)\\w*";
+const DATE_PATTERNS = [
+  new RegExp(`through\\s+(${MONTH_RE}\\s+\\d{1,2}(?:,?\\s+\\d{4})?)`, "i"),
+  new RegExp(`by\\s+(${MONTH_RE}\\s+\\d{1,2}(?:,?\\s+\\d{4})?)`, "i"),
+  new RegExp(`until\\s+(${MONTH_RE}\\s+\\d{1,2}(?:,?\\s+\\d{4})?)`, "i"),
+  new RegExp(`before\\s+(${MONTH_RE}\\s+\\d{1,2}(?:,?\\s+\\d{4})?)`, "i"),
+  new RegExp(`on\\s+(${MONTH_RE}\\s+\\d{1,2}(?:,?\\s+\\d{4})?)`, "i"),
+];
+
+export function extractExpiryFromQuestion(question: string): Date | null {
+  if (!question) return null;
+  for (const pattern of DATE_PATTERNS) {
+    const match = question.match(pattern);
+    if (match) {
+      const dateStr = match[1];
+      const withYear = /\b20\d{2}\b/.test(dateStr)
+        ? dateStr
+        : `${dateStr} ${new Date().getFullYear()}`;
+      const parsed = new Date(withYear);
+      if (!isNaN(parsed.getTime())) {
+        // Treat the mentioned date as end-of-day
+        parsed.setHours(23, 59, 59, 999);
+        return parsed;
+      }
+    }
+  }
+  return null;
+}
+
 function isRowStale(row: any): boolean {
   if (row.status !== "active") return false;
   if (row.expires_at && new Date(row.expires_at).getTime() <= Date.now()) return true;
   if (row.created_at && Date.now() - new Date(row.created_at).getTime() > SEVEN_DAYS_MS) return true;
+  const qExpiry = extractExpiryFromQuestion(row.question ?? "");
+  if (qExpiry && qExpiry.getTime() <= Date.now()) return true;
   return false;
 }
 
@@ -73,7 +104,13 @@ export function useSuggestionsDB(statuses: string[] = ["active"]) {
     // Auto-expire stale active rows (created >7d ago or past expires_at)
     const staleIds = rows.filter(isRowStale).map((r: any) => r.id);
     if (staleIds.length > 0) {
-      await supabase.from("suggestions").update({ status: "expired" }).in("id", staleIds);
+      await supabase
+        .from("suggestions")
+        .update({ status: "expired", expires_at: new Date().toISOString() })
+        .in("id", staleIds);
+      if (import.meta.env.DEV) {
+        console.log("Marked expired:", staleIds.length, "suggestions");
+      }
     }
     const visible = rows
       .filter((r: any) => !staleIds.includes(r.id))
