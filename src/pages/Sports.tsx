@@ -272,7 +272,7 @@ export default function Sports() {
                   void loadGamesForSport(s.key);
                 }
               }}
-              disabled={false}
+              disabled={loading && s.key !== activeSport}
               className={cn(
                 "shrink-0 inline-flex items-center gap-1.5 rounded-full border px-3 py-1 text-xs font-semibold transition-colors disabled:opacity-50",
                 active

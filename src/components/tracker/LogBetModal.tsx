@@ -87,7 +87,7 @@ export default function LogBetModal({ open, onClose, onSubmit, initial }: LogBet
       <div className="relative w-full max-w-lg max-h-[90vh] overflow-y-auto rounded-lg border border-border bg-card p-5 space-y-4">
         <div className="flex items-center justify-between">
           <h2 className="text-base font-bold text-foreground">Log a bet</h2>
-          <button onClick={onClose} className="rounded-md p-1 text-muted-foreground hover:bg-muted">
+          <button onClick={onClose} aria-label="Close" className="inline-flex items-center justify-center min-w-[44px] min-h-[44px] rounded-md text-muted-foreground hover:bg-muted">
             <X className="h-4 w-4" />
           </button>
         </div>

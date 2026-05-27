@@ -184,8 +184,8 @@ export default function SportsMispricingCard({ mispricing: m }: Props) {
 
       {analysis && (
         <div className="relative rounded-md border border-purple/30 bg-purple/5 p-3 space-y-2">
-          <button onClick={() => setAnalysis(null)}
-            className="absolute right-1.5 top-1.5 rounded p-1 text-muted-foreground hover:text-foreground">
+          <button onClick={() => setAnalysis(null)} aria-label="Close analysis"
+            className="absolute right-1 top-1 inline-flex items-center justify-center min-w-[44px] min-h-[44px] rounded text-muted-foreground hover:text-foreground">
             <X className="h-3 w-3" />
           </button>
           <div className="flex items-center gap-2 text-[11px] font-semibold text-purple uppercase">
