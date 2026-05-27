@@ -33,7 +33,7 @@ const TABS: { key: Tab; label: string }[] = [
   { key: "games", label: "Games" },
   { key: "best", label: "Best Odds" },
   { key: "spreads", label: "Spreads" },
-  { key: "totals", label: "Totals" },
+  { key: "totals", label: "Over/Under" },
   { key: "props", label: "Props" },
 ];
 
