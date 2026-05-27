@@ -246,7 +246,7 @@ function GameCard({ game, mispricings }: { game: FullGame; mispricings: SportsMi
             </>
           ) : <div className="text-muted-foreground">—</div>}
         </Market>
-        <Market label="Total">
+        <Market label="O/U">
           {game.total ? (
             <>
               <div>O {game.total.line} ({formatOdds(game.total.overOdds)})</div>
@@ -598,7 +598,7 @@ function BestOddsTable({ games }: { games: FullGame[] }) {
               <th className="px-3 py-2">Away ML</th>
               <th className="px-3 py-2">Home ML</th>
               <th className="px-3 py-2">Spread</th>
-              <th className="px-3 py-2">Total</th>
+              <th className="px-3 py-2">O/U</th>
               <th className="px-3 py-2">Best Book</th>
             </tr>
           </thead>
