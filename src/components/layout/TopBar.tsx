@@ -41,6 +41,14 @@ export function TopBar(_: { onMenuClick?: () => void } = {}) {
   const { bankroll, kellyMultiplier } = useAppStore((s) => s.settings);
   const isDemoMode = useAppStore((s) => s.isDemoMode);
   const setDemoMode = useAppStore((s) => s.setDemoMode);
+  const suggestions = useAppStore((s) => s.suggestions);
+  const unreadCount = (() => {
+    const cutoff = Date.now() - 24 * 60 * 60 * 1000;
+    return suggestions.filter((s) => {
+      const t = Date.parse(s.createdAt);
+      return !isNaN(t) && t >= cutoff && s.status === "active";
+    }).length;
+  })();
   const { user } = useAuth();
   const isMobile = useIsMobile();
   const [menuOpen, setMenuOpen] = useState(false);
@@ -130,11 +138,16 @@ export function TopBar(_: { onMenuClick?: () => void } = {}) {
         </span>
         )}
         <button
-          aria-label="Notifications"
+          aria-label={unreadCount > 0 ? `Notifications, ${unreadCount} new` : "Notifications"}
+          onClick={() => navigate("/suggestions")}
           className={cnIconBtn(isMobile)}
         >
           <Bell className="h-4 w-4" />
-          <span className="absolute right-2 top-2 h-1.5 w-1.5 rounded-full bg-info" />
+          {unreadCount > 0 && (
+            <span className="absolute -right-0.5 -top-0.5 min-w-[16px] h-4 px-1 inline-flex items-center justify-center rounded-full bg-info text-[10px] font-bold text-white">
+              {unreadCount > 9 ? "9+" : unreadCount}
+            </span>
+          )}
         </button>
         {!user ? (
           <Link
