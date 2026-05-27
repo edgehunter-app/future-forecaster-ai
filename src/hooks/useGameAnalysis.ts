@@ -51,9 +51,25 @@ export function useGameAnalysis() {
             ? { line: b.homeSpread, homeOdds: b.spreadHomeOdds, awayOdds: b.spreadAwayOdds }
             : null,
           total: b.totalLine
-            ? { line: b.totalLine, overOdds: b.overOdds, underOdds: b.underOdds }
+            ? { line: b.totalLine, over: b.overOdds, under: b.underOdds, overOdds: b.overOdds, underOdds: b.underOdds }
             : null,
         }));
+        // Best over/under across Vegas books only.
+        const vegasOnly = sourceBookmakers.filter((b) => b.category !== "prediction_market");
+        const overEntries = vegasOnly
+          .filter((b) => b.totalLine && Number.isFinite(b.overOdds) && b.overOdds !== 0)
+          .map((b) => ({ odds: b.overOdds, book: b.name }));
+        const underEntries = vegasOnly
+          .filter((b) => b.totalLine && Number.isFinite(b.underOdds) && b.underOdds !== 0)
+          .map((b) => ({ odds: b.underOdds, book: b.name }));
+        const bestOver = overEntries.reduce(
+          (a, b) => (b.odds > a.odds ? b : a),
+          { odds: -99999, book: "" },
+        );
+        const bestUnder = underEntries.reduce(
+          (a, b) => (b.odds > a.odds ? b : a),
+          { odds: -99999, book: "" },
+        );
         // eslint-disable-next-line no-console
         console.log(
           "[useGameAnalysis] sending bookmakers:",
@@ -75,6 +91,10 @@ export function useGameAnalysis() {
             bestAwayBook: game.moneyline?.bestAwayBook ?? "",
             spread: game.spread?.homeSpread ?? null,
             total: game.total?.line ?? null,
+            bestOverOdds: bestOver.book ? bestOver.odds : null,
+            bestOverBook: bestOver.book || null,
+            bestUnderOdds: bestUnder.book ? bestUnder.odds : null,
+            bestUnderBook: bestUnder.book || null,
             polymarketGap: polymarketGap ?? null,
             // Full bookmaker array so Claude can see line shopping context
             bookmakers: mappedBookmakers,
