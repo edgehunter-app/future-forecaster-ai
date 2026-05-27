@@ -28,6 +28,15 @@ function mapSuggestionRow(row: any): Suggestion {
   };
 }
 
+const SEVEN_DAYS_MS = 7 * 24 * 60 * 60 * 1000;
+
+function isRowStale(row: any): boolean {
+  if (row.status !== "active") return false;
+  if (row.expires_at && new Date(row.expires_at).getTime() <= Date.now()) return true;
+  if (row.created_at && Date.now() - new Date(row.created_at).getTime() > SEVEN_DAYS_MS) return true;
+  return false;
+}
+
 export function useSuggestionsDB(statuses: string[] = ["active"]) {
   const { user } = useAuth();
   const isDemoMode = useAppStore((s) => s.isDemoMode);
@@ -47,14 +56,29 @@ export function useSuggestionsDB(statuses: string[] = ["active"]) {
       setLoading(false);
       return;
     }
-    const { data } = await supabase
+    const nowIso = new Date().toISOString();
+    let query = supabase
       .from("suggestions")
       .select("*")
       .eq("user_id", user.id)
       .in("status", statuses)
       .order("created_at", { ascending: false })
       .limit(50);
-    setSuggestions(data ? data.map(mapSuggestionRow) : []);
+    if (statuses.includes("active")) {
+      query = query.or(`expires_at.is.null,expires_at.gt.${nowIso}`);
+    }
+    const { data } = await query;
+    const rows = data ?? [];
+
+    // Auto-expire stale active rows (created >7d ago or past expires_at)
+    const staleIds = rows.filter(isRowStale).map((r: any) => r.id);
+    if (staleIds.length > 0) {
+      await supabase.from("suggestions").update({ status: "expired" }).in("id", staleIds);
+    }
+    const visible = rows
+      .filter((r: any) => !staleIds.includes(r.id))
+      .map(mapSuggestionRow);
+    setSuggestions(visible);
     setLoading(false);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isDemoMode, user, statuses.join(",")]);
