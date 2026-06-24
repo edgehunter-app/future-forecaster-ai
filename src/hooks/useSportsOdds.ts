@@ -233,17 +233,18 @@ export function useSportsOdds(polymarkets: Market[]) {
         if (force && sportKey === "golf") clearGolfCache();
         const raw = await fetchOneSport(sportKey, force ? "force-golf-reload" : "tab-click", force);
         const got = filterRelevantGames(raw);
-        if (got.length) {
+        const gotForSport = sportKey === "golf" ? got.filter(isGolfGame) : got;
+        if (gotForSport.length) {
           const current = useAppStore.getState().fullGames ?? [];
           const base = sportKey === "golf" || force
             ? current.filter((game) => sportKey === "golf" ? !isGolfGame(game) : game.sport !== sportKey)
             : current;
-          const merged = [...base, ...got];
+          const merged = [...base, ...gotForSport];
           setFullGames(merged);
         }
         setLoadedSports((prev) => {
           const next = new Set(prev);
-          if (sportKey === "golf" && !got.some(isGolfGame)) {
+          if (sportKey === "golf" && !gotForSport.some(isGolfGame)) {
             next.delete("golf");
           } else {
             next.add(sportKey);
