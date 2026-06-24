@@ -579,29 +579,26 @@ export function GolfLeaderboardCard({
                 <span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
                   📊 {showLive ? "Live Leaderboard" : "Next Tournament"}
                 </span>
-                {showLive && (
-                  <span className="inline-flex items-center gap-1 rounded-full bg-destructive/20 px-1.5 py-px text-[9px] font-bold uppercase text-destructive">
-                    <span className="h-1 w-1 rounded-full bg-destructive animate-pulse" />
+                {showLive ? (
+                  <span className="inline-flex items-center gap-1 rounded-full bg-success/20 px-1.5 py-px text-[9px] font-bold uppercase text-success">
+                    <span className="h-1 w-1 rounded-full bg-success animate-pulse" />
                     Live · R{leaderboard?.roundId || "?"}
                   </span>
-                )}
-                {!showLive && liveCountdown && (() => {
-                  const msToStart = tournament.startMs - Date.now();
-                  const soon = msToStart > 0 && msToStart <= 60 * 60 * 1000;
-                  return (
-                    <span
-                      className={cn(
-                        "inline-flex items-center gap-1 rounded-full px-1.5 py-px text-[9px] font-bold uppercase",
-                        soon
-                          ? "bg-amber-500/30 text-amber-200 animate-pulse"
-                          : "bg-amber-500/20 text-amber-300",
-                      )}
-                    >
-                      {soon ? `Starting Soon · ${liveCountdown}` : `Starts in ${liveCountdown}`}
-                    </span>
-                  );
-                })()}
+                ) : status ? (
+                  <span
+                    className={cn(
+                      "inline-flex items-center gap-1 rounded-full px-1.5 py-px text-[9px] font-bold uppercase",
+                      status.color === "green" && "bg-success/20 text-success",
+                      status.color === "blue" && "bg-info/20 text-info",
+                      status.color === "gray" && "bg-muted text-muted-foreground",
+                      status.pulse && "animate-pulse",
+                    )}
+                  >
+                    {status.label}
+                  </span>
+                ) : null}
               </div>
+
               <div className="text-base font-extrabold text-foreground">{tournament.name}</div>
               {liveRange && (
                 <div className="text-[10px] font-mono text-muted-foreground">{liveRange}</div>
