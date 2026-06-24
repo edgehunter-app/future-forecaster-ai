@@ -20,13 +20,22 @@ import { useGameAnalysis } from "@/hooks/useGameAnalysis";
 import { useGameOdds } from "@/hooks/useGameOdds";
 import GameAnalysisPanel from "./GameAnalysisPanel";
 import { hasPropsSupport } from "@/lib/oddsApi";
-import { useGolfData, type GolfLeaderboardRow } from "@/hooks/useGolfData";
+import type { GolfTournament, GolfLeaderboard, GolfLeaderboardRow } from "@/hooks/useGolfData";
+
+export interface GolfDataProps {
+  tournament: GolfTournament | null;
+  leaderboard: GolfLeaderboard | null;
+  isLive: boolean;
+  loading: boolean;
+  onRefresh: () => void;
+}
 
 interface Props {
   games: FullGame[];
   loading: boolean;
   mispricings?: SportsMispricing[];
   onRefresh?: () => void;
+  golfData?: GolfDataProps;
 }
 
 type Tab = "games" | "best" | "spreads" | "totals" | "props";
@@ -44,7 +53,7 @@ function oddsClass(odds: number): string {
   return odds > 0 ? "text-success" : "text-destructive";
 }
 
-export default function OddsBoard({ games, loading, mispricings = [], onRefresh }: Props) {
+export default function OddsBoard({ games, loading, mispricings = [], onRefresh, golfData }: Props) {
   const [tab, setTab] = useState<Tab>("games");
 
   if (loading && games.length === 0) {
@@ -98,7 +107,7 @@ export default function OddsBoard({ games, loading, mispricings = [], onRefresh 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           {games.map((g) =>
             g.isOutright && g.players?.length
-              ? <GolfLeaderboardCard key={g.id} game={g} />
+              ? <GolfLeaderboardCard key={g.id} game={g} golf={golfData} />
               : <GameCard key={g.id} game={g} mispricings={mispricings} />,
           )}
         </div>
