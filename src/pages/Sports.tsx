@@ -536,7 +536,6 @@ export default function Sports() {
         )}
       </div>
       )}
-      </div>
 
       <GamblingDisclaimer variant="full" className="-mx-4 sm:-mx-6 lg:-mx-8 mt-8" />
     </div>
