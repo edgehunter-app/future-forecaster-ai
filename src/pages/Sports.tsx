@@ -199,9 +199,11 @@ export default function Sports() {
       });
     }
     if (activeSport === "golf") {
-      return list.filter((g) => (g.sport ?? "").toLowerCase().startsWith("golf")
-        || (g.league ?? "").toLowerCase().includes("golf")
-        || g.isOutright === true);
+      return list.filter((g) => {
+        const s = (g.sport ?? "").toLowerCase();
+        const l = (g.league ?? "").toLowerCase();
+        return s.startsWith("golf") || l.includes("golf");
+      });
     }
     const sportLabel = SPORTS.find((s) => s.key === activeSport)?.label.toLowerCase() ?? "";
     return list.filter(
