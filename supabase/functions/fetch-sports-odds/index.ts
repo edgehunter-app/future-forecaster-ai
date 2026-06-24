@@ -87,9 +87,23 @@ const SPORT_KEY_TO_SHORT: Record<string, string> = {
   icehockey_nhl: "NHL",
   soccer_epl: "EPL",
   soccer_usa_mls: "MLS",
-  // FIFA World Cup — try multiple short names; the API may use any of these
-  soccer_fifa_world_cup: "WC",
 };
+
+// Some sports map to MULTIPLE possible competition short names — we try
+// each until one returns events. Discovered via logged advantages payload.
+const SPORT_KEY_TO_SHORT_CANDIDATES: Record<string, string[]> = {
+  soccer_fifa_world_cup: [
+    // FIFA_WC is the only valid competition short on this provider — the
+    // others 404. We keep the working key here in case more variants get
+    // added later.
+    "FIFA_WC",
+  ],
+};
+
+function shortNamesFor(sportKey: string): string[] {
+  if (SPORT_KEY_TO_SHORT_CANDIDATES[sportKey]) return SPORT_KEY_TO_SHORT_CANDIDATES[sportKey];
+  return SPORT_KEY_TO_SHORT[sportKey] ? [SPORT_KEY_TO_SHORT[sportKey]] : [];
+}
 
 function getServiceClient() {
   const url = Deno.env.get("SUPABASE_URL")!;
@@ -501,14 +515,36 @@ Deno.serve(async (req) => {
     // Lazy per-sport fetch: /v1/competitions/{SHORT}/events for the requested
     // sport (or all known sports if none given), plus /v0/advantages overlay.
     const sportKey: string | null = body.sportKey ?? null;
-    const shortsToFetch: string[] = sportKey && SPORT_KEY_TO_SHORT[sportKey]
-      ? [SPORT_KEY_TO_SHORT[sportKey]]
-      : Object.values(SPORT_KEY_TO_SHORT);
+    const shortsToFetch: string[] = sportKey
+      ? shortNamesFor(sportKey)
+      : [
+          ...Object.values(SPORT_KEY_TO_SHORT),
+          ...Object.values(SPORT_KEY_TO_SHORT_CANDIDATES).flat(),
+        ];
 
     const [advantages, ...perSport] = await Promise.all([
       getAdvantages(client),
       ...shortsToFetch.map((s) => getCompetitionEvents(client, s).then((evs) => ({ short: s, evs }))),
     ]);
+
+    // === DISCOVERY LOGGING ===
+    // Surface every competition shortName/name the API currently has data for
+    // so we can pinpoint the correct key for new tournaments (e.g. World Cup).
+    try {
+      const compsFromAdvantages = new Map<string, string>();
+      for (const adv of advantages) {
+        const comp = adv?.market?.event?.competitionInstance?.competition;
+        if (comp?.shortName) compsFromAdvantages.set(comp.shortName, comp.name ?? "");
+      }
+      console.log("[discovery] advantages competitions:",
+        JSON.stringify([...compsFromAdvantages.entries()]).slice(0, 600));
+      for (const { short, evs } of perSport as Array<{ short: string; evs: any[] }>) {
+        console.log(`[discovery] short=${short} -> ${evs.length} events`);
+      }
+    } catch (e) {
+      console.warn("[discovery] failed:", e);
+    }
+
     const advEvents = advantagesToEvents(advantages);
     const compEvents: any[] = [];
     for (const { short, evs } of perSport as Array<{ short: string; evs: any[] }>) {
