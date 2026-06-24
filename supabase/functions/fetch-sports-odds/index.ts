@@ -21,6 +21,21 @@ const PROVIDER = "rapidapi-sportsbook";
 const ADVANTAGES_TTL_MS = 90_000; // 90s
 const ODDS_TTL_MS = 90_000;
 
+// ============ Secondary source: The Odds API ============
+// Used ONLY for sports the Sportsbook API doesn't cover well — currently
+// FIFA World Cup (soccer 3-way) and golf majors (outrights).
+const ODDS_API_BASE = "https://api.the-odds-api.com/v4";
+const ODDS_API_PROVIDER = "the-odds-api";
+const ODDS_API_REMAINING_SENTINEL = "9999-12-31"; // used_at row that stores latest "remaining" header
+const ODDS_API_SOCCER_SPORTS = ["soccer_fifa_world_cup"];
+const ODDS_API_GOLF_SPORTS = [
+  "golf_pga_championship",
+  "golf_masters_tournament",
+  "golf_us_open",
+  "golf_the_open_championship",
+];
+const oddsApiCache = new Map<string, { expires: number; payload: any[] }>();
+
 const SOURCE_MAP: Record<string, { bookmaker: string; category: "vegas" | "prediction_market" | "synthetic" }> = {
   DRAFT_KINGS: { bookmaker: "draftkings", category: "vegas" },
   FAN_DUEL:    { bookmaker: "fanduel",    category: "vegas" },
