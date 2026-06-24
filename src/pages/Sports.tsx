@@ -402,7 +402,11 @@ export default function Sports() {
       )}
 
       {/* Main odds board */}
-      <OddsBoard games={filteredGames} loading={loading} mispricings={mispricings} onRefresh={() => void scan("manual")} />
+      {activeSport === "golf" && !loading && filteredGames.length === 0 ? (
+        <GolfEmptyState />
+      ) : (
+        <OddsBoard games={filteredGames} loading={loading} mispricings={mispricings} onRefresh={() => void scan("manual")} />
+      )}
 
       {/* Mispricings section */}
       <div className="space-y-3">
