@@ -516,7 +516,8 @@ export default function Sports() {
         />
       )}
 
-      {/* Mispricings section */}
+      {/* Mispricings section — hidden on Golf tab (golf has no prediction-market gaps) */}
+      {activeSport !== "golf" && (
       <div className="space-y-3">
         <h2 className="text-sm font-semibold uppercase tracking-wide text-foreground">
           Prediction Market Gaps
@@ -534,6 +535,7 @@ export default function Sports() {
           </div>
         )}
       </div>
+      )}
 
       <GamblingDisclaimer variant="full" className="-mx-4 sm:-mx-6 lg:-mx-8 mt-8" />
     </div>
