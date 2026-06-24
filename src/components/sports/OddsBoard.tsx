@@ -499,10 +499,10 @@ export function GolfLeaderboardCard({
   const [expanded, setExpanded] = useState(false);
   const tournament = golf?.tournament ?? null;
   const leaderboard = golf?.leaderboard ?? null;
-  const isLive = !!golf?.isLive;
   const loading = !!golf?.loading;
   const fetchCurrent = golf?.onRefresh ?? (() => {});
   const players = game?.players ?? [];
+
 
   if (!game && !tournament) return null;
 
