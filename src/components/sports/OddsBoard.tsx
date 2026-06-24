@@ -59,16 +59,30 @@ function formatTournamentRange(startIso: string | null, endIso: string | null): 
   return `${month(s)} ${s.getUTCDate()} – ${month(e)} ${e.getUTCDate()}, ${e.getUTCFullYear()}`;
 }
 
-function formatCountdown(targetMs: number): string | null {
-  const ms = targetMs - Date.now();
-  if (ms <= 0) return null;
-  const days = Math.floor(ms / 86_400_000);
-  const hours = Math.floor((ms % 86_400_000) / 3_600_000);
-  if (days > 0) return hours > 0 ? `${days}d ${hours}h` : `${days}d`;
-  if (hours > 0) return `${hours}h`;
-  const minutes = Math.max(1, Math.floor(ms / 60_000));
-  return `${minutes}m`;
+function getTournamentStatus(startDate: Date, endDate: Date) {
+  const now = new Date();
+  const todayStr = now.toLocaleDateString("en-CA");
+  const startStr = startDate.toISOString().split("T")[0];
+  const endStr = endDate.toISOString().split("T")[0];
+
+  if (todayStr > endStr) return { label: "Complete", color: "gray" };
+
+  if (todayStr >= startStr && todayStr <= endStr) {
+    return { label: "🟢 LIVE", color: "green", pulse: true };
+  }
+
+  const tomorrow = new Date(now);
+  tomorrow.setDate(tomorrow.getDate() + 1);
+  const tomorrowStr = tomorrow.toLocaleDateString("en-CA");
+
+  if (startStr === tomorrowStr) return { label: "Tomorrow", color: "blue" };
+
+  const month = startDate.toLocaleString("en-US", { month: "short", timeZone: "UTC" });
+  const day = startDate.getUTCDate();
+
+  return { label: `${month} ${day}`, color: "gray" };
 }
+
 
 interface Props {
   games: FullGame[];
