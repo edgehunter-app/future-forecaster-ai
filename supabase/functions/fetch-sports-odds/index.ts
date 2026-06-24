@@ -703,8 +703,14 @@ Deno.serve(async (req) => {
           ...Object.values(SPORT_KEY_TO_SHORT_CANDIDATES).flat(),
         ];
 
-    const [advantages, ...perSport] = await Promise.all([
+    // Run Sportsbook API (primary) + The Odds API (secondary for WC/golf)
+    // in parallel. Odds API failures must NOT block the primary response.
+    const [advantages, oddsApiResult, ...perSport] = await Promise.all([
       getAdvantages(client),
+      fetchOddsApiAll(client).catch((e) => {
+        console.error("[odds-api] fetchOddsApiAll failed:", e);
+        return { games: [] as any[], remaining: null as number | null };
+      }),
       ...shortsToFetch.map((s) => getCompetitionEvents(client, s).then((evs) => ({ short: s, evs }))),
     ]);
 
@@ -761,19 +767,25 @@ Deno.serve(async (req) => {
       ? allGames.filter((g: any) => matcher(g.sport_title))
       : allGames;
 
+    // Merge in The Odds API games (WC + golf). The relevancy filter above
+    // is sport-tab driven on the client; here we just append.
+    const mergedGames = [...games, ...(oddsApiResult?.games ?? [])];
+    console.log(`[merge] sportsbook=${games.length} oddsApi=${oddsApiResult?.games?.length ?? 0} total=${mergedGames.length}`);
+
     // Snapshot to outcomes_log for research (everything we saw, not just
     // the filtered slice).
     if (events.length) await logEventOutcomes(client, events, "MIXED");
 
     const usedNow = await readCounter(client);
     return new Response(JSON.stringify({
-      data: games,
+      data: mergedGames,
       source: "live",
       keyUsed: "primary",
       remainingRequests: Math.max(0, DAILY_LIMIT - usedNow),
       usedRequests: usedNow,
       remaining: Math.max(0, DAILY_LIMIT - usedNow),
       used: usedNow,
+      oddsApiRemaining: oddsApiResult?.remaining ?? null,
       meta: {
         source: "sportsbook-api",
         endpoint: "/v1/competitions/{SHORT}/events + /v0/advantages",
@@ -783,7 +795,9 @@ Deno.serve(async (req) => {
         league: sportKey ?? "ALL",
         leaguesFetched: shortsToFetch,
         eventsListed: events.length,
-        eventsReturned: games.length,
+        eventsReturned: mergedGames.length,
+        oddsApiGames: oddsApiResult?.games?.length ?? 0,
+        oddsApiRemaining: oddsApiResult?.remaining ?? null,
         arbitrageEvents: arbKeys.size,
       },
     }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
