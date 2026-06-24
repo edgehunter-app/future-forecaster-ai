@@ -36,15 +36,16 @@ function GolfEmptyState() {
       <div className="space-y-1">
         <h2 className="text-lg font-extrabold text-foreground">No active tournament this week</h2>
         <p className="text-xs text-muted-foreground">
-          Weekly PGA Tour & LIV outrights post here as soon as books open them.
+          Major championship odds post here when available. Weekly PGA Tour
+          events aren't covered on the current data plan.
         </p>
       </div>
       <div className="mx-auto max-w-sm rounded-lg border border-border bg-background/50 p-4 text-left">
         <p className="text-[10px] font-bold uppercase tracking-wide text-muted-foreground">Next major</p>
-        <p className="mt-1 text-sm font-bold text-foreground">The Open Championship</p>
+        <p className="mt-1 text-sm font-bold text-foreground">⛳ The Open Championship</p>
         <p className="text-xs text-muted-foreground">July 17–20, 2026 · Royal Portrush</p>
-        <p className="mt-2 text-[11px] text-muted-foreground">
-          Odds typically post about 2 weeks before the tournament.
+        <p className="mt-2 text-[11px] text-success">
+          Odds are live now — tap Refresh to load the leaderboard.
         </p>
       </div>
       <button
