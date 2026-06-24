@@ -225,8 +225,11 @@ export default function Sports() {
     const out: Record<string, number> = { all: fullGames.length };
     for (const s of SPORTS) {
       if (s.key === "golf") {
-        out[s.key] = fullGames.filter((g) =>
-          (g.sport ?? "").toLowerCase().startsWith("golf") || g.isOutright === true).length;
+        out[s.key] = fullGames.filter((g) => {
+          const sp = (g.sport ?? "").toLowerCase();
+          const lg = (g.league ?? "").toLowerCase();
+          return sp.startsWith("golf") || lg.includes("golf");
+        }).length;
       } else if (s.key === "soccer_fifa_world_cup") {
         out[s.key] = fullGames.filter((g) => {
           const sp = (g.sport ?? "").toLowerCase();
