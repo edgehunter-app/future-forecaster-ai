@@ -6,6 +6,8 @@ import { useSportsOdds } from "@/hooks/useSportsOdds";
 import SportsMispricingCard from "@/components/sports/SportsMispricingCard";
 import GamblingDisclaimer from "@/components/sports/GamblingDisclaimer";
 import OddsBoard from "@/components/sports/OddsBoard";
+import { GolfLeaderboardCard } from "@/components/sports/OddsBoard";
+import { useGolfData } from "@/hooks/useGolfData";
 import BestBetCard from "@/components/sports/BestBetCard";
 import { useBestBet } from "@/hooks/useBestBet";
 import { SPORTS } from "@/lib/oddsApi";
@@ -98,6 +100,18 @@ export default function Sports() {
     nextScanAt,
     setCurrentSport,
   } = useSportsOdds(markets);
+
+  const golf = useGolfData();
+  const golfData = useMemo(
+    () => ({
+      tournament: golf.tournament,
+      leaderboard: golf.leaderboard,
+      isLive: golf.isLive,
+      loading: golf.loading,
+      onRefresh: () => void golf.fetchCurrent(true),
+    }),
+    [golf.tournament, golf.leaderboard, golf.isLive, golf.loading, golf.fetchCurrent],
+  );
 
   const [activeSport, setActiveSport] = useState<string>("all");
   const [wcBannerDismissed, setWcBannerDismissed] = useState(false);
