@@ -567,11 +567,22 @@ export function GolfLeaderboardCard({
                     Live · R{leaderboard?.roundId || "?"}
                   </span>
                 )}
-                {!showLive && liveCountdown && (
-                  <span className="inline-flex items-center gap-1 rounded-full bg-amber-500/20 px-1.5 py-px text-[9px] font-bold uppercase text-amber-300">
-                    Starts in {liveCountdown}
-                  </span>
-                )}
+                {!showLive && liveCountdown && (() => {
+                  const msToStart = tournament.startMs - Date.now();
+                  const soon = msToStart > 0 && msToStart <= 60 * 60 * 1000;
+                  return (
+                    <span
+                      className={cn(
+                        "inline-flex items-center gap-1 rounded-full px-1.5 py-px text-[9px] font-bold uppercase",
+                        soon
+                          ? "bg-amber-500/30 text-amber-200 animate-pulse"
+                          : "bg-amber-500/20 text-amber-300",
+                      )}
+                    >
+                      {soon ? `Starting Soon · ${liveCountdown}` : `Starts in ${liveCountdown}`}
+                    </span>
+                  );
+                })()}
               </div>
               <div className="text-base font-extrabold text-foreground">{tournament.name}</div>
               {liveRange && (
