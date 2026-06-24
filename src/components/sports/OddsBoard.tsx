@@ -522,13 +522,17 @@ export function GolfLeaderboardCard({
   }, [players]);
 
   const liveRows: GolfLeaderboardRow[] = leaderboard?.rows ?? [];
-  const showLive = isLive && liveRows.length > 0;
+  const status = tournament
+    ? getTournamentStatus(new Date(tournament.startMs), new Date(tournament.endMs))
+    : null;
+  const isLiveNow = status?.label === "🟢 LIVE";
+  const showLive = isLiveNow && liveRows.length > 0;
   const visibleLive = expanded ? liveRows : liveRows.slice(0, 15);
   const visibleOdds = expanded ? players : players.slice(0, 10);
 
   // Live tournament metadata (from Live Golf Data API).
-  const liveCountdown = tournament && !isLive ? formatCountdown(tournament.startMs) : null;
   const liveRange = tournament ? formatTournamentRange(tournament.startIso, tournament.endIso) : "";
+
 
   // Odds-market tournament metadata (from Odds API). Always a major on the
   // current plan, so use the static MAJOR_INFO lookup for date + venue
