@@ -100,6 +100,8 @@ export function useGolfData() {
     if (!force) {
       const c = readCache();
       if (c) {
+        console.log("[useGolfData] cache hit, tournament:", c.data.tournament?.name ?? "NONE",
+          "isLive:", c.data.isLive, "rows:", c.data.leaderboard?.rows?.length ?? 0);
         setTournament(c.data.tournament);
         setLeaderboard(c.data.leaderboard);
         setIsLive(c.data.isLive);
@@ -108,6 +110,7 @@ export function useGolfData() {
     }
     setLoading(true);
     setError(null);
+    console.log("[useGolfData] fetching current tournament (force=" + force + ")...");
     const p = (async () => {
       try {
         const { data, error: invokeError } = await supabase.functions.invoke<GolfCurrentResponse>(
@@ -116,12 +119,18 @@ export function useGolfData() {
         );
         if (invokeError) throw invokeError;
         if (!data) throw new Error("empty response");
+        console.log("[useGolfData] response:",
+          "tournament=", data.tournament?.name ?? "NONE",
+          "rows=", data.leaderboard?.rows?.length ?? 0,
+          "isLive=", data.isLive,
+          "ok=", data.ok);
         setTournament(data.tournament);
         setLeaderboard(data.leaderboard);
         setIsLive(!!data.isLive);
         if (data.ok) writeCache(data);
         if (!data.ok && data.error) setError(data.error);
       } catch (err) {
+        console.warn("[useGolfData] fetch failed:", err);
         setError(err instanceof Error ? err.message : String(err));
       } finally {
         setLoading(false);
@@ -133,7 +142,9 @@ export function useGolfData() {
   }, []);
 
   useEffect(() => {
-    if (!cached) void fetchCurrent();
+    // Always fire on mount — cache check inside fetchCurrent will short-circuit
+    // if a fresh value exists, so the edge function is reached on cold starts.
+    void fetchCurrent(false);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
