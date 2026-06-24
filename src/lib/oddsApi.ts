@@ -47,6 +47,7 @@ export const SPORTS = [
   { key: "soccer_epl", label: "EPL", icon: "circle" },
   { key: "soccer_usa_mls", label: "MLS", icon: "circle" },
   { key: "soccer_fifa_world_cup", label: "🌍 World Cup", icon: "trophy" },
+  { key: "golf", label: "⛳ Golf", icon: "trophy" },
   { key: "mma_mixed_martial_arts", label: "MMA", icon: "zap" },
   { key: "tennis_atp_french_open", label: "Tennis", icon: "circle" },
 ] as const;
@@ -161,6 +162,15 @@ export interface FullGame {
   polymarketMatch: Market | null;
   polymarketImplied: number | null;
   mispricingGap: number | null;
+  // Set when this "game" is actually a golf outright tournament.
+  // homeTeam holds the tournament name; players[] holds the leaderboard.
+  isOutright?: boolean;
+  players?: Array<{
+    name: string;
+    lines: Array<{ book: string; odds: number }>;
+    bestOdds: number;
+    bestBook: string;
+  }>;
 }
 
 function median(nums: number[]): number {
@@ -210,6 +220,54 @@ export async function fetchFullOdds(
   const mapped = data.map((g: any): FullGame => {
     const home = g.home_team ?? "Home";
     const away = g.away_team ?? "Away";
+
+    // Golf outright tournaments: bookmakers carry a single "outrights"
+    // market with one outcome per player. Aggregate into a leaderboard.
+    const isOutright = g.isOutright === true
+      || (g.bookmakers ?? []).some((b: any) =>
+        (b.markets ?? []).some((m: any) => m.key === "outrights"));
+    if (isOutright) {
+      const playerMap = new Map<string, Array<{ book: string; odds: number }>>();
+      for (const b of (g.bookmakers ?? [])) {
+        const out = (b.markets ?? []).find((m: any) => m.key === "outrights");
+        if (!out?.outcomes) continue;
+        for (const o of out.outcomes) {
+          if (!o?.name) continue;
+          if (!playerMap.has(o.name)) playerMap.set(o.name, []);
+          playerMap.get(o.name)!.push({ book: b.title ?? b.key, odds: o.price ?? 0 });
+        }
+      }
+      const players = [...playerMap.entries()]
+        .map(([name, lines]) => {
+          const best = lines.reduce(
+            (b, l) => (l.odds > b.bestOdds ? { bestOdds: l.odds, bestBook: l.book } : b),
+            { bestOdds: -99999, bestBook: "" },
+          );
+          return { name, lines, bestOdds: best.bestOdds, bestBook: best.bestBook };
+        })
+        .sort((a, b) => a.bestOdds - b.bestOdds); // favorites first (most negative / smallest positive)
+      return {
+        id: g.id,
+        sport: g.sport_key ?? sportKey,
+        league: g.sport_title ?? sportKey,
+        homeTeam: home,
+        awayTeam: away,
+        commenceTime: g.commence_time ?? "",
+        isLive: false,
+        moneyline: { home: 0, away: 0, homeImplied: 0, awayImplied: 0,
+          bestHomeBook: "", bestAwayBook: "", bestHomeOdds: 0, bestAwayOdds: 0 },
+        spread: null,
+        total: null,
+        bookmakers: [],
+        vegasConsensus: null,
+        polymarketMatch: null,
+        polymarketImplied: null,
+        mispricingGap: null,
+        isOutright: true,
+        players,
+      };
+    }
+
     const books: FullBookmakerLine[] = (g.bookmakers ?? []).map((b: any) => {
       const h2h = b.markets?.find((m: any) => m.key === "h2h");
       const sp = b.markets?.find((m: any) => m.key === "spreads");

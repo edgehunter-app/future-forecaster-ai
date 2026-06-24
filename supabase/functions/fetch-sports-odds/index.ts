@@ -21,6 +21,21 @@ const PROVIDER = "rapidapi-sportsbook";
 const ADVANTAGES_TTL_MS = 90_000; // 90s
 const ODDS_TTL_MS = 90_000;
 
+// ============ Secondary source: The Odds API ============
+// Used ONLY for sports the Sportsbook API doesn't cover well — currently
+// FIFA World Cup (soccer 3-way) and golf majors (outrights).
+const ODDS_API_BASE = "https://api.the-odds-api.com/v4";
+const ODDS_API_PROVIDER = "the-odds-api";
+const ODDS_API_REMAINING_SENTINEL = "9999-12-31"; // used_at row that stores latest "remaining" header
+const ODDS_API_SOCCER_SPORTS = ["soccer_fifa_world_cup"];
+const ODDS_API_GOLF_SPORTS = [
+  "golf_pga_championship",
+  "golf_masters_tournament",
+  "golf_us_open",
+  "golf_the_open_championship",
+];
+const oddsApiCache = new Map<string, { expires: number; payload: any[] }>();
+
 const SOURCE_MAP: Record<string, { bookmaker: string; category: "vegas" | "prediction_market" | "synthetic" }> = {
   DRAFT_KINGS: { bookmaker: "draftkings", category: "vegas" },
   FAN_DUEL:    { bookmaker: "fanduel",    category: "vegas" },
@@ -467,6 +482,172 @@ async function logEventOutcomes(client: any, events: any[], leagueShort: string)
 }
 
 // ---------------- handler ----------------
+// ============ Secondary source: The Odds API helpers ============
+async function bumpOddsApiCounter(client: any, by = 1) {
+  const today = new Date().toISOString().slice(0, 10);
+  const { data } = await client
+    .from("api_usage")
+    .select("request_count")
+    .eq("provider", ODDS_API_PROVIDER)
+    .eq("used_at", today)
+    .maybeSingle();
+  const current = data?.request_count ?? 0;
+  await client
+    .from("api_usage")
+    .upsert(
+      { provider: ODDS_API_PROVIDER, used_at: today, request_count: current + by },
+      { onConflict: "provider,used_at" },
+    );
+}
+async function storeOddsApiRemaining(client: any, remaining: number) {
+  await client
+    .from("api_usage")
+    .upsert(
+      { provider: ODDS_API_PROVIDER, used_at: ODDS_API_REMAINING_SENTINEL, request_count: remaining },
+      { onConflict: "provider,used_at" },
+    );
+}
+
+/**
+ * Transform an Odds API event ({h2h, spreads, totals}) into the same shape
+ * the downstream client (oddsApi.ts) consumes for Sportsbook API events.
+ * Soccer 3-way: Draw outcome is preserved as a synthetic "Draw" h2h entry.
+ */
+function oddsApiEventToGame(game: any): any {
+  const home = game.home_team ?? "";
+  const away = game.away_team ?? "";
+  const bookmakers = (game.bookmakers ?? []).map((b: any) => {
+    const h2h = (b.markets ?? []).find((m: any) => m.key === "h2h");
+    const sp = (b.markets ?? []).find((m: any) => m.key === "spreads");
+    const tot = (b.markets ?? []).find((m: any) => m.key === "totals");
+    const ms: any[] = [];
+    if (h2h?.outcomes?.length) {
+      const outs = h2h.outcomes.map((o: any) => ({
+        name: o.name === home ? home : o.name === away ? away : o.name, // keeps "Draw" verbatim
+        price: o.price,
+      }));
+      ms.push({ key: "h2h", outcomes: outs });
+    }
+    if (sp?.outcomes?.length) {
+      ms.push({
+        key: "spreads",
+        outcomes: sp.outcomes.map((o: any) => ({ name: o.name, price: o.price, point: o.point ?? 0 })),
+      });
+    }
+    if (tot?.outcomes?.length) {
+      ms.push({
+        key: "totals",
+        outcomes: tot.outcomes.map((o: any) => ({ name: o.name, price: o.price, point: o.point ?? 0 })),
+      });
+    }
+    return {
+      key: b.key,
+      title: b.title,
+      category: "vegas",
+      regulatoryNote: null,
+      markets: ms,
+    };
+  });
+  return {
+    id: game.id,
+    sport_key: game.sport_key,
+    sport_title: game.sport_title,
+    commence_time: game.commence_time,
+    home_team: home,
+    away_team: away,
+    bookmakers,
+    source: "odds-api",
+  };
+}
+
+/**
+ * Golf outrights -> one pseudo-game per tournament. Bookmakers carry a
+ * synthetic { key: "outrights", outcomes: [{name: player, price}] } market.
+ * Client (oddsApi.ts) detects this and exposes a `players` leaderboard.
+ */
+function oddsApiGolfEventToGame(game: any): any {
+  const tournament = game.sport_title ?? "Tournament";
+  const bookmakers = (game.bookmakers ?? []).map((b: any) => {
+    const out = (b.markets ?? []).find((m: any) => m.key === "outrights");
+    return {
+      key: b.key,
+      title: b.title,
+      category: "vegas",
+      regulatoryNote: null,
+      markets: out?.outcomes?.length
+        ? [{ key: "outrights", outcomes: out.outcomes.map((o: any) => ({ name: o.name, price: o.price })) }]
+        : [],
+    };
+  }).filter((b: any) => b.markets.length > 0);
+  return {
+    id: game.id,
+    sport_key: game.sport_key,
+    sport_title: tournament,
+    commence_time: game.commence_time ?? "",
+    home_team: tournament,
+    away_team: "Field",
+    bookmakers,
+    source: "odds-api",
+    isOutright: true,
+  };
+}
+
+async function fetchOddsApiSport(
+  client: any,
+  sport: string,
+  markets: string,
+): Promise<{ games: any[]; remaining: number | null }> {
+  const apiKey = Deno.env.get("ODDS_API_KEY");
+  if (!apiKey) {
+    console.warn("[odds-api] ODDS_API_KEY not set; skipping", sport);
+    return { games: [], remaining: null };
+  }
+  const cacheKey = `${sport}:${markets}`;
+  const now = Date.now();
+  const cached = oddsApiCache.get(cacheKey);
+  if (cached && cached.expires > now) return { games: cached.payload, remaining: null };
+
+  const url = `${ODDS_API_BASE}/sports/${sport}/odds?apiKey=${apiKey}&regions=us&markets=${markets}&oddsFormat=american`;
+  try {
+    const res = await fetch(url);
+    const remainingHdr = res.headers.get("x-requests-remaining");
+    const remaining = remainingHdr ? Number(remainingHdr) : null;
+    console.log(`[odds-api] ${sport} status=${res.status} remaining=${remainingHdr ?? "n/a"}`);
+    if (!res.ok) {
+      const txt = await res.text().catch(() => "");
+      console.warn(`[odds-api] ${sport} non-ok body:`, txt.slice(0, 200));
+      return { games: [], remaining };
+    }
+    const json = await res.json();
+    if (!Array.isArray(json)) return { games: [], remaining };
+    await bumpOddsApiCounter(client, 1);
+    if (remaining !== null) await storeOddsApiRemaining(client, remaining);
+    const isGolf = sport.startsWith("golf_");
+    const mapped = json.map((g: any) => (isGolf ? oddsApiGolfEventToGame(g) : oddsApiEventToGame(g)));
+    console.log(`[odds-api] ${sport} games=${mapped.length}`);
+    oddsApiCache.set(cacheKey, { expires: now + ODDS_TTL_MS, payload: mapped });
+    return { games: mapped, remaining };
+  } catch (err) {
+    console.error(`[odds-api] ${sport} failed:`, err);
+    return { games: [], remaining: null };
+  }
+}
+
+async function fetchOddsApiAll(client: any): Promise<{ games: any[]; remaining: number | null }> {
+  // Soccer 3-way (h2h includes Draw) + golf outrights, run in parallel with
+  // ~500ms spacing between calls inside each group to be polite.
+  const soccerCalls = ODDS_API_SOCCER_SPORTS.map((s) => fetchOddsApiSport(client, s, "h2h,spreads,totals"));
+  const golfCalls = ODDS_API_GOLF_SPORTS.map((s) => fetchOddsApiSport(client, s, "outrights"));
+  const results = await Promise.all([...soccerCalls, ...golfCalls]);
+  const games: any[] = [];
+  let remaining: number | null = null;
+  for (const r of results) {
+    games.push(...r.games);
+    if (typeof r.remaining === "number") remaining = r.remaining;
+  }
+  return { games, remaining };
+}
+
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
 
@@ -522,8 +703,14 @@ Deno.serve(async (req) => {
           ...Object.values(SPORT_KEY_TO_SHORT_CANDIDATES).flat(),
         ];
 
-    const [advantages, ...perSport] = await Promise.all([
+    // Run Sportsbook API (primary) + The Odds API (secondary for WC/golf)
+    // in parallel. Odds API failures must NOT block the primary response.
+    const [advantages, oddsApiResult, ...perSport] = await Promise.all([
       getAdvantages(client),
+      fetchOddsApiAll(client).catch((e) => {
+        console.error("[odds-api] fetchOddsApiAll failed:", e);
+        return { games: [] as any[], remaining: null as number | null };
+      }),
       ...shortsToFetch.map((s) => getCompetitionEvents(client, s).then((evs) => ({ short: s, evs }))),
     ]);
 
@@ -580,19 +767,25 @@ Deno.serve(async (req) => {
       ? allGames.filter((g: any) => matcher(g.sport_title))
       : allGames;
 
+    // Merge in The Odds API games (WC + golf). The relevancy filter above
+    // is sport-tab driven on the client; here we just append.
+    const mergedGames = [...games, ...(oddsApiResult?.games ?? [])];
+    console.log(`[merge] sportsbook=${games.length} oddsApi=${oddsApiResult?.games?.length ?? 0} total=${mergedGames.length}`);
+
     // Snapshot to outcomes_log for research (everything we saw, not just
     // the filtered slice).
     if (events.length) await logEventOutcomes(client, events, "MIXED");
 
     const usedNow = await readCounter(client);
     return new Response(JSON.stringify({
-      data: games,
+      data: mergedGames,
       source: "live",
       keyUsed: "primary",
       remainingRequests: Math.max(0, DAILY_LIMIT - usedNow),
       usedRequests: usedNow,
       remaining: Math.max(0, DAILY_LIMIT - usedNow),
       used: usedNow,
+      oddsApiRemaining: oddsApiResult?.remaining ?? null,
       meta: {
         source: "sportsbook-api",
         endpoint: "/v1/competitions/{SHORT}/events + /v0/advantages",
@@ -602,7 +795,9 @@ Deno.serve(async (req) => {
         league: sportKey ?? "ALL",
         leaguesFetched: shortsToFetch,
         eventsListed: events.length,
-        eventsReturned: games.length,
+        eventsReturned: mergedGames.length,
+        oddsApiGames: oddsApiResult?.games?.length ?? 0,
+        oddsApiRemaining: oddsApiResult?.remaining ?? null,
         arbitrageEvents: arbKeys.size,
       },
     }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
