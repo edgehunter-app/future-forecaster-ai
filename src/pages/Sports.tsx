@@ -95,6 +95,14 @@ export default function Sports() {
   const filteredGames = useMemo(() => {
     const list = fullGames ?? [];
     if (!activeSport || activeSport === "all") return list;
+    if (activeSport === "soccer_fifa_world_cup") {
+      return list.filter((g) => {
+        const s = (g.sport ?? "").toLowerCase();
+        const l = (g.league ?? "").toLowerCase();
+        return s.includes("world") || s.includes("fifa")
+          || l.includes("world") || l.includes("fifa");
+      });
+    }
     const sportLabel = SPORTS.find((s) => s.key === activeSport)?.label.toLowerCase() ?? "";
     return list.filter(
       (g) =>
