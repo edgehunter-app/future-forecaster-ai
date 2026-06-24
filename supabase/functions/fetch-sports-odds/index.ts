@@ -731,6 +731,51 @@ Deno.serve(async (req) => {
       });
     }
 
+    // === TEMP: Live Golf Data API discovery (remove after inspection) ===
+    try {
+      const GOLF_BASE = "https://live-golf-data.p.rapidapi.com";
+      const GOLF_KEY = Deno.env.get("LIVE_GOLF_API_KEY");
+      console.log("[golf-discovery] key present:", !!GOLF_KEY);
+      const golfHeaders = {
+        "x-rapidapi-host": "live-golf-data.p.rapidapi.com",
+        "x-rapidapi-key": GOLF_KEY ?? "",
+      };
+      const endpoints = [
+        "/schedule", "/tournaments", "/leaderboard", "/odds",
+        "/players", "/rankings", "/events", "/scorecards", "/stats",
+      ];
+      for (const endpoint of endpoints) {
+        try {
+          const res = await fetch(`${GOLF_BASE}${endpoint}`, {
+            headers: golfHeaders,
+            signal: AbortSignal.timeout(8000),
+          });
+          console.log(`[golf-discovery] ${endpoint}:`, res.status);
+          if (res.ok) {
+            const json = await res.json();
+            const sample = Array.isArray(json) ? json[0] : json;
+            console.log(
+              `[golf-discovery] ${endpoint} keys:`,
+              sample && typeof sample === "object" ? Object.keys(sample) : typeof sample,
+            );
+            console.log(
+              `[golf-discovery] ${endpoint} preview:`,
+              JSON.stringify(json).slice(0, 400),
+            );
+          } else {
+            const text = await res.text();
+            console.log(`[golf-discovery] ${endpoint} error:`, text.slice(0, 200));
+          }
+        } catch (err) {
+          console.log(`[golf-discovery] ${endpoint} failed:`, String(err));
+        }
+        await new Promise((r) => setTimeout(r, 300));
+      }
+    } catch (err) {
+      console.log("[golf-discovery] block failed:", String(err));
+    }
+    // === END TEMP ===
+
     // Player props: not supported by this provider — keep stub so the UI
     // gets a clean "not supported" instead of crashing.
     if (body.eventId) {
