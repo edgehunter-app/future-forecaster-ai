@@ -156,6 +156,7 @@ ${wallets.map((w: Any) => `- ${w.label} (Tier ${w.tier}): ${(w.winRate * 100).to
     : "No smart wallet data available for this game.";
   const leagueStr = String(p.league ?? "");
   const isWorldCup = /world\s*cup/i.test(leagueStr) || /fifa/i.test(leagueStr);
+  const isGolf = /golf|pga|masters|open championship|u\.?s\.? open/i.test(leagueStr);
   const worldCupBlock = isWorldCup
     ? `
 FIFA WORLD CUP 2026 CONTEXT:
@@ -168,6 +169,21 @@ This is a FIFA World Cup 2026 match. Key factors for international soccer:
 - The DRAW is a valid result in group stage (unlike most US sports)
 - Consider 3-way market: Home / Draw / Away — not just moneyline
 - Soccer scoring is low-variance: small total lines (2.5 is typical) matter a lot
+`
+    : "";
+  const golfBlock = isGolf
+    ? `
+GOLF TOURNAMENT CONTEXT:
+This is a golf tournament betting market. Key factors for golf analysis:
+- Course history and fit for each player (length, rough, greens type)
+- Recent form (last 4-6 events)
+- Strokes gained statistics (off-the-tee, approach, putting)
+- World ranking and experience at majors
+- Weather conditions affect scoring
+- Field strength varies by tournament
+- Each-way betting common in golf (top 5 or top 8 depending on book)
+- Value found in mid-range players (+2000 to +5000) more than favorites
+- Outright winner is very hard to predict — top 10 finish bets often better value
 `
     : "";
   return `You are EdgeHunter's sports betting analyst.
@@ -211,6 +227,7 @@ ${kalshiBlock}
 ${polymarketBlock}
 ${walletBlock}
 ${worldCupBlock}
+${golfBlock}
 USER RISK PROFILE:
   Bankroll: $${bankroll}
   Kelly multiplier: ${kelly}x
