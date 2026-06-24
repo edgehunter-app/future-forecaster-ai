@@ -466,7 +466,7 @@ export default function Sports() {
         })}
       </div>
 
-      {activeSport === "golf" && (filteredGames.length === 0 || (loadedSports.has("golf") && counts.golf === 0)) && (
+      {activeSport === "golf" && (filteredGames.length === 0 || (loadedSports.has("golf") && counts["golf"] === 0)) && (
         <div className="flex justify-end">
           <button
             onClick={handleClearGolfAndReload}
