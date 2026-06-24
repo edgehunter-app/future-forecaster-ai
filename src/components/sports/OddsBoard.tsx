@@ -30,6 +30,46 @@ export interface GolfDataProps {
   onRefresh: () => void;
 }
 
+// Major-tournament metadata. Odds API outright markets only cover the 4 majors,
+// and their `commence_time` is the betting-market open time (not tee time) which
+// is misleading. We map by name fragment to a human-friendly date + venue.
+const MAJOR_INFO: { match: string; range: string; venue: string }[] = [
+  { match: "the open", range: "Jul 17–20, 2026", venue: "Royal Portrush" },
+  { match: "british open", range: "Jul 17–20, 2026", venue: "Royal Portrush" },
+  { match: "masters", range: "Apr 9–12, 2026", venue: "Augusta National" },
+  { match: "pga championship", range: "May 14–17, 2026", venue: "Quail Hollow" },
+  { match: "u.s. open", range: "Jun 18–21, 2026", venue: "Shinnecock Hills" },
+  { match: "us open", range: "Jun 18–21, 2026", venue: "Shinnecock Hills" },
+];
+function getMajorInfo(name: string | undefined | null) {
+  if (!name) return null;
+  const lower = name.toLowerCase();
+  return MAJOR_INFO.find((m) => lower.includes(m.match)) ?? null;
+}
+
+function formatTournamentRange(startIso: string | null, endIso: string | null): string {
+  if (!startIso || !endIso) return "";
+  const s = new Date(startIso);
+  const e = new Date(endIso);
+  const sameMonth = s.getUTCMonth() === e.getUTCMonth();
+  const month = (d: Date) => d.toLocaleDateString("en-US", { month: "short", timeZone: "UTC" });
+  if (sameMonth) {
+    return `${month(s)} ${s.getUTCDate()}–${e.getUTCDate()}, ${e.getUTCFullYear()}`;
+  }
+  return `${month(s)} ${s.getUTCDate()} – ${month(e)} ${e.getUTCDate()}, ${e.getUTCFullYear()}`;
+}
+
+function formatCountdown(targetMs: number): string | null {
+  const ms = targetMs - Date.now();
+  if (ms <= 0) return null;
+  const days = Math.floor(ms / 86_400_000);
+  const hours = Math.floor((ms % 86_400_000) / 3_600_000);
+  if (days > 0) return hours > 0 ? `${days}d ${hours}h` : `${days}d`;
+  if (hours > 0) return `${hours}h`;
+  const minutes = Math.max(1, Math.floor(ms / 60_000));
+  return `${minutes}m`;
+}
+
 interface Props {
   games: FullGame[];
   loading: boolean;
@@ -450,15 +490,6 @@ export function GolfLeaderboardCard({
   const fetchCurrent = golf?.onRefresh ?? (() => {});
   const players = game?.players ?? [];
 
-  if (typeof window !== "undefined") {
-    console.log("[GolfLeaderboardCard] props:", {
-      tournament: tournament?.name ?? null,
-      leaderboardRows: leaderboard?.rows?.length ?? 0,
-      isLive,
-      players: players.length,
-    });
-  }
-
   if (!game && !tournament) return null;
 
   const bookNames = Array.from(
@@ -481,66 +512,78 @@ export function GolfLeaderboardCard({
   const visibleLive = expanded ? liveRows : liveRows.slice(0, 15);
   const visibleOdds = expanded ? players : players.slice(0, 10);
 
-  // Countdown for upcoming tournaments.
-  const countdown = useMemo(() => {
-    if (!tournament || isLive) return null;
-    const ms = tournament.startMs - Date.now();
-    if (ms <= 0) return null;
-    const days = Math.floor(ms / 86_400_000);
-    const hours = Math.floor((ms % 86_400_000) / 3_600_000);
-    return days > 0 ? `${days}d ${hours}h` : `${hours}h`;
-  }, [tournament, isLive]);
+  // Live tournament metadata (from Live Golf Data API).
+  const liveCountdown = tournament && !isLive ? formatCountdown(tournament.startMs) : null;
+  const liveRange = tournament ? formatTournamentRange(tournament.startIso, tournament.endIso) : "";
 
-  const headline = tournament?.name ?? game?.homeTeam ?? "Upcoming Tournament";
-  const oddsLabel = game?.homeTeam ?? "";
-  const startTime = game?.commenceTime
-    ? formatGameTime(game.commenceTime)
-    : tournament?.startIso
-      ? formatGameTime(tournament.startIso)
-      : "TBD";
+  // Odds-market tournament metadata (from Odds API). Always a major on the
+  // current plan, so use the static MAJOR_INFO lookup for date + venue
+  // instead of the misleading betting-market `commence_time`.
+  const oddsName = game?.homeTeam ?? "";
+  const oddsMajor = getMajorInfo(oddsName);
+  const oddsSubtitle = oddsMajor
+    ? `${oddsMajor.range} · ${oddsMajor.venue}`
+    : game?.commenceTime
+      ? formatGameTime(game.commenceTime)
+      : "";
+
+  // Treat as a single combined section when the live tournament IS the same
+  // event as the odds market (both are a major). Otherwise render two
+  // clearly-labelled sections so users don't confuse a PGA Tour event with a
+  // futures market for an upcoming major.
+  const sameEvent =
+    !!tournament &&
+    !!oddsName &&
+    tournament.name.toLowerCase().replace(/\s+/g, "") ===
+      oddsName.toLowerCase().replace(/\s+/g, "");
 
   return (
     <div className="rounded-lg border border-amber-400/40 bg-gradient-to-br from-amber-500/5 to-card p-4 space-y-3 md:col-span-2">
       <div className="flex items-center justify-between gap-2">
-        <div>
-          <div className="flex items-center gap-2">
-            <div className="text-xs font-bold uppercase text-amber-300">⛳ Golf · Outright Winner</div>
-            {showLive && (
-              <span className="inline-flex items-center gap-1 rounded-full bg-destructive/20 px-1.5 py-px text-[9px] font-bold uppercase text-destructive">
-                <span className="h-1 w-1 rounded-full bg-destructive animate-pulse" />
-                Live · R{leaderboard?.roundId || "?"}
-              </span>
-            )}
-            {!showLive && countdown && (
-              <span className="inline-flex items-center gap-1 rounded-full bg-amber-500/20 px-1.5 py-px text-[9px] font-bold uppercase text-amber-300">
-                Starts in {countdown}
-              </span>
-            )}
-          </div>
-          <div className="text-base font-extrabold text-foreground">{headline}</div>
-          {tournament && oddsLabel && tournament.name !== oddsLabel && (
-            <div className="text-[10px] font-mono text-muted-foreground">
-              Odds market: {oddsLabel}
-            </div>
-          )}
-        </div>
-        <div className="flex items-center gap-2">
-          <span className="text-[10px] font-mono text-muted-foreground">
-            {startTime}
-          </span>
-          <button
-            onClick={() => fetchCurrent()}
-            disabled={loading}
-            className="inline-flex items-center gap-1 rounded-md border border-border bg-card px-2 py-1 text-[10px] font-semibold text-foreground hover:bg-secondary disabled:opacity-50"
-            title="Refresh live golf data"
-          >
-            <RotateCw className={cn("h-3 w-3", loading && "animate-spin")} />
-            Refresh
-          </button>
-        </div>
+        <div className="text-xs font-bold uppercase text-amber-300">⛳ Golf</div>
+        <button
+          onClick={() => fetchCurrent()}
+          disabled={loading}
+          className="inline-flex items-center gap-1 rounded-md border border-border bg-card px-2 py-1 text-[10px] font-semibold text-foreground hover:bg-secondary disabled:opacity-50"
+          title="Refresh live golf data"
+        >
+          <RotateCw className={cn("h-3 w-3", loading && "animate-spin")} />
+          Refresh
+        </button>
       </div>
-      {showLive ? (
-        <div className="overflow-x-auto">
+
+      {/* ===== Section 1: Live Leaderboard (Live Golf Data API) ===== */}
+      {tournament && (
+        <section className="space-y-2">
+          <header className="flex items-start justify-between gap-2">
+            <div>
+              <div className="flex items-center gap-2">
+                <span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
+                  📊 {showLive ? "Live Leaderboard" : "Next Tournament"}
+                </span>
+                {showLive && (
+                  <span className="inline-flex items-center gap-1 rounded-full bg-destructive/20 px-1.5 py-px text-[9px] font-bold uppercase text-destructive">
+                    <span className="h-1 w-1 rounded-full bg-destructive animate-pulse" />
+                    Live · R{leaderboard?.roundId || "?"}
+                  </span>
+                )}
+                {!showLive && liveCountdown && (
+                  <span className="inline-flex items-center gap-1 rounded-full bg-amber-500/20 px-1.5 py-px text-[9px] font-bold uppercase text-amber-300">
+                    Starts in {liveCountdown}
+                  </span>
+                )}
+              </div>
+              <div className="text-base font-extrabold text-foreground">{tournament.name}</div>
+              {liveRange && (
+                <div className="text-[10px] font-mono text-muted-foreground">{liveRange}</div>
+              )}
+            </div>
+            <div className="text-[9px] font-mono uppercase text-muted-foreground text-right">
+              Live Golf Data<br />Updates ~15 min
+            </div>
+          </header>
+          {showLive ? (
+            <div className="overflow-x-auto">
           <table className="w-full text-[11px] font-mono">
             <thead className="bg-background/40 text-muted-foreground">
               <tr className="text-left">
@@ -548,14 +591,14 @@ export function GolfLeaderboardCard({
                 <th className="px-2 py-1">Player</th>
                 <th className="px-2 py-1">Total</th>
                 <th className="px-2 py-1">Today</th>
-                <th className="px-2 py-1">Best Odds</th>
-                <th className="px-2 py-1">Book</th>
+                    {sameEvent && <th className="px-2 py-1">Best Odds</th>}
+                    {sameEvent && <th className="px-2 py-1">Book</th>}
               </tr>
             </thead>
             <tbody>
               {visibleLive.map((row) => {
                 const last = row.lastName?.toLowerCase() ?? "";
-                const odds = oddsByLastName.get(last);
+                    const odds = sameEvent ? oddsByLastName.get(last) : null;
                 const cut = row.status?.toLowerCase().includes("cut");
                 return (
                   <tr key={row.playerId || `${row.firstName}-${row.lastName}`} className="border-t border-border/40">
@@ -566,12 +609,16 @@ export function GolfLeaderboardCard({
                     </td>
                     <td className="px-2 py-1 text-foreground">{row.total || "-"}</td>
                     <td className="px-2 py-1 text-muted-foreground">{row.currentRoundScore || "-"}</td>
-                    <td className="px-2 py-1 text-success font-bold whitespace-nowrap">
-                      {odds ? formatOdds(odds.bestOdds) : <span className="text-muted-foreground">—</span>}
-                    </td>
-                    <td className="px-2 py-1 text-[10px] text-muted-foreground">
-                      {odds?.bestBook ?? ""}
-                    </td>
+                        {sameEvent && (
+                          <td className="px-2 py-1 text-success font-bold whitespace-nowrap">
+                            {odds ? formatOdds(odds.bestOdds) : <span className="text-muted-foreground">—</span>}
+                          </td>
+                        )}
+                        {sameEvent && (
+                          <td className="px-2 py-1 text-[10px] text-muted-foreground">
+                            {odds?.bestBook ?? ""}
+                          </td>
+                        )}
                   </tr>
                 );
               })}
@@ -582,10 +629,47 @@ export function GolfLeaderboardCard({
               Cut line: {leaderboard.cutLines[0].cutScore} ({leaderboard.cutLines[0].cutCount} players)
             </div>
           )}
-        </div>
-      ) : players.length > 0 ? (
-        <div className="overflow-x-auto">
-        <table className="w-full text-[11px] font-mono">
+            </div>
+          ) : (
+            <div className="rounded-md border border-border/60 bg-background/40 p-3 text-[11px] text-muted-foreground">
+              Live leaderboard will appear once the tournament tees off.
+              {!sameEvent && players.length > 0 && (
+                <span> Betting odds for PGA Tour events aren't available on the current data plan — odds below are for the next major.</span>
+              )}
+            </div>
+          )}
+          {showLive && liveRows.length > 15 && (
+            <button
+              onClick={() => setExpanded((v) => !v)}
+              className="text-[11px] font-semibold text-info hover:underline"
+            >
+              {expanded ? "Show top 15" : `Show all ${liveRows.length} players`}
+            </button>
+          )}
+        </section>
+      )}
+
+      {/* ===== Section 2: Betting Odds (Odds API) — only when distinct from live ===== */}
+      {players.length > 0 && !sameEvent && (
+        <section className="space-y-2 border-t border-border/60 pt-3">
+          <header className="flex items-start justify-between gap-2">
+            <div>
+              <div className="flex items-center gap-2">
+                <span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
+                  💰 Outright Winner Odds
+                </span>
+              </div>
+              <div className="text-base font-extrabold text-foreground">{oddsName}</div>
+              {oddsSubtitle && (
+                <div className="text-[10px] font-mono text-muted-foreground">{oddsSubtitle}</div>
+              )}
+            </div>
+            <div className="text-[9px] font-mono uppercase text-muted-foreground text-right">
+              The Odds API<br />Futures market
+            </div>
+          </header>
+          <div className="overflow-x-auto">
+            <table className="w-full text-[11px] font-mono">
           <thead className="bg-background/40 text-muted-foreground">
             <tr className="text-left">
               <th className="px-2 py-1">#</th>
@@ -616,23 +700,23 @@ export function GolfLeaderboardCard({
             ))}
           </tbody>
         </table>
-        </div>
-      ) : (
-        <div className="rounded-md border border-border/60 bg-background/40 p-4 text-center text-[11px] text-muted-foreground">
-          {tournament
-            ? `Tournament starts ${tournament.startIso ? new Date(tournament.startIso).toLocaleDateString() : "soon"}. Odds will appear once books post them.`
-            : "No odds available yet."}
-        </div>
+          </div>
+          {players.length > 10 && (
+            <button
+              onClick={() => setExpanded((v) => !v)}
+              className="text-[11px] font-semibold text-info hover:underline"
+            >
+              {expanded ? "Show top 10" : `Show all ${players.length} players`}
+            </button>
+          )}
+        </section>
       )}
-      {((showLive && liveRows.length > 15) || (!showLive && players.length > 10)) && (
-        <button
-          onClick={() => setExpanded((v) => !v)}
-          className="text-[11px] font-semibold text-info hover:underline"
-        >
-          {expanded
-            ? showLive ? "Show top 15" : "Show top 10"
-            : `Show all ${(showLive ? liveRows.length : players.length)} players`}
-        </button>
+
+      {/* Fallback: no live tournament & no odds */}
+      {!tournament && players.length === 0 && (
+        <div className="rounded-md border border-border/60 bg-background/40 p-4 text-center text-[11px] text-muted-foreground">
+          No golf data available right now.
+        </div>
       )}
     </div>
   );
