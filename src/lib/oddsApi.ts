@@ -46,6 +46,7 @@ export const SPORTS = [
   { key: "icehockey_nhl", label: "NHL", icon: "circle" },
   { key: "soccer_epl", label: "EPL", icon: "circle" },
   { key: "soccer_usa_mls", label: "MLS", icon: "circle" },
+  { key: "soccer_fifa_world_cup", label: "🌍 World Cup", icon: "trophy" },
   { key: "mma_mixed_martial_arts", label: "MMA", icon: "zap" },
   { key: "tennis_atp_french_open", label: "Tennis", icon: "circle" },
 ] as const;
@@ -110,6 +111,7 @@ export interface FullBookmakerLine {
   regulatoryNote: string | null;
   homeMoneyline: number;
   awayMoneyline: number;
+  drawMoneyline: number;
   homeSpread: number;     // e.g. -3.5
   spreadHomeOdds: number; // juice e.g. -110
   spreadAwayOdds: number;
@@ -214,6 +216,7 @@ export async function fetchFullOdds(
       const tot = b.markets?.find((m: any) => m.key === "totals");
       const homeML = h2h?.outcomes?.find((o: any) => o.name === home)?.price ?? 0;
       const awayML = h2h?.outcomes?.find((o: any) => o.name === away)?.price ?? 0;
+      const drawML = h2h?.outcomes?.find((o: any) => o.name === "Draw")?.price ?? 0;
       const homeSpOut = sp?.outcomes?.find((o: any) => o.name === home);
       const awaySpOut = sp?.outcomes?.find((o: any) => o.name === away);
       const overOut = tot?.outcomes?.find((o: any) => o.name === "Over");
@@ -225,6 +228,7 @@ export async function fetchFullOdds(
         regulatoryNote: b.regulatoryNote ?? null,
         homeMoneyline: homeML,
         awayMoneyline: awayML,
+        drawMoneyline: drawML,
         homeSpread: homeSpOut?.point ?? 0,
         spreadHomeOdds: homeSpOut?.price ?? 0,
         spreadAwayOdds: awaySpOut?.price ?? 0,

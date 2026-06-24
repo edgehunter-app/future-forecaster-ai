@@ -154,6 +154,22 @@ SMART WALLET SIGNALS:
 ${wallets.map((w: Any) => `- ${w.label} (Tier ${w.tier}): ${(w.winRate * 100).toFixed(0)}% win rate`).join("\n")}
 `
     : "No smart wallet data available for this game.";
+  const leagueStr = String(p.league ?? "");
+  const isWorldCup = /world\s*cup/i.test(leagueStr) || /fifa/i.test(leagueStr);
+  const worldCupBlock = isWorldCup
+    ? `
+FIFA WORLD CUP 2026 CONTEXT:
+This is a FIFA World Cup 2026 match. Key factors for international soccer:
+- Tournament stage (group stage vs knockout — group games can be cautious)
+- Team form coming into the tournament
+- Head-to-head history between the nations
+- Key player availability (injuries, suspensions, cards)
+- Motivation (must-win group stage games often see more cautious play)
+- The DRAW is a valid result in group stage (unlike most US sports)
+- Consider 3-way market: Home / Draw / Away — not just moneyline
+- Soccer scoring is low-variance: small total lines (2.5 is typical) matter a lot
+`
+    : "";
   return `You are EdgeHunter's sports betting analyst.
 Your job is to find the BEST BET available given the current lines —
 not just flag large edges. Even a small edge is worth reporting.
@@ -194,6 +210,7 @@ ${polyBlock}
 ${kalshiBlock}
 ${polymarketBlock}
 ${walletBlock}
+${worldCupBlock}
 USER RISK PROFILE:
   Bankroll: $${bankroll}
   Kelly multiplier: ${kelly}x

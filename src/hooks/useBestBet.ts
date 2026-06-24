@@ -68,14 +68,25 @@ export function useBestBet() {
         return Number.isFinite(t) && t > now + buffer;
       });
 
-      // Sort by urgency: games in next 4 hours first, then by start time.
+      const isWorldCup = (g: FullGame) =>
+        (g.sport ?? "").toLowerCase().includes("world_cup") ||
+        (g.league ?? "").toLowerCase().includes("world cup");
+
+      // Sort: World Cup first (highest volume event right now), then urgency,
+      // then by bookmaker count, then by start time.
       const sortedByUrgency = [...upcomingGames].sort((a, b) => {
+        const aWC = isWorldCup(a);
+        const bWC = isWorldCup(b);
+        if (aWC && !bWC) return -1;
+        if (!aWC && bWC) return 1;
         const aTime = new Date(a.commenceTime).getTime();
         const bTime = new Date(b.commenceTime).getTime();
         const aIn4h = aTime < now + 4 * 3600000;
         const bIn4h = bTime < now + 4 * 3600000;
         if (aIn4h && !bIn4h) return -1;
         if (!aIn4h && bIn4h) return 1;
+        const bookDiff = (b.bookmakers?.length ?? 0) - (a.bookmakers?.length ?? 0);
+        if (bookDiff !== 0) return bookDiff;
         return aTime - bTime;
       });
 

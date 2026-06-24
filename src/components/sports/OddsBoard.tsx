@@ -440,6 +440,7 @@ function BookTable({
   );
   const vegasBooks = books.filter((b) => b.category !== "prediction_market");
   const predBooks = books.filter((b) => b.category === "prediction_market");
+  const hasDraw = books.some((b) => (b.drawMoneyline ?? 0) !== 0);
 
   // Best Over/Under across vegas books only (highest American odds wins).
   const bestOver = vegasBooks
@@ -480,6 +481,11 @@ function BookTable({
           </div>
         </td>
         <td className={cn("px-2 py-1", b.name === bestAway.book && "text-success font-bold")}>{formatOdds(b.awayMoneyline)}</td>
+        {hasDraw && (
+          <td className="px-2 py-1">
+            {b.drawMoneyline ? formatOdds(b.drawMoneyline) : "—"}
+          </td>
+        )}
         <td className={cn("px-2 py-1", b.name === bestHome.book && "text-success font-bold")}>{formatOdds(b.homeMoneyline)}</td>
         <td className="px-2 py-1">{isPred ? "—" : b.homeSpread ? formatSpread(b.homeSpread) : "—"}</td>
         <td className="px-2 py-1 whitespace-nowrap">
@@ -526,6 +532,7 @@ function BookTable({
           <tr className="text-left text-muted-foreground">
             <th className="sticky left-0 z-10 bg-background/40 px-2 py-1">Book</th>
             <th className="px-2 py-1">Away ML</th>
+            {hasDraw && <th className="px-2 py-1">Draw</th>}
             <th className="px-2 py-1">Home ML</th>
             <th className="px-2 py-1">Spread</th>
             <th className="px-2 py-1 whitespace-nowrap">Total (O/U)</th>
@@ -536,7 +543,7 @@ function BookTable({
           {vegasBooks.map(renderRow)}
           {predBooks.length > 0 && (
             <tr className="border-t border-border/60 bg-background/40">
-              <td colSpan={6} className="px-2 py-1 text-center text-[9px] uppercase tracking-wider text-muted-foreground">
+              <td colSpan={hasDraw ? 7 : 6} className="px-2 py-1 text-center text-[9px] uppercase tracking-wider text-muted-foreground">
                 ── Prediction Markets ──
               </td>
             </tr>

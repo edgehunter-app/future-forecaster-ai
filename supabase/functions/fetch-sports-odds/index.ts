@@ -49,6 +49,8 @@ const SPORT_TO_SHORT: Record<string, (s: string) => boolean> = {
   icehockey_nhl:        (s) => s === "NHL",
   soccer_epl:           (s) => s === "EPL" || /premier league/i.test(s),
   soccer_usa_mls:       (s) => s === "MLS",
+  soccer_fifa_world_cup: (s) =>
+    s === "WC" || s === "WORLD_CUP" || /world\s*cup/i.test(s) || /fifa/i.test(s),
 };
 
 const SHORT_TO_SPORT_KEY: Record<string, string> = {
@@ -61,6 +63,9 @@ const SHORT_TO_SPORT_KEY: Record<string, string> = {
   WNBA: "basketball_wnba",
   NCAAF: "americanfootball_ncaaf",
   NCAAB: "basketball_ncaab",
+  WC: "soccer_fifa_world_cup",
+  WORLD_CUP: "soccer_fifa_world_cup",
+  FIFA_WORLD_CUP: "soccer_fifa_world_cup",
 };
 
 function toSportKey(shortName: string): string {
@@ -82,6 +87,8 @@ const SPORT_KEY_TO_SHORT: Record<string, string> = {
   icehockey_nhl: "NHL",
   soccer_epl: "EPL",
   soccer_usa_mls: "MLS",
+  // FIFA World Cup — try multiple short names; the API may use any of these
+  soccer_fifa_world_cup: "WC",
 };
 
 function getServiceClient() {
@@ -349,6 +356,10 @@ function eventToOddsApiGame(ev: any, sportKey: string, leagueShort: string) {
       const american = toAmerican(o.payout);
       if (m.type === "MONEYLINE" && o.type === "WIN") {
         bucket.h2h.push({ name: o.participantName ?? "", price: american });
+      } else if (m.type === "MONEYLINE" && o.type === "DRAW") {
+        // Soccer/3-way moneyline: emit a synthetic "Draw" outcome so the
+        // client can render a Draw column in the book comparison table.
+        bucket.h2h.push({ name: "Draw", price: american });
       } else if (m.type === "POINT_SPREAD" && o.type === "WIN") {
         bucket.spreads.push({ name: o.participantName ?? "", price: american, point: o.modifier ?? 0 });
       } else if (m.type === "POINT_TOTAL") {
