@@ -47,6 +47,7 @@ export const SPORTS = [
   { key: "soccer_epl", label: "EPL", icon: "circle" },
   { key: "soccer_usa_mls", label: "MLS", icon: "circle" },
   { key: "soccer_fifa_world_cup", label: "🌍 World Cup", icon: "trophy" },
+  { key: "golf", label: "⛳ Golf", icon: "trophy" },
   { key: "mma_mixed_martial_arts", label: "MMA", icon: "zap" },
   { key: "tennis_atp_french_open", label: "Tennis", icon: "circle" },
 ] as const;
@@ -161,6 +162,15 @@ export interface FullGame {
   polymarketMatch: Market | null;
   polymarketImplied: number | null;
   mispricingGap: number | null;
+  // Set when this "game" is actually a golf outright tournament.
+  // homeTeam holds the tournament name; players[] holds the leaderboard.
+  isOutright?: boolean;
+  players?: Array<{
+    name: string;
+    lines: Array<{ book: string; odds: number }>;
+    bestOdds: number;
+    bestBook: string;
+  }>;
 }
 
 function median(nums: number[]): number {
