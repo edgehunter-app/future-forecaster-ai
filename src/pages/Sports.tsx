@@ -43,6 +43,18 @@ export default function Sports() {
   const [activeSport, setActiveSport] = useState<string>("all");
   const [wcBannerDismissed, setWcBannerDismissed] = useState(false);
 
+  // Detect whether the Sportsbook API is actually returning any World Cup
+  // events right now. The competition exists upstream (FIFA_WC) but the
+  // provider doesn't always have games listed.
+  const worldCupAvailable = useMemo(() => {
+    return (fullGames ?? []).some((g) => {
+      const s = (g.sport ?? "").toLowerCase();
+      const l = (g.league ?? "").toLowerCase();
+      return s.includes("world") || s.includes("fifa")
+        || l.includes("world") || l.includes("fifa");
+    });
+  }, [fullGames]);
+
   const {
     findBestBet,
     loading: bestBetLoading,
@@ -260,8 +272,9 @@ export default function Sports() {
 
       {isAdmin && <UsagePanel />}
 
-      {/* FIFA World Cup 2026 banner */}
-      {!wcBannerDismissed && (
+      {/* FIFA World Cup 2026 banner — only show when games are actually
+          available in the live feed. */}
+      {!wcBannerDismissed && worldCupAvailable && (
         <div className="relative overflow-hidden rounded-xl border border-amber-400/40 bg-gradient-to-r from-amber-500/20 via-yellow-500/15 to-amber-600/20 px-4 py-3 sm:px-5 sm:py-4">
           <button
             onClick={() => setWcBannerDismissed(true)}

@@ -93,8 +93,10 @@ const SPORT_KEY_TO_SHORT: Record<string, string> = {
 // each until one returns events. Discovered via logged advantages payload.
 const SPORT_KEY_TO_SHORT_CANDIDATES: Record<string, string[]> = {
   soccer_fifa_world_cup: [
-    "FIFA_WORLD_CUP", "WORLD_CUP", "FIFA", "WC",
-    "SOCCER_FIFA_WORLD_CUP", "WORLDCUP",
+    // FIFA_WC is the only valid competition short on this provider — the
+    // others 404. We keep the working key here in case more variants get
+    // added later.
+    "FIFA_WC",
   ],
 };
 
