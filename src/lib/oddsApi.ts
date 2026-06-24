@@ -184,6 +184,7 @@ export async function fetchFullOdds(
   sportKey: string,
   useSecondary = false,
   trigger: string = "unknown",
+  forceRefresh = false,
 ): Promise<FullGame[]> {
   const bypassCap = trigger === "manual";
   if (!bypassCap && isDailyCapReached()) {
@@ -196,7 +197,15 @@ export async function fetchFullOdds(
     // Sportsbook API returns all sports in one /v0/advantages call. Don't
     // filter server-side — let the client tab filter handle it so a refresh
     // for one tab populates every tab.
-    body: { regions: "us", markets: "h2h,spreads,totals", oddsFormat: "american", useSecondary, trigger },
+    body: {
+      regions: "us",
+      markets: "h2h,spreads,totals",
+      oddsFormat: "american",
+      useSecondary,
+      trigger,
+      forceRefresh,
+      sportKey: forceRefresh ? sportKey : undefined,
+    },
   });
   if (error) {
     console.warn("fetch-sports-odds error:", error);

@@ -16,7 +16,7 @@ import UsagePanel from "@/components/sports/UsagePanel";
 
 const GOLF_NOTIFY_KEY = "eh.golfNotify";
 
-function GolfEmptyState() {
+function GolfEmptyState({ onClearCacheReload, loading }: { onClearCacheReload: () => void; loading: boolean }) {
   const [notify, setNotify] = useState<boolean>(() => {
     if (typeof window === "undefined") return false;
     return window.localStorage.getItem(GOLF_NOTIFY_KEY) === "1";
@@ -60,6 +60,14 @@ function GolfEmptyState() {
         {notify ? <BellRing className="h-3.5 w-3.5" /> : <Bell className="h-3.5 w-3.5" />}
         {notify ? "You'll be notified" : "Notify me when odds go live"}
       </button>
+      <button
+        onClick={onClearCacheReload}
+        disabled={loading}
+        className="inline-flex items-center gap-1.5 rounded-md border border-border bg-background px-3 py-1.5 text-xs font-semibold text-foreground transition-colors hover:bg-secondary disabled:opacity-50"
+      >
+        <RotateCw className={cn("h-3.5 w-3.5", loading && "animate-spin")} />
+        Clear cache & reload
+      </button>
     </div>
   );
 }
@@ -85,6 +93,7 @@ export default function Sports() {
     hasApiKey,
     scan,
     loadGamesForSport,
+    clearGolfCache,
     loadedSports,
     nextScanAt,
     setCurrentSport,
@@ -92,6 +101,16 @@ export default function Sports() {
 
   const [activeSport, setActiveSport] = useState<string>("all");
   const [wcBannerDismissed, setWcBannerDismissed] = useState(false);
+
+  const handleClearGolfAndReload = () => {
+    clearGolfCache();
+    setActiveSport("golf");
+    setCurrentSport("golf");
+    if (!selectedSports.includes("golf")) {
+      setSelectedSports([...selectedSports, "golf"]);
+    }
+    void loadGamesForSport("golf", true);
+  };
 
   // Detect whether the Sportsbook API is actually returning any World Cup
   // events right now. The competition exists upstream (FIFA_WC) but the
@@ -453,7 +472,7 @@ export default function Sports() {
 
       {/* Main odds board */}
       {activeSport === "golf" && !loading && filteredGames.length === 0 ? (
-        <GolfEmptyState />
+        <GolfEmptyState onClearCacheReload={handleClearGolfAndReload} loading={loading} />
       ) : (
         <OddsBoard games={filteredGames} loading={loading} mispricings={mispricings} onRefresh={() => void scan("manual")} />
       )}
