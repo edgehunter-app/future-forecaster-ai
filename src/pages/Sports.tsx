@@ -501,9 +501,22 @@ export default function Sports() {
 
       {/* Main odds board */}
       {activeSport === "golf" && !loading && filteredGames.length === 0 ? (
-        <GolfEmptyState onClearCacheReload={handleClearGolfAndReload} loading={loading} />
+        golf.tournament ? (
+          <div className="space-y-4">
+            <GolfLeaderboardCard golf={golfData} />
+            <GolfEmptyState onClearCacheReload={handleClearGolfAndReload} loading={loading} />
+          </div>
+        ) : (
+          <GolfEmptyState onClearCacheReload={handleClearGolfAndReload} loading={loading} />
+        )
       ) : (
-        <OddsBoard games={filteredGames} loading={loading} mispricings={mispricings} onRefresh={() => void scan("manual")} />
+        <OddsBoard
+          games={filteredGames}
+          loading={loading}
+          mispricings={mispricings}
+          onRefresh={() => void scan("manual")}
+          golfData={golfData}
+        />
       )}
 
       {/* Mispricings section */}
