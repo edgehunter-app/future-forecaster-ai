@@ -43,9 +43,9 @@ const oddsApiCache = new Map<string, { expires: number; payload: any[] }>();
 // Probe /sports to find which golf majors are currently active. Cached for
 // 10 minutes per cold start; /sports doesn't count against the daily quota.
 let activeGolfCache: { expires: number; keys: string[] } | null = null;
-async function getActiveGolfSports(): Promise<string[]> {
+async function getActiveGolfSports(forceRefresh = false): Promise<string[]> {
   const now = Date.now();
-  if (activeGolfCache && activeGolfCache.expires > now) return activeGolfCache.keys;
+  if (!forceRefresh && activeGolfCache && activeGolfCache.expires > now) return activeGolfCache.keys;
   const apiKey = Deno.env.get("ODDS_API_KEY");
   if (!apiKey) return [];
   try {
@@ -632,29 +632,42 @@ async function fetchOddsApiSport(
   client: any,
   sport: string,
   markets: string,
+  forceRefresh = false,
 ): Promise<{ games: any[]; remaining: number | null }> {
   const apiKey = Deno.env.get("ODDS_API_KEY");
   if (!apiKey) {
     console.warn("[odds-api] ODDS_API_KEY not set; skipping", sport);
     return { games: [], remaining: null };
   }
-  const cacheKey = `${sport}:${markets}`;
+  const cacheKey = sport.startsWith("golf_")
+    ? `${sport}:${markets}:winner-v1`
+    : `${sport}:${markets}`;
   const now = Date.now();
   const cached = oddsApiCache.get(cacheKey);
-  if (cached && cached.expires > now) return { games: cached.payload, remaining: null };
+  if (!forceRefresh && cached && cached.expires > now) return { games: cached.payload, remaining: null };
 
   const url = `${ODDS_API_BASE}/sports/${sport}/odds?apiKey=${apiKey}&regions=us&markets=${markets}&oddsFormat=american`;
+  const redactedUrl = `${ODDS_API_BASE}/sports/${sport}/odds?apiKey=***&regions=us&markets=${markets}&oddsFormat=american`;
+  const isTheOpen = sport === "golf_the_open_championship_winner";
+  if (isTheOpen) {
+    console.log("The Open API call URL:", redactedUrl);
+  }
   try {
     const res = await fetch(url);
     const remainingHdr = res.headers.get("x-requests-remaining");
     const remaining = remainingHdr ? Number(remainingHdr) : null;
     console.log(`[odds-api] ${sport} status=${res.status} remaining=${remainingHdr ?? "n/a"}`);
+    if (isTheOpen) console.log("The Open status:", res.status);
     if (!res.ok) {
       const txt = await res.text().catch(() => "");
       console.warn(`[odds-api] ${sport} non-ok body:`, txt.slice(0, 200));
       return { games: [], remaining };
     }
     const json = await res.json();
+    if (isTheOpen) {
+      console.log("The Open events:", Array.isArray(json) ? json.length : 0);
+      console.log("The Open first event:", JSON.stringify(Array.isArray(json) ? json[0] ?? null : null).slice(0, 500));
+    }
     if (!Array.isArray(json)) return { games: [], remaining };
     await bumpOddsApiCounter(client, 1);
     if (remaining !== null) await storeOddsApiRemaining(client, remaining);
@@ -669,13 +682,14 @@ async function fetchOddsApiSport(
   }
 }
 
-async function fetchOddsApiAll(client: any): Promise<{ games: any[]; remaining: number | null }> {
+async function fetchOddsApiAll(client: any, forceRefresh = false): Promise<{ games: any[]; remaining: number | null }> {
   // Soccer 3-way (h2h includes Draw) + golf outrights, run in parallel with
   // ~500ms spacing between calls inside each group to be polite.
   // Probe /sports first so we only call golf majors flagged active=true.
-  const activeGolfKeys = await getActiveGolfSports();
-  const soccerCalls = ODDS_API_SOCCER_SPORTS.map((s) => fetchOddsApiSport(client, s, "h2h,spreads,totals"));
-  const golfCalls = activeGolfKeys.map((s) => fetchOddsApiSport(client, s, "outrights"));
+  const activeGolfKeys = await getActiveGolfSports(forceRefresh);
+  console.log("Fetching golf with keys:", JSON.stringify(activeGolfKeys));
+  const soccerCalls = ODDS_API_SOCCER_SPORTS.map((s) => fetchOddsApiSport(client, s, "h2h,spreads,totals", forceRefresh));
+  const golfCalls = activeGolfKeys.map((s) => fetchOddsApiSport(client, s, "outrights", forceRefresh));
   const results = await Promise.all([...soccerCalls, ...golfCalls]);
   const games: any[] = [];
   let remaining: number | null = null;
@@ -755,7 +769,7 @@ Deno.serve(async (req) => {
     // in parallel. Odds API failures must NOT block the primary response.
     const [advantages, oddsApiResult, ...perSport] = await Promise.all([
       getAdvantages(client),
-      fetchOddsApiAll(client).catch((e) => {
+      fetchOddsApiAll(client, !!body.forceRefresh).catch((e) => {
         console.error("[odds-api] fetchOddsApiAll failed:", e);
         return { games: [] as any[], remaining: null as number | null };
       }),

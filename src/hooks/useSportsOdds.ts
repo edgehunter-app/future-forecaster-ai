@@ -22,6 +22,23 @@ import { SPORTS } from "@/lib/oddsApi";
 import { getDailyCount, DAILY_CAP } from "@/lib/oddsDailyCap";
 
 const DEFAULT_SPORT = "americanfootball_nfl";
+const GOLF_CACHE_VERSION_KEY = "eh.sportsOddsCacheVersion";
+const GOLF_CACHE_VERSION = "golf-winner-keys-v1";
+const GOLF_CACHE_KEYS = [
+  "golf",
+  "golf_pga_tour",
+  "golf_liv_golf",
+  "golf_the_open_championship_winner",
+  "golf_masters_tournament_winner",
+  "golf_pga_championship_winner",
+  "golf_us_open_winner",
+];
+
+function isGolfGame(game: FullGame): boolean {
+  const sport = (game.sport ?? "").toLowerCase();
+  const league = (game.league ?? "").toLowerCase();
+  return sport.startsWith("golf") || league.includes("golf") || game.isOutright === true;
+}
 
 export function useSportsOdds(polymarkets: Market[]) {
   const settings = useAppStore((s) => s.settings);
@@ -68,6 +85,13 @@ export function useSportsOdds(polymarkets: Market[]) {
     tomorrow.setHours(6, 0, 0, 0);
 
     return games.filter((game) => {
+      // Golf outrights are future tournament leaderboards, not same-day games.
+      // Keep them when player odds are present so major-winner feeds don't get
+      // filtered out by the daily slate window.
+      if (game.isOutright === true) {
+        return (game.players?.length ?? 0) > 0;
+      }
+
       const gameTime = new Date(game.commenceTime);
 
       // Must start before tomorrow 6am
@@ -88,13 +112,45 @@ export function useSportsOdds(polymarkets: Market[]) {
   }, []);
 
   const fetchOneSport = useCallback(
-    async (sport: string, trigger: string = "unknown"): Promise<FullGame[]> => {
+    async (sport: string, trigger: string = "unknown", force = false): Promise<FullGame[]> => {
       // RapidAPI/Sportsbook quota is enforced inside the edge function.
-      const games = await fetchFullOdds(sport, false, trigger);
+      const games = await fetchFullOdds(sport, false, trigger, force);
       return games ?? [];
     },
     [],
   );
+
+  const clearGolfCache = useCallback(() => {
+    if (typeof window !== "undefined") {
+      try {
+        Object.keys(window.localStorage)
+          .filter((key) => key.toLowerCase().includes("golf"))
+          .forEach((key) => window.localStorage.removeItem(key));
+      } catch (err) {
+        console.warn("Failed to clear local golf cache", err);
+      }
+    }
+
+    const withoutGolf = (useAppStore.getState().fullGames ?? []).filter((game) => !isGolfGame(game));
+    setFullGames(withoutGolf);
+    setLoadedSports((prev) => {
+      const next = new Set(prev);
+      GOLF_CACHE_KEYS.forEach((key) => next.delete(key));
+      return next;
+    });
+    setFromCache(false);
+  }, [setFullGames]);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    try {
+      if (window.localStorage.getItem(GOLF_CACHE_VERSION_KEY) === GOLF_CACHE_VERSION) return;
+      clearGolfCache();
+      window.localStorage.setItem(GOLF_CACHE_VERSION_KEY, GOLF_CACHE_VERSION);
+    } catch (err) {
+      console.warn("Failed to invalidate stale golf cache", err);
+    }
+  }, [clearGolfCache]);
 
   const scan = useCallback(async (trigger: string = "manual") => {
     if (fetchingRef.current) return;
@@ -138,7 +194,11 @@ export function useSportsOdds(polymarkets: Market[]) {
       }
       console.log("[useSportsOdds] mapped games:", allFull.length,
         "sports:", [...new Set(allFull.map((g) => g.sport))]);
-      setLoadedSports(new Set([...SPORTS.map((s) => s.key)]));
+      setLoadedSports(() => {
+        const loaded = new Set(SPORTS.map((s) => s.key));
+        if (!allFull.some(isGolfGame)) loaded.delete("golf");
+        return loaded;
+      });
 
       const polySports = polymarkets.filter((m) => isSportsMarket(m));
       for (const game of allFull) {
@@ -179,23 +239,37 @@ export function useSportsOdds(polymarkets: Market[]) {
 
   // Lazy-load a single sport on demand (e.g. tab click)
   const loadGamesForSport = useCallback(
-    async (sportKey: string) => {
-      if (loadedSports.has(sportKey)) return;
+    async (sportKey: string, force = false) => {
+      if (!force && loadedSports.has(sportKey)) return;
       setSportsLoading(true);
       try {
-        const raw = await fetchOneSport(sportKey, "tab-click");
+        if (force && sportKey === "golf") clearGolfCache();
+        const raw = await fetchOneSport(sportKey, force ? "force-golf-reload" : "tab-click", force);
         const got = filterRelevantGames(raw);
-        if (got.length) {
-          const merged = [...(useAppStore.getState().fullGames ?? []), ...got];
+        const gotForSport = sportKey === "golf" ? got.filter(isGolfGame) : got;
+        if (gotForSport.length) {
+          const current = useAppStore.getState().fullGames ?? [];
+          const base = sportKey === "golf" || force
+            ? current.filter((game) => sportKey === "golf" ? !isGolfGame(game) : game.sport !== sportKey)
+            : current;
+          const merged = [...base, ...gotForSport];
           setFullGames(merged);
         }
-        setLoadedSports((prev) => new Set([...prev, sportKey]));
+        setLoadedSports((prev) => {
+          const next = new Set(prev);
+          if (sportKey === "golf" && !gotForSport.some(isGolfGame)) {
+            next.delete("golf");
+          } else {
+            next.add(sportKey);
+          }
+          return next;
+        });
         setRemainingRequests(getRemainingRequests());
       } finally {
         setSportsLoading(false);
       }
     },
-    [loadedSports, fetchOneSport, filterRelevantGames, setFullGames, setSportsLoading],
+    [loadedSports, fetchOneSport, filterRelevantGames, setFullGames, setSportsLoading, clearGolfCache],
   );
 
   // Mount-only fetch: fire ONCE per mount, only if store is empty AND last
@@ -246,6 +320,7 @@ export function useSportsOdds(polymarkets: Market[]) {
     hasApiKey: true,
     scan,
     loadGamesForSport,
+    clearGolfCache,
     loadedSports,
     nextScanAt,
     currentSport,
