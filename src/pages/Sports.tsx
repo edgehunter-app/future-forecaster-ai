@@ -502,10 +502,7 @@ export default function Sports() {
       {/* Main odds board */}
       {activeSport === "golf" && !loading && filteredGames.length === 0 ? (
         golf.tournament ? (
-          <div className="space-y-4">
-            <GolfLeaderboardCard golf={golfData} />
-            <GolfEmptyState onClearCacheReload={handleClearGolfAndReload} loading={loading} />
-          </div>
+          <GolfLeaderboardCard golf={golfData} />
         ) : (
           <GolfEmptyState onClearCacheReload={handleClearGolfAndReload} loading={loading} />
         )
