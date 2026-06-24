@@ -22,6 +22,8 @@ import { SPORTS } from "@/lib/oddsApi";
 import { getDailyCount, DAILY_CAP } from "@/lib/oddsDailyCap";
 
 const DEFAULT_SPORT = "americanfootball_nfl";
+const GOLF_CACHE_VERSION_KEY = "eh.sportsOddsCacheVersion";
+const GOLF_CACHE_VERSION = "golf-winner-keys-v1";
 const GOLF_CACHE_KEYS = [
   "golf",
   "golf_pga_tour",
@@ -138,6 +140,17 @@ export function useSportsOdds(polymarkets: Market[]) {
     });
     setFromCache(false);
   }, [setFullGames]);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    try {
+      if (window.localStorage.getItem(GOLF_CACHE_VERSION_KEY) === GOLF_CACHE_VERSION) return;
+      clearGolfCache();
+      window.localStorage.setItem(GOLF_CACHE_VERSION_KEY, GOLF_CACHE_VERSION);
+    } catch (err) {
+      console.warn("Failed to invalidate stale golf cache", err);
+    }
+  }, [clearGolfCache]);
 
   const scan = useCallback(async (trigger: string = "manual") => {
     if (fetchingRef.current) return;
