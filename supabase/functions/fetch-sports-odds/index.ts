@@ -672,16 +672,26 @@ async function fetchOddsApiSport(
 async function fetchOddsApiAll(client: any): Promise<{ games: any[]; remaining: number | null }> {
   // Soccer 3-way (h2h includes Draw) + golf outrights, run in parallel with
   // ~500ms spacing between calls inside each group to be polite.
-  // Fire-and-forget discovery so we see exactly which golf sports are live.
-  void logAvailableGolfSports();
+  // Probe /sports first so we only call golf majors flagged active=true.
+  const activeGolfKeys = await getActiveGolfSports();
   const soccerCalls = ODDS_API_SOCCER_SPORTS.map((s) => fetchOddsApiSport(client, s, "h2h,spreads,totals"));
-  const golfCalls = ODDS_API_GOLF_SPORTS.map((s) => fetchOddsApiSport(client, s, "outrights"));
+  const golfCalls = activeGolfKeys.map((s) => fetchOddsApiSport(client, s, "outrights"));
   const results = await Promise.all([...soccerCalls, ...golfCalls]);
   const games: any[] = [];
   let remaining: number | null = null;
   for (const r of results) {
     games.push(...r.games);
     if (typeof r.remaining === "number") remaining = r.remaining;
+  }
+  // Debug: surface how many outright players & a sample for the first golf
+  // event, so we can confirm the leaderboard pipeline is fed.
+  const firstGolf = games.find((g) => g.isOutright);
+  if (firstGolf) {
+    const firstBook = firstGolf.bookmakers?.[0];
+    const outs = firstBook?.markets?.[0]?.outcomes;
+    console.log("[odds-api] golf leaderboard sample:",
+      firstGolf.sport_title, "players=", outs?.length ?? 0,
+      "first=", JSON.stringify(outs?.[0] ?? null));
   }
   return { games, remaining };
 }
