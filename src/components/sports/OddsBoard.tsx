@@ -425,6 +425,70 @@ function Market({ label, children }: { label: string; children: React.ReactNode 
   );
 }
 
+function GolfLeaderboardCard({ game }: { game: FullGame }) {
+  const [expanded, setExpanded] = useState(false);
+  const players = game.players ?? [];
+  const top = expanded ? players : players.slice(0, 10);
+  const bookNames = Array.from(
+    new Set(players.flatMap((p) => p.lines.map((l) => l.book))),
+  ).slice(0, 4);
+
+  return (
+    <div className="rounded-lg border border-amber-400/40 bg-gradient-to-br from-amber-500/5 to-card p-4 space-y-3 md:col-span-2">
+      <div className="flex items-center justify-between gap-2">
+        <div>
+          <div className="text-xs font-bold uppercase text-amber-300">⛳ Golf · Outright Winner</div>
+          <div className="text-base font-extrabold text-foreground">{game.homeTeam}</div>
+        </div>
+        <span className="text-[10px] font-mono text-muted-foreground">
+          {game.commenceTime ? formatGameTime(game.commenceTime) : "TBD"}
+        </span>
+      </div>
+      <div className="overflow-x-auto">
+        <table className="w-full text-[11px] font-mono">
+          <thead className="bg-background/40 text-muted-foreground">
+            <tr className="text-left">
+              <th className="px-2 py-1">#</th>
+              <th className="px-2 py-1">Player</th>
+              {bookNames.map((b) => (
+                <th key={b} className="px-2 py-1">{b}</th>
+              ))}
+              <th className="px-2 py-1">Best</th>
+            </tr>
+          </thead>
+          <tbody>
+            {top.map((p, i) => (
+              <tr key={p.name} className="border-t border-border/40">
+                <td className="px-2 py-1 text-muted-foreground">{i + 1}</td>
+                <td className="px-2 py-1 text-foreground font-semibold whitespace-nowrap">{p.name}</td>
+                {bookNames.map((b) => {
+                  const line = p.lines.find((l) => l.book === b);
+                  return (
+                    <td key={b} className="px-2 py-1">
+                      {line ? formatOdds(line.odds) : "—"}
+                    </td>
+                  );
+                })}
+                <td className="px-2 py-1 text-success font-bold whitespace-nowrap">
+                  {formatOdds(p.bestOdds)} <span className="text-[9px] opacity-80">{p.bestBook}</span>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+      {players.length > 10 && (
+        <button
+          onClick={() => setExpanded((v) => !v)}
+          className="text-[11px] font-semibold text-info hover:underline"
+        >
+          {expanded ? "Show top 10" : `Show all ${players.length} players`}
+        </button>
+      )}
+    </div>
+  );
+}
+
 function BookTable({
   books,
   bestHome,
