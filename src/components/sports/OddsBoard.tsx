@@ -20,6 +20,7 @@ import { useGameAnalysis } from "@/hooks/useGameAnalysis";
 import { useGameOdds } from "@/hooks/useGameOdds";
 import GameAnalysisPanel from "./GameAnalysisPanel";
 import { hasPropsSupport } from "@/lib/oddsApi";
+import { useGolfData, type GolfLeaderboardRow } from "@/hooks/useGolfData";
 
 interface Props {
   games: FullGame[];
@@ -427,24 +428,126 @@ function Market({ label, children }: { label: string; children: React.ReactNode 
 
 function GolfLeaderboardCard({ game }: { game: FullGame }) {
   const [expanded, setExpanded] = useState(false);
+  const { tournament, leaderboard, isLive, loading, fetchCurrent } = useGolfData();
   const players = game.players ?? [];
-  const top = expanded ? players : players.slice(0, 10);
   const bookNames = Array.from(
     new Set(players.flatMap((p) => p.lines.map((l) => l.book))),
   ).slice(0, 4);
+
+  // Index odds by lowercased last name for quick lookup.
+  const oddsByLastName = useMemo(() => {
+    const map = new Map<string, (typeof players)[number]>();
+    for (const p of players) {
+      const parts = p.name.trim().split(/\s+/);
+      const last = (parts[parts.length - 1] ?? "").toLowerCase();
+      if (last) map.set(last, p);
+    }
+    return map;
+  }, [players]);
+
+  const liveRows: GolfLeaderboardRow[] = leaderboard?.rows ?? [];
+  const showLive = isLive && liveRows.length > 0;
+  const visibleLive = expanded ? liveRows : liveRows.slice(0, 15);
+  const visibleOdds = expanded ? players : players.slice(0, 10);
+
+  // Countdown for upcoming tournaments.
+  const countdown = useMemo(() => {
+    if (!tournament || isLive) return null;
+    const ms = tournament.startMs - Date.now();
+    if (ms <= 0) return null;
+    const days = Math.floor(ms / 86_400_000);
+    const hours = Math.floor((ms % 86_400_000) / 3_600_000);
+    return days > 0 ? `${days}d ${hours}h` : `${hours}h`;
+  }, [tournament, isLive]);
+
+  const headline = showLive && tournament ? tournament.name : game.homeTeam;
 
   return (
     <div className="rounded-lg border border-amber-400/40 bg-gradient-to-br from-amber-500/5 to-card p-4 space-y-3 md:col-span-2">
       <div className="flex items-center justify-between gap-2">
         <div>
-          <div className="text-xs font-bold uppercase text-amber-300">⛳ Golf · Outright Winner</div>
-          <div className="text-base font-extrabold text-foreground">{game.homeTeam}</div>
+          <div className="flex items-center gap-2">
+            <div className="text-xs font-bold uppercase text-amber-300">⛳ Golf · Outright Winner</div>
+            {showLive && (
+              <span className="inline-flex items-center gap-1 rounded-full bg-destructive/20 px-1.5 py-px text-[9px] font-bold uppercase text-destructive">
+                <span className="h-1 w-1 rounded-full bg-destructive animate-pulse" />
+                Live · R{leaderboard?.roundId || "?"}
+              </span>
+            )}
+            {!showLive && countdown && (
+              <span className="inline-flex items-center gap-1 rounded-full bg-amber-500/20 px-1.5 py-px text-[9px] font-bold uppercase text-amber-300">
+                Starts in {countdown}
+              </span>
+            )}
+          </div>
+          <div className="text-base font-extrabold text-foreground">{headline}</div>
+          {tournament && tournament.name !== game.homeTeam && (
+            <div className="text-[10px] font-mono text-muted-foreground">
+              Odds market: {game.homeTeam}
+            </div>
+          )}
         </div>
-        <span className="text-[10px] font-mono text-muted-foreground">
-          {game.commenceTime ? formatGameTime(game.commenceTime) : "TBD"}
-        </span>
+        <div className="flex items-center gap-2">
+          <span className="text-[10px] font-mono text-muted-foreground">
+            {game.commenceTime ? formatGameTime(game.commenceTime) : "TBD"}
+          </span>
+          <button
+            onClick={() => void fetchCurrent(true)}
+            disabled={loading}
+            className="inline-flex items-center gap-1 rounded-md border border-border bg-card px-2 py-1 text-[10px] font-semibold text-foreground hover:bg-secondary disabled:opacity-50"
+            title="Refresh live golf data"
+          >
+            <RotateCw className={cn("h-3 w-3", loading && "animate-spin")} />
+            Refresh
+          </button>
+        </div>
       </div>
-      <div className="overflow-x-auto">
+      {showLive ? (
+        <div className="overflow-x-auto">
+          <table className="w-full text-[11px] font-mono">
+            <thead className="bg-background/40 text-muted-foreground">
+              <tr className="text-left">
+                <th className="px-2 py-1">Pos</th>
+                <th className="px-2 py-1">Player</th>
+                <th className="px-2 py-1">Total</th>
+                <th className="px-2 py-1">Today</th>
+                <th className="px-2 py-1">Best Odds</th>
+                <th className="px-2 py-1">Book</th>
+              </tr>
+            </thead>
+            <tbody>
+              {visibleLive.map((row) => {
+                const last = row.lastName?.toLowerCase() ?? "";
+                const odds = oddsByLastName.get(last);
+                const cut = row.status?.toLowerCase().includes("cut");
+                return (
+                  <tr key={row.playerId || `${row.firstName}-${row.lastName}`} className="border-t border-border/40">
+                    <td className="px-2 py-1 text-muted-foreground">{row.position || "-"}</td>
+                    <td className={cn("px-2 py-1 font-semibold whitespace-nowrap", cut ? "text-muted-foreground line-through" : "text-foreground")}>
+                      {row.firstName} {row.lastName}
+                      {row.isAmateur && <span className="ml-1 text-[9px] text-muted-foreground">(a)</span>}
+                    </td>
+                    <td className="px-2 py-1 text-foreground">{row.total || "-"}</td>
+                    <td className="px-2 py-1 text-muted-foreground">{row.currentRoundScore || "-"}</td>
+                    <td className="px-2 py-1 text-success font-bold whitespace-nowrap">
+                      {odds ? formatOdds(odds.bestOdds) : <span className="text-muted-foreground">—</span>}
+                    </td>
+                    <td className="px-2 py-1 text-[10px] text-muted-foreground">
+                      {odds?.bestBook ?? ""}
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+          {leaderboard?.cutLines?.[0] && (
+            <div className="pt-2 text-[10px] font-mono text-muted-foreground">
+              Cut line: {leaderboard.cutLines[0].cutScore} ({leaderboard.cutLines[0].cutCount} players)
+            </div>
+          )}
+        </div>
+      ) : (
+        <div className="overflow-x-auto">
         <table className="w-full text-[11px] font-mono">
           <thead className="bg-background/40 text-muted-foreground">
             <tr className="text-left">
@@ -457,7 +560,7 @@ function GolfLeaderboardCard({ game }: { game: FullGame }) {
             </tr>
           </thead>
           <tbody>
-            {top.map((p, i) => (
+            {visibleOdds.map((p, i) => (
               <tr key={p.name} className="border-t border-border/40">
                 <td className="px-2 py-1 text-muted-foreground">{i + 1}</td>
                 <td className="px-2 py-1 text-foreground font-semibold whitespace-nowrap">{p.name}</td>
@@ -476,13 +579,16 @@ function GolfLeaderboardCard({ game }: { game: FullGame }) {
             ))}
           </tbody>
         </table>
-      </div>
-      {players.length > 10 && (
+        </div>
+      )}
+      {((showLive && liveRows.length > 15) || (!showLive && players.length > 10)) && (
         <button
           onClick={() => setExpanded((v) => !v)}
           className="text-[11px] font-semibold text-info hover:underline"
         >
-          {expanded ? "Show top 10" : `Show all ${players.length} players`}
+          {expanded
+            ? showLive ? "Show top 15" : "Show top 10"
+            : `Show all ${(showLive ? liveRows.length : players.length)} players`}
         </button>
       )}
     </div>
