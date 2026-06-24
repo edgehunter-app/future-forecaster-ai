@@ -464,6 +464,19 @@ export default function Sports() {
         })}
       </div>
 
+      {activeSport === "golf" && (filteredGames.length === 0 || loadedSports.has("golf")) && (
+        <div className="flex justify-end">
+          <button
+            onClick={handleClearGolfAndReload}
+            disabled={loading}
+            className="inline-flex items-center gap-1.5 rounded-md border border-border bg-card px-3 py-1.5 text-xs font-semibold text-foreground transition-colors hover:bg-secondary disabled:opacity-50"
+          >
+            <RotateCw className={cn("h-3.5 w-3.5", loading && "animate-spin")} />
+            Clear cache & reload
+          </button>
+        </div>
+      )}
+
       {error && (
         <div className="rounded-lg border border-destructive/40 bg-destructive/10 px-4 py-3 text-sm text-destructive">
           {isAdmin ? error : "Couldn't load latest odds. Please try again in a moment."}
