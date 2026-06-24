@@ -412,7 +412,9 @@ export default function Sports() {
         {[{ key: "all", label: "All" }, ...SPORTS].map((s) => {
           const active = activeSport === s.key;
           const count = counts[s.key] ?? 0;
-          const isLoaded = s.key === "all" || loadedSports.has(s.key);
+          const isLoaded = s.key === "golf"
+            ? loadedSports.has("golf") && count > 0
+            : s.key === "all" || loadedSports.has(s.key);
           const isWC = s.key === "soccer_fifa_world_cup";
           return (
             <button
@@ -425,7 +427,7 @@ export default function Sports() {
                 if (s.key !== "all") {
                   setCurrentSport(s.key);
                 }
-                if (s.key !== "all" && !loadedSports.has(s.key)) {
+                if (s.key !== "all" && !isLoaded) {
                   void loadGamesForSport(s.key);
                 }
               }}
@@ -456,7 +458,7 @@ export default function Sports() {
                     ? active ? "bg-white/20 text-white" : "bg-success/15 text-success"
                     : active ? "bg-white/20 text-white" : "bg-warning/15 text-warning",
                 )}>
-                  {isLoaded ? "Cached" : "1 req"}
+                  {s.key === "golf" && isLoaded ? "Live" : isLoaded ? "Cached" : "1 req"}
                 </span>
               )}
             </button>
