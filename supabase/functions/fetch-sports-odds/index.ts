@@ -28,41 +28,47 @@ const ODDS_API_BASE = "https://api.the-odds-api.com/v4";
 const ODDS_API_PROVIDER = "the-odds-api";
 const ODDS_API_REMAINING_SENTINEL = "9999-12-31"; // used_at row that stores latest "remaining" header
 const ODDS_API_SOCCER_SPORTS = ["soccer_fifa_world_cup"];
+// The Odds API only carries major-winner outrights on the current plan —
+// no weekly PGA Tour or LIV feed. Real keys all use the `_winner` suffix.
+// We probe /sports first and only call the ones flagged active=true to
+// avoid burning quota on 404s.
 const ODDS_API_GOLF_SPORTS = [
-  // Weekly tour stops — usually have live outrights year-round.
-  "golf_pga_tour",
-  "golf_liv_golf",
-  // Majors — only active in their tournament window.
-  "golf_pga_championship",
-  "golf_masters_tournament",
-  "golf_us_open",
-  "golf_the_open_championship",
+  "golf_the_open_championship_winner",
+  "golf_masters_tournament_winner",
+  "golf_pga_championship_winner",
+  "golf_us_open_winner",
 ];
 const oddsApiCache = new Map<string, { expires: number; payload: any[] }>();
 
-// One-shot discovery of which golf sports The Odds API currently lists as
-// active. Logged once per cold start so we can prune dead keys without
-// burning daily quota (this endpoint doesn't count against the limit).
-let golfDiscoveryDone = false;
-async function logAvailableGolfSports() {
-  if (golfDiscoveryDone) return;
-  golfDiscoveryDone = true;
+// Probe /sports to find which golf majors are currently active. Cached for
+// 10 minutes per cold start; /sports doesn't count against the daily quota.
+let activeGolfCache: { expires: number; keys: string[] } | null = null;
+async function getActiveGolfSports(): Promise<string[]> {
+  const now = Date.now();
+  if (activeGolfCache && activeGolfCache.expires > now) return activeGolfCache.keys;
   const apiKey = Deno.env.get("ODDS_API_KEY");
-  if (!apiKey) return;
+  if (!apiKey) return [];
   try {
     const res = await fetch(`${ODDS_API_BASE}/sports?apiKey=${apiKey}&all=true`);
     if (!res.ok) {
       console.warn("[odds-api/discovery] /sports status=", res.status);
-      return;
+      return activeGolfCache?.keys ?? [];
     }
     const sports = await res.json();
-    if (!Array.isArray(sports)) return;
+    if (!Array.isArray(sports)) return [];
     const golf = sports
       .filter((s: any) => s?.group === "Golf" || (typeof s?.key === "string" && s.key.includes("golf")))
       .map((s: any) => ({ key: s.key, title: s.title, active: s.active, has_outrights: s.has_outrights }));
     console.log("[odds-api/discovery] golf sports:", JSON.stringify(golf));
+    const active = golf
+      .filter((s: any) => s.active && ODDS_API_GOLF_SPORTS.includes(s.key))
+      .map((s: any) => s.key);
+    console.log("[odds-api/discovery] active golf keys:", JSON.stringify(active));
+    activeGolfCache = { expires: now + 10 * 60 * 1000, keys: active };
+    return active;
   } catch (e) {
     console.warn("[odds-api/discovery] failed:", e);
+    return activeGolfCache?.keys ?? [];
   }
 }
 
