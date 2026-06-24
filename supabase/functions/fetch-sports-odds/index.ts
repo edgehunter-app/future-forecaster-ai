@@ -666,6 +666,8 @@ async function fetchOddsApiSport(
 async function fetchOddsApiAll(client: any): Promise<{ games: any[]; remaining: number | null }> {
   // Soccer 3-way (h2h includes Draw) + golf outrights, run in parallel with
   // ~500ms spacing between calls inside each group to be polite.
+  // Fire-and-forget discovery so we see exactly which golf sports are live.
+  void logAvailableGolfSports();
   const soccerCalls = ODDS_API_SOCCER_SPORTS.map((s) => fetchOddsApiSport(client, s, "h2h,spreads,totals"));
   const golfCalls = ODDS_API_GOLF_SPORTS.map((s) => fetchOddsApiSport(client, s, "outrights"));
   const results = await Promise.all([...soccerCalls, ...golfCalls]);
