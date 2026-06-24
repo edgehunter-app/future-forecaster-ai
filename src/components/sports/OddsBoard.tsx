@@ -95,9 +95,11 @@ export default function OddsBoard({ games, loading, mispricings = [], onRefresh 
 
       {tab === "games" && (
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          {games.map((g) => (
-            <GameCard key={g.id} game={g} mispricings={mispricings} />
-          ))}
+          {games.map((g) =>
+            g.isOutright && g.players?.length
+              ? <GolfLeaderboardCard key={g.id} game={g} />
+              : <GameCard key={g.id} game={g} mispricings={mispricings} />,
+          )}
         </div>
       )}
 
