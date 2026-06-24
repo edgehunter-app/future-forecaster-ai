@@ -199,9 +199,11 @@ export default function Sports() {
       });
     }
     if (activeSport === "golf") {
-      return list.filter((g) => (g.sport ?? "").toLowerCase().startsWith("golf")
-        || (g.league ?? "").toLowerCase().includes("golf")
-        || g.isOutright === true);
+      return list.filter((g) => {
+        const s = (g.sport ?? "").toLowerCase();
+        const l = (g.league ?? "").toLowerCase();
+        return s.startsWith("golf") || l.includes("golf");
+      });
     }
     const sportLabel = SPORTS.find((s) => s.key === activeSport)?.label.toLowerCase() ?? "";
     return list.filter(
@@ -223,8 +225,11 @@ export default function Sports() {
     const out: Record<string, number> = { all: fullGames.length };
     for (const s of SPORTS) {
       if (s.key === "golf") {
-        out[s.key] = fullGames.filter((g) =>
-          (g.sport ?? "").toLowerCase().startsWith("golf") || g.isOutright === true).length;
+        out[s.key] = fullGames.filter((g) => {
+          const sp = (g.sport ?? "").toLowerCase();
+          const lg = (g.league ?? "").toLowerCase();
+          return sp.startsWith("golf") || lg.includes("golf");
+        }).length;
       } else if (s.key === "soccer_fifa_world_cup") {
         out[s.key] = fullGames.filter((g) => {
           const sp = (g.sport ?? "").toLowerCase();
