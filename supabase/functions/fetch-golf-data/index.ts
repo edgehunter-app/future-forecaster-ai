@@ -155,6 +155,7 @@ Deno.serve(async (req) => {
 
   const apiKey = Deno.env.get("LIVE_GOLF_API_KEY");
   if (!apiKey) {
+    console.warn("[fetch-golf-data] LIVE_GOLF_API_KEY missing");
     return jsonResponse({ ok: false, error: "LIVE_GOLF_API_KEY not configured" });
   }
 
@@ -166,17 +167,29 @@ Deno.serve(async (req) => {
   }
   const type: string = body?.type ?? "current";
   const year: string = String(body?.year ?? new Date().getFullYear());
+  console.log("[fetch-golf-data] called", JSON.stringify({ type, year }));
 
   try {
     if (type === "schedule") {
       const schedule = await fetchSchedule(apiKey, year);
+      console.log("[fetch-golf-data] schedule count:", schedule.length);
       return jsonResponse({ ok: true, year, schedule });
     }
 
     // type === "current" (default)
     const schedule = await fetchSchedule(apiKey, year);
     const now = Date.now();
+    console.log("[fetch-golf-data] today:", new Date(now).toISOString(),
+      "schedule count:", schedule.length);
     const { tournament, isLive } = findCurrentOrNext(schedule, now);
+    console.log("[fetch-golf-data] tournament:",
+      tournament ? `${tournament.name} (${tournament.tournId})` : "NONE",
+      "isLive:", isLive);
+    if (!tournament) {
+      const near = schedule.filter((t) => Math.abs(t.startMs - now) < 14 * 86_400_000);
+      console.log("[fetch-golf-data] tournaments within 14 days:",
+        JSON.stringify(near.map((t) => ({ name: t.name, start: t.startIso, end: t.endIso }))));
+    }
 
     if (!tournament) {
       return jsonResponse({
@@ -193,6 +206,8 @@ Deno.serve(async (req) => {
     if (isLive) {
       try {
         leaderboard = await fetchLeaderboard(apiKey, year, tournament.tournId);
+        console.log("[fetch-golf-data] leaderboard rows:", leaderboard.rows.length,
+          "roundId:", leaderboard.roundId, "status:", leaderboard.status);
       } catch (err) {
         console.warn("[fetch-golf-data] leaderboard error:", String(err));
       }
