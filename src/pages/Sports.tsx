@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import { Trophy, RotateCw, AlertTriangle, Zap, Loader2, Globe2, X } from "lucide-react";
+import { Trophy, RotateCw, AlertTriangle, Zap, Loader2, Globe2, X, Bell, BellRing } from "lucide-react";
 import { useAppStore } from "@/store/useAppStore";
 import { useSportsOdds } from "@/hooks/useSportsOdds";
 import SportsMispricingCard from "@/components/sports/SportsMispricingCard";
@@ -13,6 +13,55 @@ import { cn } from "@/lib/utils";
 import { usePageTitle } from "@/hooks/usePageTitle";
 import { useIsAdmin } from "@/hooks/useIsAdmin";
 import UsagePanel from "@/components/sports/UsagePanel";
+
+const GOLF_NOTIFY_KEY = "eh.golfNotify";
+
+function GolfEmptyState() {
+  const [notify, setNotify] = useState<boolean>(() => {
+    if (typeof window === "undefined") return false;
+    return window.localStorage.getItem(GOLF_NOTIFY_KEY) === "1";
+  });
+  const toggle = () => {
+    const next = !notify;
+    setNotify(next);
+    try {
+      window.localStorage.setItem(GOLF_NOTIFY_KEY, next ? "1" : "0");
+    } catch {
+      // ignore
+    }
+  };
+  return (
+    <div className="rounded-xl border border-border bg-card p-8 text-center space-y-5">
+      <div className="text-5xl" aria-hidden>⛳</div>
+      <div className="space-y-1">
+        <h2 className="text-lg font-extrabold text-foreground">No active tournament this week</h2>
+        <p className="text-xs text-muted-foreground">
+          Weekly PGA Tour & LIV outrights post here as soon as books open them.
+        </p>
+      </div>
+      <div className="mx-auto max-w-sm rounded-lg border border-border bg-background/50 p-4 text-left">
+        <p className="text-[10px] font-bold uppercase tracking-wide text-muted-foreground">Next major</p>
+        <p className="mt-1 text-sm font-bold text-foreground">The Open Championship</p>
+        <p className="text-xs text-muted-foreground">July 17–20, 2026 · Royal Portrush</p>
+        <p className="mt-2 text-[11px] text-muted-foreground">
+          Odds typically post about 2 weeks before the tournament.
+        </p>
+      </div>
+      <button
+        onClick={toggle}
+        className={cn(
+          "inline-flex items-center gap-1.5 rounded-md px-3 py-1.5 text-xs font-semibold transition-colors",
+          notify
+            ? "bg-success/15 text-success hover:bg-success/20"
+            : "bg-info text-white hover:bg-info/90",
+        )}
+      >
+        {notify ? <BellRing className="h-3.5 w-3.5" /> : <Bell className="h-3.5 w-3.5" />}
+        {notify ? "You'll be notified" : "Notify me when odds go live"}
+      </button>
+    </div>
+  );
+}
 
 export default function Sports() {
   usePageTitle("Sports Odds Board");
