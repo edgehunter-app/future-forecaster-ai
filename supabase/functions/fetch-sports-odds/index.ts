@@ -29,12 +29,42 @@ const ODDS_API_PROVIDER = "the-odds-api";
 const ODDS_API_REMAINING_SENTINEL = "9999-12-31"; // used_at row that stores latest "remaining" header
 const ODDS_API_SOCCER_SPORTS = ["soccer_fifa_world_cup"];
 const ODDS_API_GOLF_SPORTS = [
+  // Weekly tour stops — usually have live outrights year-round.
+  "golf_pga_tour",
+  "golf_liv_golf",
+  // Majors — only active in their tournament window.
   "golf_pga_championship",
   "golf_masters_tournament",
   "golf_us_open",
   "golf_the_open_championship",
 ];
 const oddsApiCache = new Map<string, { expires: number; payload: any[] }>();
+
+// One-shot discovery of which golf sports The Odds API currently lists as
+// active. Logged once per cold start so we can prune dead keys without
+// burning daily quota (this endpoint doesn't count against the limit).
+let golfDiscoveryDone = false;
+async function logAvailableGolfSports() {
+  if (golfDiscoveryDone) return;
+  golfDiscoveryDone = true;
+  const apiKey = Deno.env.get("ODDS_API_KEY");
+  if (!apiKey) return;
+  try {
+    const res = await fetch(`${ODDS_API_BASE}/sports?apiKey=${apiKey}&all=true`);
+    if (!res.ok) {
+      console.warn("[odds-api/discovery] /sports status=", res.status);
+      return;
+    }
+    const sports = await res.json();
+    if (!Array.isArray(sports)) return;
+    const golf = sports
+      .filter((s: any) => s?.group === "Golf" || (typeof s?.key === "string" && s.key.includes("golf")))
+      .map((s: any) => ({ key: s.key, title: s.title, active: s.active, has_outrights: s.has_outrights }));
+    console.log("[odds-api/discovery] golf sports:", JSON.stringify(golf));
+  } catch (e) {
+    console.warn("[odds-api/discovery] failed:", e);
+  }
+}
 
 const SOURCE_MAP: Record<string, { bookmaker: string; category: "vegas" | "prediction_market" | "synthetic" }> = {
   DRAFT_KINGS: { bookmaker: "draftkings", category: "vegas" },
