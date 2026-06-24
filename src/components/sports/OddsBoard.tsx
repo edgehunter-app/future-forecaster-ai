@@ -435,10 +435,32 @@ function Market({ label, children }: { label: string; children: React.ReactNode 
   );
 }
 
-function GolfLeaderboardCard({ game }: { game: FullGame }) {
+export function GolfLeaderboardCard({
+  game,
+  golf,
+}: {
+  game?: FullGame;
+  golf?: GolfDataProps;
+}) {
   const [expanded, setExpanded] = useState(false);
-  const { tournament, leaderboard, isLive, loading, fetchCurrent } = useGolfData();
-  const players = game.players ?? [];
+  const tournament = golf?.tournament ?? null;
+  const leaderboard = golf?.leaderboard ?? null;
+  const isLive = !!golf?.isLive;
+  const loading = !!golf?.loading;
+  const fetchCurrent = golf?.onRefresh ?? (() => {});
+  const players = game?.players ?? [];
+
+  if (typeof window !== "undefined") {
+    console.log("[GolfLeaderboardCard] props:", {
+      tournament: tournament?.name ?? null,
+      leaderboardRows: leaderboard?.rows?.length ?? 0,
+      isLive,
+      players: players.length,
+    });
+  }
+
+  if (!game && !tournament) return null;
+
   const bookNames = Array.from(
     new Set(players.flatMap((p) => p.lines.map((l) => l.book))),
   ).slice(0, 4);
@@ -469,7 +491,13 @@ function GolfLeaderboardCard({ game }: { game: FullGame }) {
     return days > 0 ? `${days}d ${hours}h` : `${hours}h`;
   }, [tournament, isLive]);
 
-  const headline = showLive && tournament ? tournament.name : game.homeTeam;
+  const headline = tournament?.name ?? game?.homeTeam ?? "Upcoming Tournament";
+  const oddsLabel = game?.homeTeam ?? "";
+  const startTime = game?.commenceTime
+    ? formatGameTime(game.commenceTime)
+    : tournament?.startIso
+      ? formatGameTime(tournament.startIso)
+      : "TBD";
 
   return (
     <div className="rounded-lg border border-amber-400/40 bg-gradient-to-br from-amber-500/5 to-card p-4 space-y-3 md:col-span-2">
@@ -490,18 +518,18 @@ function GolfLeaderboardCard({ game }: { game: FullGame }) {
             )}
           </div>
           <div className="text-base font-extrabold text-foreground">{headline}</div>
-          {tournament && tournament.name !== game.homeTeam && (
+          {tournament && oddsLabel && tournament.name !== oddsLabel && (
             <div className="text-[10px] font-mono text-muted-foreground">
-              Odds market: {game.homeTeam}
+              Odds market: {oddsLabel}
             </div>
           )}
         </div>
         <div className="flex items-center gap-2">
           <span className="text-[10px] font-mono text-muted-foreground">
-            {game.commenceTime ? formatGameTime(game.commenceTime) : "TBD"}
+            {startTime}
           </span>
           <button
-            onClick={() => void fetchCurrent(true)}
+            onClick={() => fetchCurrent()}
             disabled={loading}
             className="inline-flex items-center gap-1 rounded-md border border-border bg-card px-2 py-1 text-[10px] font-semibold text-foreground hover:bg-secondary disabled:opacity-50"
             title="Refresh live golf data"
@@ -555,7 +583,7 @@ function GolfLeaderboardCard({ game }: { game: FullGame }) {
             </div>
           )}
         </div>
-      ) : (
+      ) : players.length > 0 ? (
         <div className="overflow-x-auto">
         <table className="w-full text-[11px] font-mono">
           <thead className="bg-background/40 text-muted-foreground">
@@ -588,6 +616,12 @@ function GolfLeaderboardCard({ game }: { game: FullGame }) {
             ))}
           </tbody>
         </table>
+        </div>
+      ) : (
+        <div className="rounded-md border border-border/60 bg-background/40 p-4 text-center text-[11px] text-muted-foreground">
+          {tournament
+            ? `Tournament starts ${tournament.startIso ? new Date(tournament.startIso).toLocaleDateString() : "soon"}. Odds will appear once books post them.`
+            : "No odds available yet."}
         </div>
       )}
       {((showLive && liveRows.length > 15) || (!showLive && players.length > 10)) && (
