@@ -1,5 +1,8 @@
 import { useMemo, useState } from "react";
 import { ChevronDown, ChevronUp, Brain, Loader2, AlertCircle, TrendingUp, Clock, RotateCw } from "lucide-react";
+import { supabase } from "@/integrations/supabase/client";
+import { useAppStore } from "@/store/useAppStore";
+import GolfAnalysisPanel, { type GolfAnalysisResult } from "./GolfAnalysisPanel";
 import { cn } from "@/lib/utils";
 import {
   formatOdds,
@@ -502,6 +505,10 @@ export function GolfLeaderboardCard({
   const loading = !!golf?.loading;
   const fetchCurrent = golf?.onRefresh ?? (() => {});
   const players = game?.players ?? [];
+  const settings = useAppStore((s) => s.settings);
+  const [analyzing, setAnalyzing] = useState(false);
+  const [analysisError, setAnalysisError] = useState<string | null>(null);
+  const [analysis, setAnalysis] = useState<GolfAnalysisResult | null>(null);
 
 
   if (!game && !tournament) return null;
@@ -554,6 +561,54 @@ export function GolfLeaderboardCard({
     !!oddsName &&
     tournament.name.toLowerCase().replace(/\s+/g, "") ===
       oddsName.toLowerCase().replace(/\s+/g, "");
+
+  const analyzeTournamentName =
+    tournament?.name ?? oddsName ?? "Tournament";
+  const canAnalyze = players.length > 0 || liveRows.length > 0;
+
+  const buildPlayerOdds = () => {
+    return players.slice(0, 30).map((p) => ({
+      name: p.name,
+      bestOdds: p.bestOdds,
+      bestBook: p.bestBook,
+      bookOdds: Object.fromEntries(p.lines.map((l) => [l.book, l.odds])),
+    }));
+  };
+
+  const handleAnalyze = async () => {
+    if (analyzing) return;
+    setAnalyzing(true);
+    setAnalysisError(null);
+    try {
+      const dates =
+        liveRange ||
+        (oddsMajor ? oddsMajor.range : "TBD");
+      const course = oddsMajor?.venue ?? null;
+      const { data, error } = await supabase.functions.invoke("analyze-market", {
+        body: {
+          type: "golf",
+          tournamentName: analyzeTournamentName,
+          dates,
+          course,
+          purse: tournament?.purse ?? 0,
+          leaderboard: liveRows,
+          players: buildPlayerOdds(),
+          bankroll: settings.bankroll,
+          kellyMultiplier: settings.kellyMultiplier,
+          maxPositionPct: (settings.maxPosition ?? 0.05) * 100,
+        },
+      });
+      if (error) throw error;
+      const d = data as Record<string, unknown> | null;
+      if (!d) throw new Error("Empty response");
+      if (typeof d.error === "string") throw new Error(d.error);
+      setAnalysis(d as GolfAnalysisResult);
+    } catch (err) {
+      setAnalysisError(err instanceof Error ? err.message : "Analysis failed");
+    } finally {
+      setAnalyzing(false);
+    }
+  };
 
   return (
     <div className="rounded-lg border border-amber-400/40 bg-gradient-to-br from-amber-500/5 to-card p-4 space-y-3 md:col-span-2">
