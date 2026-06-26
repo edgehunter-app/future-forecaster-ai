@@ -664,6 +664,12 @@ Deno.serve(async (req) => {
     }
 
     const type = body.type ?? "market";
+    const typesRequiringMarket = ["market", "kalshi", "cross-market", "sentiment"];
+    if (typesRequiringMarket.includes(type) && (!body.market || typeof body.market.question !== 'string')) {
+      return new Response(JSON.stringify({ error: 'market is required', code: 'BAD_REQUEST' }), {
+        status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
     let prompt: string;
     switch (type) {
       case "sports": prompt = buildSportsPrompt(body); break;
@@ -676,11 +682,6 @@ Deno.serve(async (req) => {
       case "golf": prompt = buildGolfPrompt(body); break;
       case "market":
       default:
-        if (!body.market || typeof body.market.question !== 'string') {
-          return new Response(JSON.stringify({ error: 'market is required', code: 'BAD_REQUEST' }), {
-            status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-          });
-        }
         prompt = buildPrompt(body);
     }
 
