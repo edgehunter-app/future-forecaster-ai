@@ -799,6 +799,59 @@ export function GolfLeaderboardCard({
           No golf data available right now.
         </div>
       )}
+
+      {/* Claude AI Analysis */}
+      {canAnalyze && (
+        analysis ? (
+          <GolfAnalysisPanel
+            result={analysis}
+            tournamentName={analyzeTournamentName}
+            onClear={() => setAnalysis(null)}
+          />
+        ) : (
+          <div className="space-y-2">
+            <button
+              onClick={handleAnalyze}
+              disabled={analyzing}
+              className={cn(
+                "flex w-full items-center justify-center gap-2 rounded-md",
+                "bg-gradient-to-r from-purple to-purple/80 px-3 h-11 text-white font-semibold",
+                "hover:from-purple/90 hover:to-purple/70 transition-colors disabled:opacity-60",
+              )}
+            >
+              {analyzing ? (
+                <>
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                  <span className="text-sm">Analyzing field…</span>
+                </>
+              ) : (
+                <>
+                  <Brain className="h-4 w-4" />
+                  <span className="text-sm">
+                    🤖 Analyze {analyzeTournamentName} · Find Value
+                  </span>
+                </>
+              )}
+            </button>
+            {analysisError && (
+              <div className="rounded-md border border-destructive/40 bg-destructive/10 p-2.5 flex items-start gap-2">
+                <AlertCircle className="h-3.5 w-3.5 mt-0.5 text-destructive shrink-0" />
+                <div className="flex-1">
+                  <p className="text-[11px] text-destructive">{analysisError}</p>
+                  <button
+                    onClick={handleAnalyze}
+                    className="mt-1.5 rounded-md border border-destructive/40 bg-background px-2 py-0.5 text-[10px] font-semibold text-destructive hover:bg-destructive/10"
+                  >
+                    Try Again
+                  </button>
+                </div>
+              </div>
+            )}
+          </div>
+        )
+      )}
+
+      <GamblingDisclaimer variant="inline" />
     </div>
   );
 }
