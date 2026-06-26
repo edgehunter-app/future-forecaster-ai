@@ -239,7 +239,7 @@ export default function GolfAnalysisPanel({ result, tournamentName, onClear }: P
         }}
         initial={{
           title: `${player} Outright — ${tournamentName}`,
-          sport: "Other",
+          sport: "Golf",
           bet_type: "Futures",
           pick: player,
           odds: result.odds ?? 0,
