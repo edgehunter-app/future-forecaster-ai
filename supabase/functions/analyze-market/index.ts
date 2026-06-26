@@ -546,6 +546,99 @@ Respond with ONLY valid JSON, no markdown:
 }`;
 }
 
+function buildGolfPrompt(p: AnalyzeBody): string {
+  const bankroll = p.bankroll ?? 1000;
+  const kelly = p.kellyMultiplier ?? 0.25;
+  const maxPct = (p.maxPositionPct ?? 5);
+  const lb: Any[] = Array.isArray(p.leaderboard) ? p.leaderboard : [];
+  const players: Any[] = Array.isArray(p.players) ? p.players : [];
+  const lbBlock = lb.length > 0
+    ? lb.slice(0, 20).map((pl: Any) =>
+        `${pl.position ?? "-"}. ${pl.firstName ?? ""} ${pl.lastName ?? ""} — ${pl.total ?? "-"} (Today: ${pl.currentRoundScore ?? "-"})`
+      ).join("\n")
+    : "Tournament not yet started — pre-tournament analysis";
+  const playersBlock = players.length > 0
+    ? players.slice(0, 20).map((pl: Any) => {
+        const bookStr = Object.entries(pl.bookOdds ?? {})
+          .map(([book, odds]) => `${book} ${odds}`)
+          .join(" | ");
+        return `${pl.name}: Best ${pl.bestOdds} at ${pl.bestBook}${bookStr ? " | " + bookStr : ""}`;
+      }).join("\n")
+    : "No odds available";
+  const inProgress = lb.length > 0;
+  const contextBlock = inProgress
+    ? `Tournament is IN PROGRESS. Consider:
+   - Current leaderboard position
+   - Momentum and scoring trends
+   - Whether leader has won from this position before (experience matters)
+   - Remaining holes/rounds`
+    : `Tournament has NOT started. Consider:
+   - Pre-tournament form (last 4-6 events)
+   - Course history and fit
+   - Strokes gained stats if known
+   - Market confidence (heavy favorite vs wide open field)`;
+
+  return `You are EdgeHunter's golf betting analyst.
+Analyze this tournament and find the best value bet in the outright winner market.
+
+TOURNAMENT: ${p.tournamentName ?? "Unknown"}
+DATES: ${p.dates ?? "TBD"}
+COURSE: ${p.course ?? "TBD"}
+PURSE: $${(p.purse ?? 0).toLocaleString()}
+
+CURRENT LEADERBOARD / STANDINGS:
+${lbBlock}
+
+OUTRIGHT WINNER ODDS:
+${playersBlock}
+
+USER RISK PROFILE:
+  Bankroll: $${bankroll}
+  Kelly multiplier: ${kelly}x
+  Max position: ${maxPct}% = $${((bankroll * maxPct) / 100).toFixed(0)}
+
+ANALYSIS INSTRUCTIONS:
+1. Identify the top 3 value plays in this field based on odds vs true probability
+2. Look for line shopping opportunities where books disagree significantly
+3. Consider course fit, recent form, and major championship experience
+4. Suggest one primary recommendation and one each-way value play
+5. Note any players offering exceptional value at their current price
+
+${contextBlock}
+
+Respond with ONLY valid JSON, no markdown:
+{
+  "recommendation": "player full name",
+  "betType": "outright" | "each-way" | "top5" | "top10",
+  "odds": best available American odds (number),
+  "bestBook": "book name",
+  "confidence": 0-100,
+  "edge": decimal e.g. 0.04,
+  "suggestedAmount": dollar amount,
+  "reasoning": "2-3 sentences on why",
+  "valuePlay": {
+    "player": "name",
+    "odds": number,
+    "book": "book name",
+    "reason": "why this is value"
+  },
+  "lineShopping": {
+    "player": "name if big book discrepancy",
+    "bestOdds": number,
+    "worstOdds": number,
+    "bestBook": "book name",
+    "worstBook": "book name",
+    "centsDifference": number
+  },
+  "topPicks": [
+    { "player": "name", "odds": number, "book": "book name", "reason": "brief reason" }
+  ],
+  "keyFactors": ["factor1", "factor2"],
+  "riskLevel": "low" | "medium" | "high",
+  "warningFlags": ["any concerns"]
+}`;
+}
+
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
@@ -580,6 +673,7 @@ Deno.serve(async (req) => {
       case "daily-briefing": prompt = buildDailyBriefingPrompt(body); break;
       case "sentiment": prompt = buildSentimentPrompt(body); break;
       case "wallet-strategy": prompt = buildWalletStrategyPrompt(body); break;
+      case "golf": prompt = buildGolfPrompt(body); break;
       case "market":
       default:
         if (!body.market || typeof body.market.question !== 'string') {

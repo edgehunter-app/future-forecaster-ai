@@ -1,5 +1,8 @@
 import { useMemo, useState } from "react";
 import { ChevronDown, ChevronUp, Brain, Loader2, AlertCircle, TrendingUp, Clock, RotateCw } from "lucide-react";
+import { supabase } from "@/integrations/supabase/client";
+import { useAppStore } from "@/store/useAppStore";
+import GolfAnalysisPanel, { type GolfAnalysisResult } from "./GolfAnalysisPanel";
 import { cn } from "@/lib/utils";
 import {
   formatOdds,
@@ -502,6 +505,10 @@ export function GolfLeaderboardCard({
   const loading = !!golf?.loading;
   const fetchCurrent = golf?.onRefresh ?? (() => {});
   const players = game?.players ?? [];
+  const settings = useAppStore((s) => s.settings);
+  const [analyzing, setAnalyzing] = useState(false);
+  const [analysisError, setAnalysisError] = useState<string | null>(null);
+  const [analysis, setAnalysis] = useState<GolfAnalysisResult | null>(null);
 
 
   if (!game && !tournament) return null;
@@ -554,6 +561,54 @@ export function GolfLeaderboardCard({
     !!oddsName &&
     tournament.name.toLowerCase().replace(/\s+/g, "") ===
       oddsName.toLowerCase().replace(/\s+/g, "");
+
+  const analyzeTournamentName =
+    tournament?.name ?? oddsName ?? "Tournament";
+  const canAnalyze = players.length > 0 || liveRows.length > 0;
+
+  const buildPlayerOdds = () => {
+    return players.slice(0, 30).map((p) => ({
+      name: p.name,
+      bestOdds: p.bestOdds,
+      bestBook: p.bestBook,
+      bookOdds: Object.fromEntries(p.lines.map((l) => [l.book, l.odds])),
+    }));
+  };
+
+  const handleAnalyze = async () => {
+    if (analyzing) return;
+    setAnalyzing(true);
+    setAnalysisError(null);
+    try {
+      const dates =
+        liveRange ||
+        (oddsMajor ? oddsMajor.range : "TBD");
+      const course = oddsMajor?.venue ?? null;
+      const { data, error } = await supabase.functions.invoke("analyze-market", {
+        body: {
+          type: "golf",
+          tournamentName: analyzeTournamentName,
+          dates,
+          course,
+          purse: tournament?.purse ?? 0,
+          leaderboard: liveRows,
+          players: buildPlayerOdds(),
+          bankroll: settings.bankroll,
+          kellyMultiplier: settings.kellyMultiplier,
+          maxPositionPct: (settings.maxPosition ?? 0.05) * 100,
+        },
+      });
+      if (error) throw error;
+      const d = data as Record<string, unknown> | null;
+      if (!d) throw new Error("Empty response");
+      if (typeof d.error === "string") throw new Error(d.error);
+      setAnalysis(d as GolfAnalysisResult);
+    } catch (err) {
+      setAnalysisError(err instanceof Error ? err.message : "Analysis failed");
+    } finally {
+      setAnalyzing(false);
+    }
+  };
 
   return (
     <div className="rounded-lg border border-amber-400/40 bg-gradient-to-br from-amber-500/5 to-card p-4 space-y-3 md:col-span-2">
@@ -744,6 +799,59 @@ export function GolfLeaderboardCard({
           No golf data available right now.
         </div>
       )}
+
+      {/* Claude AI Analysis */}
+      {canAnalyze && (
+        analysis ? (
+          <GolfAnalysisPanel
+            result={analysis}
+            tournamentName={analyzeTournamentName}
+            onClear={() => setAnalysis(null)}
+          />
+        ) : (
+          <div className="space-y-2">
+            <button
+              onClick={handleAnalyze}
+              disabled={analyzing}
+              className={cn(
+                "flex w-full items-center justify-center gap-2 rounded-md",
+                "bg-gradient-to-r from-purple to-purple/80 px-3 h-11 text-white font-semibold",
+                "hover:from-purple/90 hover:to-purple/70 transition-colors disabled:opacity-60",
+              )}
+            >
+              {analyzing ? (
+                <>
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                  <span className="text-sm">Analyzing field…</span>
+                </>
+              ) : (
+                <>
+                  <Brain className="h-4 w-4" />
+                  <span className="text-sm">
+                    🤖 Analyze {analyzeTournamentName} · Find Value
+                  </span>
+                </>
+              )}
+            </button>
+            {analysisError && (
+              <div className="rounded-md border border-destructive/40 bg-destructive/10 p-2.5 flex items-start gap-2">
+                <AlertCircle className="h-3.5 w-3.5 mt-0.5 text-destructive shrink-0" />
+                <div className="flex-1">
+                  <p className="text-[11px] text-destructive">{analysisError}</p>
+                  <button
+                    onClick={handleAnalyze}
+                    className="mt-1.5 rounded-md border border-destructive/40 bg-background px-2 py-0.5 text-[10px] font-semibold text-destructive hover:bg-destructive/10"
+                  >
+                    Try Again
+                  </button>
+                </div>
+              </div>
+            )}
+          </div>
+        )
+      )}
+
+      <GamblingDisclaimer variant="inline" />
     </div>
   );
 }
