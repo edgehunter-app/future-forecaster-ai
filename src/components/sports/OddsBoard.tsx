@@ -563,7 +563,7 @@ export function GolfLeaderboardCard({
       oddsName.toLowerCase().replace(/\s+/g, "");
 
   const analyzeTournamentName =
-    tournament?.name ?? oddsName ?? "Tournament";
+    oddsName || tournament?.name || "Golf Tournament";
   const canAnalyze = players.length > 0 || liveRows.length > 0;
 
   const buildPlayerOdds = () => {
@@ -584,6 +584,15 @@ export function GolfLeaderboardCard({
         liveRange ||
         (oddsMajor ? oddsMajor.range : "TBD");
       const course = oddsMajor?.venue ?? null;
+      console.log("[Golf Analyze] sending:", {
+        type: "golf",
+        tournamentName: analyzeTournamentName,
+        players: players?.length ?? 0,
+        leaderboard: liveRows?.length ?? 0,
+        hasOddsGame: !!game,
+        dates,
+        course,
+      });
       const { data, error } = await supabase.functions.invoke("analyze-market", {
         body: {
           type: "golf",
