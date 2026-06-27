@@ -920,6 +920,10 @@ function BookTable({
             {b.key === "polymarket" && (
               <span className="rounded-sm border border-warning/40 bg-warning/10 px-1 py-px text-[8px] font-bold text-warning">Offshore</span>
             )}
+            {(b.key === "betonlineag" ||
+              b.name.toLowerCase().includes("betonline")) && (
+              <span className="rounded-sm border border-warning/40 bg-warning/10 px-1 py-px text-[8px] font-bold text-warning">Offshore</span>
+            )}
           </div>
         </td>
         <td className={cn("px-2 py-1", b.name === bestAway.book && "text-success font-bold")}>{formatOdds(b.awayMoneyline)}</td>

@@ -311,13 +311,17 @@ async function scanSportsGames(
         );
       const confidence = Math.max(0, Math.min(100, Math.round(analysis.confidence ?? 0)));
       const edge = analysis.edge ?? 0;
+      const isFavoriteHeavy = (analysis.odds ?? 0) < -350;
+      const baseScore = scoreOf(confidence, edge);
+      const adjustedScore = isFavoriteHeavy ? baseScore * 0.6 : baseScore;
       out.push({
         source: "sports",
-        score: scoreOf(confidence, edge),
+        score: adjustedScore,
         confidence,
         edge,
         sports: { game, analysis: { ...analysis, confidence } },
       });
+
       await new Promise((r) => setTimeout(r, 500));
     } catch (err) {
       console.warn("[useBestBet] sports game failed:", game.homeTeam, err);
