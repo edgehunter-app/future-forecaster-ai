@@ -230,6 +230,23 @@ async function scanSportsGames(
           (a, b) => (b.underOdds > a.odds ? { odds: b.underOdds, book: b.name } : a),
           { odds: -99999, book: "" },
         );
+        // Best spread odds (juice) across books, plus consensus line.
+        const spreadBooks = vegasOnly.filter(
+          (b) =>
+            Number.isFinite(b.spreadHomeOdds) &&
+            b.spreadHomeOdds !== 0 &&
+            Number.isFinite(b.spreadAwayOdds) &&
+            b.spreadAwayOdds !== 0,
+        );
+        const bestHomeSpreadObj = spreadBooks.reduce(
+          (a, b) => (b.spreadHomeOdds > a.odds ? { odds: b.spreadHomeOdds, book: b.name } : a),
+          { odds: -99999, book: "" },
+        );
+        const bestAwaySpreadObj = spreadBooks.reduce(
+          (a, b) => (b.spreadAwayOdds > a.odds ? { odds: b.spreadAwayOdds, book: b.name } : a),
+          { odds: -99999, book: "" },
+        );
+        const consensusSpreadLine = game.spread?.homeSpread ?? null;
       const { data, error: invokeError } = await supabase.functions.invoke("analyze-market", {
         body: {
           type: "sports",
@@ -244,6 +261,11 @@ async function scanSportsGames(
           bestHomeBook: game.moneyline?.bestHomeBook ?? "",
           bestAwayBook: game.moneyline?.bestAwayBook ?? "",
           spread: game.spread?.homeSpread ?? null,
+            spreadLine: consensusSpreadLine,
+            bestHomeSpread: bestHomeSpreadObj.book ? bestHomeSpreadObj.odds : null,
+            bestHomeSpreadBook: bestHomeSpreadObj.book || null,
+            bestAwaySpread: bestAwaySpreadObj.book ? bestAwaySpreadObj.odds : null,
+            bestAwaySpreadBook: bestAwaySpreadObj.book || null,
           total: game.total?.line ?? null,
           bestOverOdds: bestOver.book ? bestOver.odds : null,
           bestOverBook: bestOver.book || null,
@@ -279,6 +301,14 @@ async function scanSportsGames(
       const analysis = data as GameAnalysisResult;
       if (!analysis || typeof analysis.recommendation !== "string") continue;
       if (analysis.recommendation === "NO_EDGE") continue;
+        console.log(
+          "[BestBet] Claude returned:",
+          analysis.betType,
+          analysis.recommendation,
+          analysis.spreadLine,
+          analysis.odds,
+          analysis.bestBook,
+        );
       const confidence = Math.max(0, Math.min(100, Math.round(analysis.confidence ?? 0)));
       const edge = analysis.edge ?? 0;
       out.push({
