@@ -106,6 +106,10 @@ export default function BestBetCard({ result, onClear, onRescan }: Props) {
       : resolvedSide === "AWAY"
         ? game.moneyline?.bestAwayOdds
         : analysis.odds;
+  // For spread/total bets, Claude's odds + bestBook reflect the actual market.
+  const displayOdds = analysis.betType === "spread" || analysis.betType === "total"
+    ? (analysis.odds ?? bestOdds)
+    : bestOdds;
   const bestBook =
     analysis.bestBook ??
     (resolvedSide === "HOME"
@@ -245,7 +249,7 @@ export default function BestBetCard({ result, onClear, onRescan }: Props) {
         <div className="mt-1 text-[11px] tracking-wide text-muted-foreground">
           {sideLabel ? `${sideLabel} · ` : ""}
           {betTypeLabel}
-          {bestOdds ? ` · ${formatOdds(bestOdds)}` : ""}
+          {displayOdds ? ` · ${formatOdds(displayOdds)}` : ""}
         </div>
       </div>
 
@@ -260,9 +264,9 @@ export default function BestBetCard({ result, onClear, onRescan }: Props) {
         <Metric
           label="Best Odds"
           value={
-            bestOdds && bestBook
-              ? `${formatOdds(bestOdds)} · ${bestBook}`
-              : formatOdds(bestOdds) || "—"
+            displayOdds && bestBook
+              ? `${formatOdds(displayOdds)} · ${bestBook}`
+              : formatOdds(displayOdds) || "—"
           }
           tone="text-foreground"
         />

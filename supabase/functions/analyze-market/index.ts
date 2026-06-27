@@ -144,6 +144,24 @@ Best Over: ${p.bestOverOdds ?? "N/A"} at ${p.bestOverBook ?? "N/A"}
 Best Under: ${p.bestUnderOdds ?? "N/A"} at ${p.bestUnderBook ?? "N/A"}
 Total line consensus: ${p.total ?? "N/A"}
 `;
+  const spreadRows = vegasBooks
+    .filter((b: Any) => b.spread?.line != null)
+    .map((b: Any) => {
+      const line = b.spread.line;
+      const signed = line > 0 ? `+${line}` : `${line}`;
+      const homeOdds = b.spread.homeOdds ?? b.spread.home ?? "N/A";
+      const awayOdds = b.spread.awayOdds ?? b.spread.away ?? "N/A";
+      return `  ${b.name}: Home ${signed} @ ${homeOdds} | Away ${line === 0 ? "0" : line > 0 ? `-${line}` : `+${Math.abs(line)}`} @ ${awayOdds}`;
+    })
+    .join("\n");
+  const spreadLineDisplay = p.spreadLine ?? p.spread ?? "N/A";
+  const spreadsBlock = `
+SPREAD ODDS:
+${spreadRows || "  (no spread data)"}
+Consensus line (home perspective): ${spreadLineDisplay}
+Best Home Spread odds: ${p.bestHomeSpread ?? "N/A"} at ${p.bestHomeSpreadBook ?? "N/A"}
+Best Away Spread odds: ${p.bestAwaySpread ?? "N/A"} at ${p.bestAwaySpreadBook ?? "N/A"}
+`;
   const homePrices = vegasBooks.map((b: Any) => Number(b?.moneyline?.home)).filter((n) => Number.isFinite(n) && n !== 0);
   const awayPrices = vegasBooks.map((b: Any) => Number(b?.moneyline?.away)).filter((n) => Number.isFinite(n) && n !== 0);
   const range = (arr: number[]) =>
@@ -218,6 +236,7 @@ BEST AVAILABLE ODDS:
   Home moneyline: ${p.bestHomeOdds} (${p.bestHomeBook})
   Away moneyline: ${p.bestAwayOdds} (${p.bestAwayBook})
 ${totalsBlock}
+${spreadsBlock}
 LINE SHOPPING RANGE:
   Home: ${range(homePrices)}
   Away: ${range(awayPrices)}
@@ -239,6 +258,21 @@ PRIORITY ORDER FOR FINDING VALUE:
 2. Consensus value — if implied probability differs meaningfully from
    your assessment of true probability.
 3. Cross-market signal — if Polymarket/Kalshi pricing differs from Vegas.
+
+CONSIDER ALL THREE BET TYPES EQUALLY — DO NOT DEFAULT TO MONEYLINE:
+1. Moneyline — outright winner
+2. Spread — beat the line (consensus ${spreadLineDisplay}; best home ${p.bestHomeSpread ?? "N/A"} at ${p.bestHomeSpreadBook ?? "N/A"}; best away ${p.bestAwaySpread ?? "N/A"} at ${p.bestAwaySpreadBook ?? "N/A"})
+3. Over/Under totals
+
+If the spread offers better value than the moneyline, RECOMMEND THE SPREAD
+and set "betType":"spread". A spread bet is often better when:
+- The moneyline favorite is too expensive (-200 or worse) but the spread is near -110
+- There is meaningful line shopping on the spread across books
+- The game figures to be close and the spread line offers real value
+When you pick a spread, set "spreadLine" to the signed line FROM THE
+RECOMMENDED TEAM'S PERSPECTIVE (e.g. -1.5 for the favorite, +1.5 for the dog),
+set "odds" to the spread juice (e.g. -110), and set "bestBook" to the book
+offering that spread price.
 
 LINE SHOPPING GUIDANCE:
 - 8+ cents better than worst book  => STRONG recommendation
@@ -262,6 +296,7 @@ Respond with ONLY valid JSON, no markdown:
   "recommendation": "HOME" | "AWAY" | "OVER" | "UNDER",
   "recommendedTeam": "team name or Over/Under",
   "betType": "moneyline" | "spread" | "total",
+  "spreadLine": number or null (signed from recommended team perspective; required when betType is "spread"),
   "confidence": 0-100,
   "edge": decimal e.g. 0.07,
   "suggestedAmount": dollar amount,
