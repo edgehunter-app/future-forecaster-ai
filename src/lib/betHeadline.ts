@@ -36,6 +36,7 @@ export interface HeadlineAnalysisLike {
   recommendation: string;
   recommendedTeam?: string;
   betType?: string;
+  spreadLine?: number | null;
 }
 
 /** Resolves the side and corrects recommendedTeam to match. */
@@ -94,7 +95,15 @@ export function buildBetHeadline(
     const sideLabel = side === "HOME" ? "Home team" : "Away team";
     if (betType === "spread") {
       const homeSpread = game.spread?.homeSpread;
-      const teamSpread = side === "HOME" ? homeSpread : homeSpread != null ? -homeSpread : null;
+      // Prefer Claude's signed spreadLine when provided (already from team perspective).
+      const teamSpread =
+        analysis.spreadLine != null && Number.isFinite(analysis.spreadLine)
+          ? analysis.spreadLine
+          : side === "HOME"
+            ? homeSpread
+            : homeSpread != null
+              ? -homeSpread
+              : null;
       const spreadStr = formatSpread(teamSpread);
       return {
         headline: spreadStr ? `BET ${nick} ${spreadStr}` : `BET ${nick}`,
