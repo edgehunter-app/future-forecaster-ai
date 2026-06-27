@@ -166,6 +166,8 @@ export interface GameAnalysisResult {
   recommendation: "HOME" | "AWAY" | "OVER" | "UNDER" | "NO_EDGE" | string;
   recommendedTeam: string;
   betType: "moneyline" | "spread" | "total" | string;
+  /** Spread line for spread bets, signed from the recommended team's perspective. */
+  spreadLine?: number | null;
   confidence: number;
   edge: number;
   suggestedAmount: number;
