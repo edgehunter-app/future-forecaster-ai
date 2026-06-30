@@ -150,25 +150,26 @@ export default function BetTracker() {
         </section>
       )}
 
+      {pending.length > 0 && (
+        <button
+          onClick={() => void checkLines()}
+          disabled={checking}
+          className="w-full flex items-center justify-center gap-2 py-3 px-4 rounded-xl border border-blue-500/30 bg-blue-500/10 text-blue-400 hover:bg-blue-500/20 transition mb-4"
+        >
+          <RefreshCw size={16} className={cn(checking && "animate-spin")} />
+          Check Lines on Active Bets
+          {lastChecked && (
+            <span className="text-xs opacity-60">
+              · checked {formatDistanceToNow(lastChecked)} ago
+            </span>
+          )}
+        </button>
+      )}
+
       {/* Pending */}
       <section className="space-y-3">
         <div className="flex items-center justify-between mb-4">
           <h2 className="text-sm font-bold uppercase tracking-wide text-foreground">Pending ({pending.length})</h2>
-          {pending.length > 0 && (
-            <button
-              onClick={() => void checkLines()}
-              disabled={checking}
-              className="flex items-center gap-2 px-3 py-2 rounded-lg text-sm bg-card border border-border hover:border-primary transition disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-              <RefreshCw size={14} className={cn(checking && "animate-spin")} />
-              Check Lines
-              {lastChecked && (
-                <span className="text-xs text-muted-foreground ml-1">
-                  · {formatDistanceToNow(lastChecked)} ago
-                </span>
-              )}
-            </button>
-          )}
         </div>
 
 

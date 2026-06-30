@@ -16,7 +16,7 @@ export interface LineAlert {
   game: FullGame;
   bestBook: string;
   timestamp: Date;
-  type: "LINE_IMPROVED" | "LINE_MOVED_AGAINST";
+  type: "LINE_IMPROVED" | "LINE_MOVED_AGAINST" | "PREDICTION_MARKET";
   severity: "low" | "medium" | "high";
   message: string;
 }
@@ -43,13 +43,66 @@ function buildAlertMessage(
   }`;
 }
 
+function buildPredictionMarketStubGame(bet: Bet): FullGame {
+  return {
+    id: bet.id,
+    sport: bet.sport,
+    league: bet.sport,
+    homeTeam: bet.title,
+    awayTeam: "",
+    commenceTime: bet.game_date ?? "",
+    isLive: false,
+    moneyline: {
+      home: 0,
+      away: 0,
+      homeImplied: 0,
+      awayImplied: 0,
+      bestHomeBook: "",
+      bestAwayBook: "",
+      bestHomeOdds: 0,
+      bestAwayOdds: 0,
+    },
+    spread: null,
+    total: null,
+    bookmakers: [],
+    vegasConsensus: null,
+    polymarketMatch: null,
+    polymarketImplied: null,
+    mispricingGap: null,
+  };
+}
+
 function matchSide(game: FullGame, bet: Bet): "home" | "away" | null {
   const pick = (bet.pick ?? "").toLowerCase();
   const title = (bet.title ?? "").toLowerCase();
-  const home = (game.homeTeam ?? "").toLowerCase();
-  const away = (game.awayTeam ?? "").toLowerCase();
-  if (home && (pick.includes(home) || title.includes(home))) return "home";
-  if (away && (pick.includes(away) || title.includes(away))) return "away";
+  const teams = [
+    game.homeTeam?.toLowerCase() ?? "",
+    game.awayTeam?.toLowerCase() ?? "",
+    game.homeTeamShort?.toLowerCase() ?? "",
+    game.awayTeamShort?.toLowerCase() ?? "",
+  ];
+  const betTokens = [pick, title].filter(Boolean);
+
+  for (const team of teams) {
+    if (!team) continue;
+    for (const token of betTokens) {
+      if (!token) continue;
+      if (
+        team.includes(token) ||
+        token.includes(team) ||
+        team.split(" ").pop() === token.split(" ").pop() ||
+        team.split(" ")[0] === token.split(" ")[0]
+      ) {
+        if (
+          team === (game.homeTeam?.toLowerCase() ?? "") ||
+          team === (game.homeTeamShort?.toLowerCase() ?? "")
+        ) {
+          return "home";
+        }
+        return "away";
+      }
+    }
+  }
   return null;
 }
 
@@ -69,8 +122,22 @@ export function useLineMonitor() {
   const dismissedRef = useRef<Set<string>>(new Set());
 
   const checkLines = useCallback(async () => {
-    const pendingBets = bets.filter((b) => b.status === "pending");
-    if (pendingBets.length === 0 || fullGames.length === 0) return;
+    const PREDICTION_MARKET_BOOKS = new Set(["Polymarket", "Kalshi"]);
+    const pendingBets = bets.filter(
+      (b) =>
+        b.status === "pending" &&
+        b.sportsbook !== "Polymarket" &&
+        b.sportsbook !== "Kalshi",
+    );
+    const predictionBets = bets.filter(
+      (b) =>
+        b.status === "pending" &&
+        (b.sportsbook === "Polymarket" || b.sportsbook === "Kalshi"),
+    );
+
+    const hasWork = pendingBets.length > 0 || predictionBets.length > 0;
+    const needsGames = pendingBets.length > 0;
+    if (!hasWork || (needsGames && fullGames.length === 0)) return;
 
     setChecking(true);
     const newAlerts: LineAlert[] = [];
@@ -78,6 +145,25 @@ export function useLineMonitor() {
     try {
       const { data: userData } = await supabase.auth.getUser();
       const userId = userData.user?.id;
+
+      for (const bet of predictionBets) {
+        if (dismissedRef.current.has(bet.id)) continue;
+        newAlerts.push({
+          betId: bet.id,
+          betTitle: bet.title,
+          pick: bet.pick,
+          openingOdds: bet.odds,
+          currentOdds: bet.odds,
+          oddsChange: 0,
+          edgeChange: 0,
+          game: buildPredictionMarketStubGame(bet),
+          bestBook: bet.sportsbook ?? "",
+          timestamp: new Date(),
+          type: "PREDICTION_MARKET",
+          severity: "low",
+          message: "Prediction market bet — check Polymarket directly for current price",
+        });
+      }
 
       for (const bet of pendingBets) {
         const game = matchGame(fullGames, bet);

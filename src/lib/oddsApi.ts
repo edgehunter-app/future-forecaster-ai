@@ -126,7 +126,9 @@ export interface FullGame {
   sport: string;
   league: string;
   homeTeam: string;
+  homeTeamShort?: string;
   awayTeam: string;
+  awayTeamShort?: string;
   commenceTime: string;
   isLive: boolean;
   moneyline: {
