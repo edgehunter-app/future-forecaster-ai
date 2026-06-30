@@ -594,6 +594,7 @@ function SportsEdgeStrip() {
           View all <ArrowRight className="h-3 w-3" />
         </Link>
       </div>
+      <LineAlertsBanner />
       {mispricings.length > 0 ? (
         <div className="flex gap-3 overflow-x-auto scrollbar-thin pb-2">
           {mispricings.slice(0, 6).map((m) => {
