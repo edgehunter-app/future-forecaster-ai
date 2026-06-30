@@ -27,9 +27,13 @@ export default function LineAlertCard({ alert, bet, onDismiss }: Props) {
   const isPredictionInfo = alert.type === "PREDICTION_MARKET";
   const isNoGameMatch = alert.type === "NO_GAME_MATCH";
   const isInfo = isPredictionInfo || isNoGameMatch;
+  const sb = (alert.sportsbook ?? "").toLowerCase();
+  const isPredictionBook = sb === "polymarket" || sb === "kalshi";
   const isPredictionMatched =
-    !isInfo && alert.game === null && alert.currentImplied !== undefined;
-  const skipAiCashout = isInfo || alert.game === null;
+    !isInfo &&
+    (isPredictionBook || alert.game === null) &&
+    alert.currentImplied !== undefined;
+  const skipAiCashout = isInfo || alert.game === null || isPredictionMatched;
 
   const borderClass = isInfo
     ? "border-info/30 bg-info/5"
@@ -266,19 +270,27 @@ export default function LineAlertCard({ alert, bet, onDismiss }: Props) {
           </div>
 
           {isPredictionMatched ? (
-            <div className="space-y-2">
-              <div className="rounded-md border border-border/60 bg-background/30 p-2 text-xs font-mono text-foreground">
+            <div className="rounded-md border border-border/60 bg-background/30 p-3 space-y-1.5">
+              <div className="text-[10px] uppercase tracking-wide text-muted-foreground">
+                Profit estimate
+              </div>
+              <div className="text-xs font-mono text-foreground">
                 Bought at {Math.round(openImplied * 100)}¢ · Now {Math.round(curImplied * 100)}¢
               </div>
+              {stake > 0 && openImplied > 0 && (
+                <div className="text-sm font-mono text-foreground">
+                  Position value: ${(stake * (curImplied / openImplied)).toFixed(2)}
+                </div>
+              )}
               {predictionProfit !== null && (
                 <div
                   className={cn(
-                    "text-sm font-semibold",
+                    "text-sm font-bold",
                     predictionProfit >= 0 ? "text-success" : "text-destructive",
                   )}
                 >
-                  Position {predictionProfit >= 0 ? "up" : "down"} ~$
-                  {Math.abs(predictionProfit).toFixed(2)} if sold now
+                  Profit if sold now: {predictionProfit >= 0 ? "+" : "-"}$
+                  {Math.abs(predictionProfit).toFixed(2)}
                 </div>
               )}
             </div>
