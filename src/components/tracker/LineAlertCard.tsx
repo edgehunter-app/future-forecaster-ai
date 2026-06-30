@@ -27,9 +27,13 @@ export default function LineAlertCard({ alert, bet, onDismiss }: Props) {
   const isPredictionInfo = alert.type === "PREDICTION_MARKET";
   const isNoGameMatch = alert.type === "NO_GAME_MATCH";
   const isInfo = isPredictionInfo || isNoGameMatch;
+  const sb = (alert.sportsbook ?? "").toLowerCase();
+  const isPredictionBook = sb === "polymarket" || sb === "kalshi";
   const isPredictionMatched =
-    !isInfo && alert.game === null && alert.currentImplied !== undefined;
-  const skipAiCashout = isInfo || alert.game === null;
+    !isInfo &&
+    (isPredictionBook || alert.game === null) &&
+    alert.currentImplied !== undefined;
+  const skipAiCashout = isInfo || alert.game === null || isPredictionMatched;
 
   const borderClass = isInfo
     ? "border-info/30 bg-info/5"
