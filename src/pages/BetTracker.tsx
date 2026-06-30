@@ -22,8 +22,9 @@ type HistorySort = "recent" | "biggest_win" | "biggest_loss";
 export default function BetTracker() {
   usePageTitle("Bet Tracker");
   const { bets, loading, stats, logBet, resolveBet } = useBetTracker();
-  const { alerts, checkLines, dismissAlert, checking, lastCheck } = useLineMonitor();
+  const { alerts, checkLines, dismissAlert, checking, lastCheck: lastChecked } = useLineMonitor();
   const [modalOpen, setModalOpen] = useState(false);
+
   const [historyFilter, setHistoryFilter] = useState<HistoryFilter>("all");
   const [historySort, setHistorySort] = useState<HistorySort>("recent");
 
