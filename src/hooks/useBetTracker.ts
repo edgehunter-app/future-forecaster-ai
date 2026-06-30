@@ -72,6 +72,8 @@ export function useBetTracker() {
         profit_loss: input.profit_loss ?? 0,
         game_date: input.game_date ?? null,
         notes: input.notes ?? null,
+        opening_odds: input.odds,
+        current_odds: input.odds,
       };
       const { data, error } = await supabase.from("bets").insert(row).select().single();
       if (error) {
