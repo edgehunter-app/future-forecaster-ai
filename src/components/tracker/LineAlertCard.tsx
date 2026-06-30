@@ -24,9 +24,14 @@ interface Props {
 
 export default function LineAlertCard({ alert, bet, onDismiss }: Props) {
   const improved = alert.type === "LINE_IMPROVED";
-  const isPredictionMarket = alert.type === "PREDICTION_MARKET";
+  const isPredictionInfo = alert.type === "PREDICTION_MARKET";
+  const isNoGameMatch = alert.type === "NO_GAME_MATCH";
+  const isInfo = isPredictionInfo || isNoGameMatch;
+  const isPredictionMatched =
+    !isInfo && alert.game === null && alert.currentImplied !== undefined;
+  const skipCashout = isInfo || alert.game === null;
 
-  const borderClass = isPredictionMarket
+  const borderClass = isInfo
     ? "border-info/30 bg-info/5"
     : improved
       ? "border-success/50 bg-success/5"
@@ -34,8 +39,8 @@ export default function LineAlertCard({ alert, bet, onDismiss }: Props) {
         ? "border-destructive/60 bg-destructive/5"
         : "border-warning/50 bg-warning/5";
 
-  const Icon = isPredictionMarket ? Info : improved ? TrendingUp : TrendingDown;
-  const iconColor = isPredictionMarket
+  const Icon = isInfo ? Info : improved ? TrendingUp : TrendingDown;
+  const iconColor = isInfo
     ? "text-info"
     : improved
       ? "text-success"
@@ -48,7 +53,7 @@ export default function LineAlertCard({ alert, bet, onDismiss }: Props) {
   const [err, setErr] = useState("");
 
   useEffect(() => {
-    if (isPredictionMarket) {
+    if (skipCashout) {
       setLoading(false);
       return;
     }
@@ -58,6 +63,11 @@ export default function LineAlertCard({ alert, bet, onDismiss }: Props) {
         const potentialPayout = bet
           ? americanPayout(alert.openingOdds, Number(bet.amount))
           : null;
+        const game = alert.game;
+        if (!game) {
+          setLoading(false);
+          return;
+        }
         const { data, error } = await supabase.functions.invoke("analyze-market", {
           body: {
             type: "cashout",
@@ -69,10 +79,10 @@ export default function LineAlertCard({ alert, bet, onDismiss }: Props) {
             edgeChange: alert.edgeChange,
             amount: bet?.amount ?? 0,
             potentialPayout,
-            homeTeam: alert.game.homeTeam,
-            awayTeam: alert.game.awayTeam,
-            gameTime: alert.game.commenceTime,
-            bookmakers: (alert.game.bookmakers ?? []).slice(0, 5).map((b) => ({
+            homeTeam: game.homeTeam,
+            awayTeam: game.awayTeam,
+            gameTime: game.commenceTime,
+            bookmakers: (game.bookmakers ?? []).slice(0, 5).map((b) => ({
               name: b.name,
               key: b.key,
               moneyline: { home: b.homeMoneyline, away: b.awayMoneyline },
@@ -92,10 +102,10 @@ export default function LineAlertCard({ alert, bet, onDismiss }: Props) {
     return () => {
       cancelled = true;
     };
-  }, [alert, bet, isPredictionMarket]);
+  }, [alert, bet, skipCashout]);
 
-  const openImplied = toImplied(alert.openingOdds);
-  const curImplied = toImplied(alert.currentOdds);
+  const openImplied = alert.openingImplied ?? toImplied(alert.openingOdds);
+  const curImplied = alert.currentImplied ?? toImplied(alert.currentOdds);
   const openEdgePct = (1 - openImplied) * 100;
   const curEdgePct = (1 - curImplied) * 100;
 
@@ -117,7 +127,13 @@ export default function LineAlertCard({ alert, bet, onDismiss }: Props) {
           <Icon className={cn("h-4 w-4", iconColor)} />
           <div>
             <h3 className="text-sm font-bold text-foreground">
-              {isPredictionMarket ? "Prediction Market Bet" : "Line Movement Alert"}
+              {isNoGameMatch
+                ? "Game Unavailable"
+                : isPredictionInfo
+                  ? "Prediction Market Bet"
+                  : improved
+                    ? "📈 Line improved"
+                    : "📉 Line moved against you"}
             </h3>
             <p className="text-[10px] text-muted-foreground">
               {alert.timestamp.toLocaleTimeString([], { hour: "numeric", minute: "2-digit" })}
@@ -133,7 +149,7 @@ export default function LineAlertCard({ alert, bet, onDismiss }: Props) {
         </button>
       </div>
 
-      {isPredictionMarket ? (
+      {isInfo ? (
         <div className="space-y-2">
           <div className="text-sm font-semibold text-foreground">{alert.betTitle}</div>
           <p className="text-xs text-muted-foreground leading-relaxed">
@@ -142,15 +158,58 @@ export default function LineAlertCard({ alert, bet, onDismiss }: Props) {
         </div>
       ) : (
         <>
-          <div className="space-y-1">
+          <div className="space-y-2">
             <div className="text-sm font-semibold text-foreground">{alert.betTitle}</div>
-            <div className="text-[11px] text-muted-foreground">
-              You bet: <span className="font-mono">{fmtOdds(alert.openingOdds)}</span>
+
+            <div className="rounded-md border border-border/60 bg-background/30 p-2 space-y-1">
+              <div className="text-[10px] uppercase tracking-wide text-muted-foreground">What you bet</div>
+              {isPredictionMatched && alert.openingImplied !== undefined ? (
+                <div className="text-xs font-mono text-foreground">
+                  {alert.pick} at {Math.round((alert.openingImplied ?? 0) * 100)}¢
+                </div>
+              ) : (
+                <div className="text-xs font-mono text-foreground">
+                  {alert.pick} at {fmtOdds(alert.openingOdds)}
+                </div>
+              )}
+              {(alert.sportsbook || alert.loggedAt) && (
+                <div className="text-[10px] text-muted-foreground">
+                  {alert.sportsbook}
+                  {alert.sportsbook && alert.loggedAt ? " · " : ""}
+                  {alert.loggedAt
+                    ? new Date(alert.loggedAt).toLocaleDateString([], {
+                        month: "short",
+                        day: "numeric",
+                      })
+                    : ""}
+                </div>
+              )}
             </div>
-            <div className="text-[11px] text-muted-foreground">
-              Current best:{" "}
-              <span className="font-mono">{fmtOdds(alert.currentOdds)}</span>
-              {alert.bestBook ? ` at ${alert.bestBook}` : ""}
+
+            <div className="rounded-md border border-border/60 bg-background/30 p-2 space-y-1">
+              <div className="text-[10px] uppercase tracking-wide text-muted-foreground">
+                {isPredictionMatched ? "Current price" : "Best available now"}
+              </div>
+              {isPredictionMatched && alert.currentImplied !== undefined ? (
+                <div className="text-xs font-mono text-foreground">
+                  {Math.round((alert.currentImplied ?? 0) * 100)}¢
+                  {alert.marketVolume && alert.marketVolume > 0 ? (
+                    <span className="text-muted-foreground">
+                      {" "}· vol $
+                      {alert.marketVolume >= 1_000_000
+                        ? (alert.marketVolume / 1_000_000).toFixed(1) + "M"
+                        : (alert.marketVolume / 1000).toFixed(0) + "k"}
+                    </span>
+                  ) : null}
+                </div>
+              ) : (
+                <div className="text-xs font-mono text-foreground">
+                  {fmtOdds(alert.currentOdds)}
+                  {alert.bestBook ? (
+                    <span className="text-muted-foreground"> at {alert.bestBook}</span>
+                  ) : null}
+                </div>
+              )}
             </div>
           </div>
 
@@ -172,8 +231,15 @@ export default function LineAlertCard({ alert, bet, onDismiss }: Props) {
           <div className="space-y-1">
             <div className="flex justify-between text-[11px] text-muted-foreground">
               <span>Your edge</span>
-              <span className="font-mono">
-                {openEdgePct.toFixed(1)}% → {curEdgePct.toFixed(1)}%
+              <span
+                className={cn(
+                  "font-mono",
+                  curEdgePct >= openEdgePct ? "text-success" : "text-destructive",
+                )}
+              >
+                {openEdgePct >= 0 ? "+" : ""}
+                {openEdgePct.toFixed(1)}% → {curEdgePct >= 0 ? "+" : ""}
+                {curEdgePct.toFixed(1)}%
               </span>
             </div>
             <Progress
@@ -182,6 +248,7 @@ export default function LineAlertCard({ alert, bet, onDismiss }: Props) {
             />
           </div>
 
+          {!skipCashout && (
           <div className="rounded-md border border-border bg-background/40 p-3 space-y-2">
             {loading ? (
               <div className="flex items-center gap-2 text-xs text-muted-foreground">
@@ -207,6 +274,7 @@ export default function LineAlertCard({ alert, bet, onDismiss }: Props) {
               </>
             ) : null}
           </div>
+          )}
         </>
       )}
 
