@@ -29,7 +29,7 @@ export default function LineAlertCard({ alert, bet, onDismiss }: Props) {
   const isInfo = isPredictionInfo || isNoGameMatch;
   const isPredictionMatched =
     !isInfo && alert.game === null && alert.currentImplied !== undefined;
-  const skipCashout = isInfo || alert.game === null;
+  const skipAiCashout = isInfo || alert.game === null;
 
   const borderClass = isInfo
     ? "border-info/30 bg-info/5"
@@ -53,7 +53,7 @@ export default function LineAlertCard({ alert, bet, onDismiss }: Props) {
   const [err, setErr] = useState("");
 
   useEffect(() => {
-    if (skipCashout) {
+    if (skipAiCashout) {
       setLoading(false);
       return;
     }
@@ -102,12 +102,49 @@ export default function LineAlertCard({ alert, bet, onDismiss }: Props) {
     return () => {
       cancelled = true;
     };
-  }, [alert, bet, skipCashout]);
+  }, [alert, bet, skipAiCashout]);
 
   const openImplied = alert.openingImplied ?? toImplied(alert.openingOdds);
   const curImplied = alert.currentImplied ?? toImplied(alert.currentOdds);
-  const openEdgePct = (1 - openImplied) * 100;
-  const curEdgePct = (1 - curImplied) * 100;
+
+  // Prediction-market profit estimate if sold at current price.
+  const stake = Number(bet?.amount ?? 0);
+  const predictionProfit =
+    isPredictionMatched && stake > 0 && openImplied > 0
+      ? stake * (curImplied / openImplied) - stake
+      : null;
+
+  // Local recommendation for prediction markets (no AI call needed).
+  const predictionRec = (() => {
+    if (!isPredictionMatched) return null;
+    if (curImplied >= 0.95) {
+      return {
+        icon: "🟡",
+        label: "CONSIDER TAKING PROFIT",
+        color: "text-warning border-warning/40 bg-warning/10",
+        reasoning: `Market at ${Math.round(curImplied * 100)}¢ — only ${Math.max(
+          1,
+          100 - Math.round(curImplied * 100),
+        )}¢ of upside remaining. Consider selling your position to lock in gains.`,
+      };
+    }
+    if (curImplied >= 0.8) {
+      return {
+        icon: "⚠️",
+        label: "MONITOR",
+        color: "text-warning border-warning/40 bg-warning/10",
+        reasoning:
+          "Strong position with some upside remaining. Monitor closely and consider partial exit if price approaches 95¢.",
+      };
+    }
+    return {
+      icon: "✅",
+      label: "HOLD",
+      color: "text-success border-success/40 bg-success/10",
+      reasoning:
+        "Good movement in your favor and meaningful upside still available. Hold the position.",
+    };
+  })();
 
   const recBadge = (() => {
     if (!cashout) return null;
@@ -228,27 +265,57 @@ export default function LineAlertCard({ alert, bet, onDismiss }: Props) {
             </div>
           </div>
 
-          <div className="space-y-1">
-            <div className="flex justify-between text-[11px] text-muted-foreground">
-              <span>Your edge</span>
+          {isPredictionMatched ? (
+            <div className="space-y-2">
+              <div className="rounded-md border border-border/60 bg-background/30 p-2 text-xs font-mono text-foreground">
+                Bought at {Math.round(openImplied * 100)}¢ · Now {Math.round(curImplied * 100)}¢
+              </div>
+              {predictionProfit !== null && (
+                <div
+                  className={cn(
+                    "text-sm font-semibold",
+                    predictionProfit >= 0 ? "text-success" : "text-destructive",
+                  )}
+                >
+                  Position {predictionProfit >= 0 ? "up" : "down"} ~$
+                  {Math.abs(predictionProfit).toFixed(2)} if sold now
+                </div>
+              )}
+            </div>
+          ) : (
+            <div className="space-y-1">
+              <div className="flex justify-between text-[11px] text-muted-foreground">
+                <span>Your edge</span>
+                <span
+                  className={cn(
+                    "font-mono",
+                    (1 - curImplied) >= (1 - openImplied) ? "text-success" : "text-destructive",
+                  )}
+                >
+                  {((1 - openImplied) * 100).toFixed(1)}% → {((1 - curImplied) * 100).toFixed(1)}%
+                </span>
+              </div>
+              <Progress
+                value={Math.max(0, Math.min(100, (1 - curImplied) * 100))}
+                className="h-1.5"
+              />
+            </div>
+          )}
+
+          {predictionRec ? (
+            <div className="rounded-md border border-border bg-background/40 p-3 space-y-2">
               <span
                 className={cn(
-                  "font-mono",
-                  curEdgePct >= openEdgePct ? "text-success" : "text-destructive",
+                  "inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-[11px] font-bold",
+                  predictionRec.color,
                 )}
               >
-                {openEdgePct >= 0 ? "+" : ""}
-                {openEdgePct.toFixed(1)}% → {curEdgePct >= 0 ? "+" : ""}
-                {curEdgePct.toFixed(1)}%
+                <span>{predictionRec.icon}</span>
+                {predictionRec.label}
               </span>
+              <p className="text-xs text-foreground leading-relaxed">{predictionRec.reasoning}</p>
             </div>
-            <Progress
-              value={Math.max(0, Math.min(100, curEdgePct))}
-              className="h-1.5"
-            />
-          </div>
-
-          {!skipCashout && (
+          ) : !skipAiCashout && (
           <div className="rounded-md border border-border bg-background/40 p-3 space-y-2">
             {loading ? (
               <div className="flex items-center gap-2 text-xs text-muted-foreground">
