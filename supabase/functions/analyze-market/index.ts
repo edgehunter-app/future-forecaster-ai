@@ -674,6 +674,49 @@ Respond with ONLY valid JSON, no markdown:
 }`;
 }
 
+function buildCashoutPrompt(p: AnalyzeBody): string {
+  const oddsChange = Number(p.oddsChange ?? 0);
+  const edgeChange = Number(p.edgeChange ?? 0);
+  const bookmakers: Any[] = Array.isArray(p.bookmakers) ? p.bookmakers : [];
+  const bookLine = bookmakers.slice(0, 5).map((b: Any) =>
+    `${b.name ?? b.key ?? "book"}: ${b.moneyline?.home ?? "?"}/${b.moneyline?.away ?? "?"}`
+  ).join(", ") || "n/a";
+  return `You are EdgeHunter's post-bet analyst.
+A user has an active bet and the line has moved. Evaluate whether they should hold or consider cashing out.
+
+BET DETAILS:
+  Pick: ${p.pick ?? "?"}
+  Bet type: ${p.betType ?? "?"}
+  Original odds: ${p.openingOdds ?? "?"}
+  Amount wagered: $${p.amount ?? 0}
+  Potential payout: $${p.potentialPayout ?? 0}
+
+LINE MOVEMENT:
+  Opening odds: ${p.openingOdds ?? "?"}
+  Current odds: ${p.currentOdds ?? "?"}
+  Change: ${oddsChange > 0 ? "+" : ""}${oddsChange} cents
+  Edge change: ${edgeChange > 0 ? "+" : ""}${(edgeChange * 100).toFixed(1)}%
+
+CURRENT GAME STATUS:
+  Game: ${p.homeTeam ?? "?"} vs ${p.awayTeam ?? "?"}
+  Starts: ${p.gameTime ?? "?"}
+  Current books: ${bookLine}
+
+Respond with ONLY valid JSON, no markdown:
+{
+  "recommendation": "HOLD" | "MONITOR" | "CONSIDER_EXIT",
+  "confidence": 0-100,
+  "reasoning": "1-2 sentences max",
+  "keyFactors": ["factor1", "factor2"],
+  "edgeRemaining": decimal,
+  "riskLevel": "low" | "medium" | "high"
+}
+
+HOLD if: Edge still clearly positive, movement is normal variance, original thesis still intact.
+MONITOR if: Edge reduced but still positive, worth watching for more movement.
+CONSIDER_EXIT if: Significant movement against position, edge now negative or minimal, or major shift in market consensus.`;
+}
+
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
@@ -715,6 +758,7 @@ Deno.serve(async (req) => {
       case "sentiment": prompt = buildSentimentPrompt(body); break;
       case "wallet-strategy": prompt = buildWalletStrategyPrompt(body); break;
       case "golf": prompt = buildGolfPrompt(body); break;
+      case "cashout": prompt = buildCashoutPrompt(body); break;
       case "market":
       default:
         prompt = buildPrompt(body);
