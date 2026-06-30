@@ -84,10 +84,16 @@ export type Database = {
           amount: number
           bet_type: string
           created_at: string
+          current_line: number | null
+          current_odds: number | null
           game_date: string | null
           id: string
+          last_line_check: string | null
+          line_alerts: Json
           notes: string | null
           odds: number
+          opening_line: number | null
+          opening_odds: number | null
           pick: string
           profit_loss: number | null
           resolved_at: string | null
@@ -103,10 +109,16 @@ export type Database = {
           amount: number
           bet_type?: string
           created_at?: string
+          current_line?: number | null
+          current_odds?: number | null
           game_date?: string | null
           id?: string
+          last_line_check?: string | null
+          line_alerts?: Json
           notes?: string | null
           odds: number
+          opening_line?: number | null
+          opening_odds?: number | null
           pick: string
           profit_loss?: number | null
           resolved_at?: string | null
@@ -122,10 +134,16 @@ export type Database = {
           amount?: number
           bet_type?: string
           created_at?: string
+          current_line?: number | null
+          current_odds?: number | null
           game_date?: string | null
           id?: string
+          last_line_check?: string | null
+          line_alerts?: Json
           notes?: string | null
           odds?: number
+          opening_line?: number | null
+          opening_odds?: number | null
           pick?: string
           profit_loss?: number | null
           resolved_at?: string | null

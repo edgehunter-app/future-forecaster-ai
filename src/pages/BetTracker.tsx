@@ -1,8 +1,10 @@
 import { useMemo, useState } from "react";
-import { Trophy, Plus, Flame, Check, XCircle, MoreVertical } from "lucide-react";
+import { Trophy, Plus, Flame, Check, XCircle, MoreVertical, Zap, RefreshCw } from "lucide-react";
 import { LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid } from "recharts";
 import { useBetTracker } from "@/hooks/useBetTracker";
 import LogBetModal from "@/components/tracker/LogBetModal";
+import LineAlertCard from "@/components/tracker/LineAlertCard";
+import { useLineMonitor } from "@/hooks/useLineMonitor";
 import { usePageTitle } from "@/hooks/usePageTitle";
 import { Button } from "@/components/ui/button";
 import { cn, fmtUSD } from "@/lib/utils";
@@ -18,6 +20,7 @@ type HistorySort = "recent" | "biggest_win" | "biggest_loss";
 export default function BetTracker() {
   usePageTitle("Bet Tracker");
   const { bets, loading, stats, logBet, resolveBet } = useBetTracker();
+  const { alerts, checkLines, dismissAlert, checking, lastCheck } = useLineMonitor();
   const [modalOpen, setModalOpen] = useState(false);
   const [historyFilter, setHistoryFilter] = useState<HistoryFilter>("all");
   const [historySort, setHistorySort] = useState<HistorySort>("recent");
@@ -146,7 +149,41 @@ export default function BetTracker() {
 
       {/* Pending */}
       <section className="space-y-3">
-        <h2 className="text-sm font-bold uppercase tracking-wide text-foreground">Pending ({pending.length})</h2>
+        <div className="flex items-center justify-between gap-3">
+          <h2 className="text-sm font-bold uppercase tracking-wide text-foreground">Pending ({pending.length})</h2>
+          {pending.length > 0 && (
+            <button
+              onClick={() => void checkLines()}
+              disabled={checking}
+              className="inline-flex items-center gap-1.5 rounded-md border border-border bg-card px-2.5 py-1 text-[11px] font-semibold text-muted-foreground hover:text-foreground disabled:opacity-50"
+            >
+              <RefreshCw className={cn("h-3 w-3", checking && "animate-spin")} />
+              {checking ? "Checking…" : "Check Lines"}
+              {lastCheck && !checking && (
+                <span className="text-muted-foreground/70">· {lastCheck.toLocaleTimeString([], { hour: "numeric", minute: "2-digit" })}</span>
+              )}
+            </button>
+          )}
+        </div>
+
+        {alerts.length > 0 && (
+          <div className="space-y-2">
+            <h3 className="flex items-center gap-1.5 text-xs font-bold uppercase tracking-wide text-warning">
+              <Zap className="h-3.5 w-3.5" /> Line Movement Alerts ({alerts.length})
+            </h3>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+              {alerts.map((a) => (
+                <LineAlertCard
+                  key={a.betId}
+                  alert={a}
+                  bet={bets.find((b) => b.id === a.betId)}
+                  onDismiss={() => dismissAlert(a.betId)}
+                />
+              ))}
+            </div>
+          </div>
+        )}
+
         {pending.length === 0 ? (
           <p className="text-xs text-muted-foreground">No active bets. Log a new one above.</p>
         ) : (
