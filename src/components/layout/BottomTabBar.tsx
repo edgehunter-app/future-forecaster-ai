@@ -8,6 +8,7 @@ import BottomSheet from "@/components/ui/BottomSheet";
 import { useAppStore } from "@/store/useAppStore";
 import { cn } from "@/lib/utils";
 import { useIsAdmin } from "@/hooks/useIsAdmin";
+import { useLineMonitor } from "@/hooks/useLineMonitor";
 
 const MORE_ITEMS = [
   { to: "/tracker", label: "Bet Tracker", icon: BarChart2 },
@@ -30,6 +31,8 @@ export default function BottomTabBar() {
   const strongMispricings = useAppStore((s) => s.sportsMispricings).filter(
     (m) => m.edge >= 0.05,
   ).length || (fullGames?.length ?? 0 > 0 ? 0 : 0);
+  const { alerts } = useLineMonitor();
+  const lineAlertCount = alerts.length;
 
   const isMoreActive = moreItems.some((i) => pathname.startsWith(i.to));
 
@@ -89,7 +92,14 @@ export default function BottomTabBar() {
               )}
               aria-label="More navigation"
             >
-              <LayoutGrid className="h-5 w-5" />
+              <div className="relative">
+                <LayoutGrid className="h-5 w-5" />
+                {lineAlertCount > 0 && (
+                  <span className="absolute -right-2 -top-1.5 inline-flex h-4 min-w-[16px] items-center justify-center rounded-full bg-destructive px-1 text-[9px] font-bold text-white">
+                    {lineAlertCount}
+                  </span>
+                )}
+              </div>
               <span className="text-[11px] font-semibold leading-none">More</span>
               {isMoreActive && <span className="absolute bottom-1 h-1 w-1 rounded-full bg-info" />}
             </button>
