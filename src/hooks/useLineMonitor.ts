@@ -13,63 +13,92 @@ export interface LineAlert {
   currentOdds: number;
   oddsChange: number;
   edgeChange: number;
-  game: FullGame;
+  game: FullGame | null;
   bestBook: string;
   timestamp: Date;
-  type: "LINE_IMPROVED" | "LINE_MOVED_AGAINST" | "PREDICTION_MARKET";
+  type:
+    | "LINE_IMPROVED"
+    | "LINE_MOVED_AGAINST"
+    | "PREDICTION_MARKET"
+    | "NO_GAME_MATCH";
   severity: "low" | "medium" | "high";
   message: string;
+  sportsbook?: string;
+  loggedAt?: string;
+  marketVolume?: number;
+  openingImplied?: number;
+  currentImplied?: number;
 }
 
 const toImplied = (odds: number) =>
   odds > 0 ? 100 / (odds + 100) : -odds / (-odds + 100);
 
+const impliedToAmerican = (p: number): number => {
+  if (p <= 0 || p >= 1) return 0;
+  return p >= 0.5
+    ? -Math.round((p / (1 - p)) * 100)
+    : Math.round(((1 - p) / p) * 100);
+};
+
 function buildAlertMessage(
+  bet: Bet,
   opening: number,
   current: number,
   change: number,
   edgeChange: number,
+  bestBook: string,
 ): string {
-  const direction = change > 0 ? "improved" : "moved against you";
   const absChange = Math.abs(change);
-  const edgePct = (Math.abs(edgeChange) * 100).toFixed(1);
+  const openEdgePct = ((1 - toImplied(opening)) * 100).toFixed(1);
+  const curEdgePct = ((1 - toImplied(current)) * 100).toFixed(1);
+  const pick = bet.pick || bet.title;
   if (change > 0) {
-    return `Line ${direction} ${absChange} cents. You bet at ${opening}, best available is now ${current}. Your edge increased by ${edgePct}%.`;
+    return (
+      `You bet ${pick} at ${fmt(opening)} · ` +
+      `Current best: ${fmt(current)}${bestBook ? ` at ${bestBook}` : ""}. ` +
+      `Line improved ${absChange} cents in your favor. ` +
+      `Edge: +${openEdgePct}% → +${curEdgePct}%.`
+    );
   }
-  return `Line ${direction} ${absChange} cents. You bet at ${opening}, market now at ${current}. Your original edge reduced by ${edgePct}%. ${
-    absChange >= 25
-      ? "Consider whether this bet still has value."
-      : "Still within normal variance."
-  }`;
+  return (
+    `You bet ${pick} at ${fmt(opening)} · ` +
+    `Line moved to ${fmt(current)}${bestBook ? ` at ${bestBook}` : ""}. ` +
+    `Moved ${absChange} cents against you. ` +
+    `Edge: +${openEdgePct}% → +${curEdgePct}%. ` +
+    (absChange >= 25
+      ? "Consider whether the original thesis still holds."
+      : "Still within normal variance.")
+  );
 }
 
-function buildPredictionMarketStubGame(bet: Bet): FullGame {
-  return {
-    id: bet.id,
-    sport: bet.sport,
-    league: bet.sport,
-    homeTeam: bet.title,
-    awayTeam: "",
-    commenceTime: bet.game_date ?? "",
-    isLive: false,
-    moneyline: {
-      home: 0,
-      away: 0,
-      homeImplied: 0,
-      awayImplied: 0,
-      bestHomeBook: "",
-      bestAwayBook: "",
-      bestHomeOdds: 0,
-      bestAwayOdds: 0,
-    },
-    spread: null,
-    total: null,
-    bookmakers: [],
-    vegasConsensus: null,
-    polymarketMatch: null,
-    polymarketImplied: null,
-    mispricingGap: null,
-  };
+function fmt(o: number): string {
+  return `${o > 0 ? "+" : ""}${o}`;
+}
+
+function buildPredictionAlertMessage(
+  bet: Bet,
+  loggedImplied: number,
+  currentPrice: number,
+  centsChange: number,
+  marketVolume: number,
+): string {
+  const loggedPct = Math.round(loggedImplied * 100);
+  const currentPct = Math.round(currentPrice * 100);
+  const direction = centsChange >= 0 ? "moved in your favor" : "moved against you";
+  const absChange = Math.abs(centsChange);
+  const volStr =
+    marketVolume > 0
+      ? ` Market volume: $${
+          marketVolume >= 1_000_000
+            ? (marketVolume / 1_000_000).toFixed(1) + "M"
+            : (marketVolume / 1000).toFixed(0) + "k"
+        }.`
+      : "";
+  return (
+    `${bet.pick} on ${bet.title}: ` +
+    `You bought at ${loggedPct}¢. ` +
+    `Currently trading at ${currentPct}¢ — ${direction} by ${absChange} cents.${volStr}`
+  );
 }
 
 function matchSide(game: FullGame, bet: Bet): "home" | "away" | null {
@@ -116,13 +145,13 @@ function matchGame(games: FullGame[], bet: Bet): FullGame | null {
 export function useLineMonitor() {
   const { bets } = useBetTracker();
   const fullGames = useAppStore((s) => s.fullGames);
+  const markets = useAppStore((s) => s.markets);
   const [alerts, setAlerts] = useState<LineAlert[]>([]);
   const [checking, setChecking] = useState(false);
   const [lastCheck, setLastCheck] = useState<Date | null>(null);
   const dismissedRef = useRef<Set<string>>(new Set());
 
   const checkLines = useCallback(async () => {
-    const PREDICTION_MARKET_BOOKS = new Set(["Polymarket", "Kalshi"]);
     const pendingBets = bets.filter(
       (b) =>
         b.status === "pending" &&
@@ -148,26 +177,96 @@ export function useLineMonitor() {
 
       for (const bet of predictionBets) {
         if (dismissedRef.current.has(bet.id)) continue;
-        newAlerts.push({
-          betId: bet.id,
-          betTitle: bet.title,
-          pick: bet.pick,
-          openingOdds: bet.odds,
-          currentOdds: bet.odds,
-          oddsChange: 0,
-          edgeChange: 0,
-          game: buildPredictionMarketStubGame(bet),
-          bestBook: bet.sportsbook ?? "",
-          timestamp: new Date(),
-          type: "PREDICTION_MARKET",
-          severity: "low",
-          message: "Prediction market bet — check Polymarket directly for current price",
+
+        const betTitle = (bet.title ?? "").toLowerCase();
+        const matchingMarket = markets.find((m) => {
+          const question = (m.question ?? "").toLowerCase();
+          if (!question || !betTitle) return false;
+          if (question.includes(betTitle) || betTitle.includes(question)) return true;
+          const qHead = question.split(" ").slice(0, 3).join(" ");
+          return qHead.length > 4 && betTitle.includes(qHead);
         });
+
+        if (matchingMarket) {
+          const isYes = (bet.pick ?? "").toLowerCase().includes("yes");
+          const currentPrice = isYes ? matchingMarket.yesPrice : matchingMarket.noPrice;
+          const loggedOdds = bet.opening_odds ?? bet.odds ?? 0;
+          const loggedImplied = toImplied(loggedOdds);
+          const priceChange = currentPrice - loggedImplied;
+          const centsChange = Math.round(priceChange * 100);
+          const currentOddsAm = impliedToAmerican(currentPrice);
+
+          newAlerts.push({
+            betId: bet.id,
+            betTitle: bet.title,
+            pick: bet.pick,
+            openingOdds: loggedOdds,
+            currentOdds: currentOddsAm,
+            oddsChange: centsChange,
+            edgeChange: priceChange,
+            game: null,
+            bestBook: bet.sportsbook ?? "",
+            timestamp: new Date(),
+            type: centsChange >= 0 ? "LINE_IMPROVED" : "LINE_MOVED_AGAINST",
+            severity: Math.abs(centsChange) >= 10 ? "high" : "low",
+            message: buildPredictionAlertMessage(
+              bet,
+              loggedImplied,
+              currentPrice,
+              centsChange,
+              matchingMarket.totalVolume ?? matchingMarket.volume24h ?? 0,
+            ),
+            sportsbook: bet.sportsbook ?? undefined,
+            loggedAt: bet.created_at,
+            marketVolume: matchingMarket.totalVolume ?? matchingMarket.volume24h ?? 0,
+            openingImplied: loggedImplied,
+            currentImplied: currentPrice,
+          });
+        } else {
+          newAlerts.push({
+            betId: bet.id,
+            betTitle: bet.title,
+            pick: bet.pick,
+            openingOdds: bet.odds,
+            currentOdds: bet.odds,
+            oddsChange: 0,
+            edgeChange: 0,
+            game: null,
+            bestBook: bet.sportsbook ?? "",
+            timestamp: new Date(),
+            type: "PREDICTION_MARKET",
+            severity: "low",
+            message: `Check ${bet.sportsbook ?? "your prediction market"} directly for the current ${bet.pick} price.`,
+            sportsbook: bet.sportsbook ?? undefined,
+            loggedAt: bet.created_at,
+          });
+        }
       }
 
       for (const bet of pendingBets) {
         const game = matchGame(fullGames, bet);
-        if (!game) continue;
+        if (!game) {
+          if (dismissedRef.current.has(bet.id)) continue;
+          newAlerts.push({
+            betId: bet.id,
+            betTitle: bet.title,
+            pick: bet.pick,
+            openingOdds: bet.opening_odds ?? bet.odds,
+            currentOdds: bet.opening_odds ?? bet.odds,
+            oddsChange: 0,
+            edgeChange: 0,
+            game: null,
+            bestBook: bet.sportsbook ?? "",
+            timestamp: new Date(),
+            type: "NO_GAME_MATCH",
+            severity: "low",
+            message:
+              "Game may have started or completed. Check your sportsbook for live cash out options.",
+            sportsbook: bet.sportsbook ?? undefined,
+            loggedAt: bet.created_at,
+          });
+          continue;
+        }
         const side = matchSide(game, bet);
         if (!side) continue;
 
@@ -207,7 +306,11 @@ export function useLineMonitor() {
             timestamp: new Date(),
             type: oddsChange > 0 ? "LINE_IMPROVED" : "LINE_MOVED_AGAINST",
             severity: absChange >= 30 ? "high" : absChange >= 20 ? "medium" : "low",
-            message: buildAlertMessage(openingOdds, currentBestOdds, oddsChange, edgeChange),
+            message: buildAlertMessage(bet, openingOdds, currentBestOdds, oddsChange, edgeChange, bestBook),
+            sportsbook: bet.sportsbook ?? undefined,
+            loggedAt: bet.created_at,
+            openingImplied: toImplied(openingOdds),
+            currentImplied: toImplied(currentBestOdds),
           });
         }
 
@@ -234,7 +337,7 @@ export function useLineMonitor() {
     } finally {
       setChecking(false);
     }
-  }, [bets, fullGames]);
+  }, [bets, fullGames, markets]);
 
   useEffect(() => {
     if (fullGames.length > 0 && bets.length > 0) {
