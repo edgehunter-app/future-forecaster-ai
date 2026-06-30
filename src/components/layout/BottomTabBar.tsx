@@ -5,6 +5,7 @@ import {
   Users, Clock, ArrowLeftRight, Settings as SettingsIcon, ChevronRight, BarChart2, Shield,
 } from "lucide-react";
 import BottomSheet from "@/components/ui/BottomSheet";
+import HorseIcon from "@/components/icons/HorseIcon";
 import { useAppStore } from "@/store/useAppStore";
 import { cn } from "@/lib/utils";
 import { useIsAdmin } from "@/hooks/useIsAdmin";
@@ -12,6 +13,7 @@ import { useLineMonitor } from "@/hooks/useLineMonitor";
 
 const MORE_ITEMS = [
   { to: "/tracker", label: "Bet Tracker", icon: BarChart2 },
+  { to: "/horse-racing", label: "Horse Racing", icon: HorseIcon },
   { to: "/wallets", label: "Wallets", icon: Users },
   { to: "/cross-market", label: "Cross-Market", icon: ArrowLeftRight },
   { to: "/history", label: "History", icon: Clock },

@@ -7,6 +7,7 @@ import { useAppStore } from "@/store/useAppStore";
 import { usePWA } from "@/hooks/usePWA";
 import { cn } from "@/lib/utils";
 import { EdgeHunterLogo } from "@/components/brand/EdgeHunterLogo";
+import HorseIcon from "@/components/icons/HorseIcon";
 import { useIsAdmin } from "@/hooks/useIsAdmin";
 
 export function Sidebar({ mobileOpen = false, onMobileClose }: { mobileOpen?: boolean; onMobileClose?: () => void } = {}) {
@@ -27,6 +28,7 @@ export function Sidebar({ mobileOpen = false, onMobileClose }: { mobileOpen?: bo
     { to: "/markets", label: "Markets", icon: TrendingUp },
     { to: "/cross-market", label: "Cross-Market", icon: ArrowLeftRight, badge: xmCount || undefined, badgeColor: "warning" as const },
     { to: "/sports", label: "Sports", icon: Trophy, badge: undefined, badgeColor: "info" as const } as const,
+    { to: "/horse-racing", label: "Horse Racing", icon: HorseIcon },
     { to: "/history", label: "History", icon: Clock },
     { to: "/settings", label: "Settings", icon: Settings },
   ];

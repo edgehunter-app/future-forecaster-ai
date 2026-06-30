@@ -23,6 +23,7 @@ const CrossMarket = lazy(() => import("./pages/CrossMarket"));
 const Sports = lazy(() => import("./pages/Sports"));
 const Admin = lazy(() => import("./pages/Admin"));
 const BetTracker = lazy(() => import("./pages/BetTracker"));
+const HorseRacing = lazy(() => import("./pages/HorseRacing"));
 const NotFound = lazy(() => import("./pages/NotFound"));
 const Auth = lazy(() => import("./pages/Auth"));
 
@@ -104,6 +105,7 @@ function AppRoutes() {
         <Route path="/cross-market" element={wrap(<CrossMarket />)} />
         <Route path="/sports" element={wrap(<Sports />)} />
         <Route path="/tracker" element={wrap(<BetTracker />)} />
+        <Route path="/horse-racing" element={wrap(<HorseRacing />)} />
         <Route path="/history" element={wrap(<History />)} />
         <Route path="/settings" element={wrap(<Settings />)} />
         <Route path="/admin" element={wrap(<Admin />)} />
