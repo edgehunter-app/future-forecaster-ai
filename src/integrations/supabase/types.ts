@@ -14,6 +14,24 @@ export type Database = {
   }
   public: {
     Tables: {
+      _admin_lookup: {
+        Row: {
+          checked_at: string
+          key: string
+          value: Json | null
+        }
+        Insert: {
+          checked_at?: string
+          key: string
+          value?: Json | null
+        }
+        Update: {
+          checked_at?: string
+          key?: string
+          value?: Json | null
+        }
+        Relationships: []
+      }
       alerts_log: {
         Row: {
           channel: string
