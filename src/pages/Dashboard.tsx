@@ -23,6 +23,26 @@ import { KNOWN_TOP_WALLETS } from "@/data/knownTopWallets";
 import { usePageTitle } from "@/hooks/usePageTitle";
 import { useIsAdmin } from "@/hooks/useIsAdmin";
 import { cleanMarketTitle } from "@/lib/cleanMarketTitle";
+import { useLineMonitor } from "@/hooks/useLineMonitor";
+
+function LineAlertsBanner() {
+  const { alerts } = useLineMonitor();
+  if (alerts.length === 0) return null;
+  return (
+    <Link
+      to="/tracker"
+      className="mb-3 flex items-center justify-between gap-2 rounded-md border border-warning/40 bg-warning/10 px-3 py-2 text-xs font-semibold text-warning hover:bg-warning/15"
+    >
+      <span className="flex items-center gap-1.5">
+        <Zap className="h-3.5 w-3.5" />
+        {alerts.length} active bet{alerts.length === 1 ? "" : "s"} ha{alerts.length === 1 ? "s" : "ve"} line movement
+      </span>
+      <span className="inline-flex items-center gap-1 text-warning">
+        View in Bet Tracker <ArrowRight className="h-3 w-3" />
+      </span>
+    </Link>
+  );
+}
 
 const TIER_COLORS: Record<string, string> = {
   S: "#f59e0b",
