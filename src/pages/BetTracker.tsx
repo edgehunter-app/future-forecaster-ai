@@ -1,6 +1,7 @@
 import { useMemo, useState } from "react";
 import { Trophy, Plus, Flame, Check, XCircle, MoreVertical, Zap, RefreshCw } from "lucide-react";
 import { LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid } from "recharts";
+import { formatDistanceToNow } from "date-fns";
 import { useBetTracker } from "@/hooks/useBetTracker";
 import LogBetModal from "@/components/tracker/LogBetModal";
 import LineAlertCard from "@/components/tracker/LineAlertCard";
@@ -13,6 +14,7 @@ import type { Bet, BetStatus } from "@/types";
 import {
   DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+
 
 type HistoryFilter = "all" | "won" | "lost" | "push";
 type HistorySort = "recent" | "biggest_win" | "biggest_loss";
