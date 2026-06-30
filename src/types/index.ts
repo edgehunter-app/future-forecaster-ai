@@ -160,6 +160,12 @@ export interface Bet {
   created_at: string;
   updated_at: string;
   resolved_at?: string | null;
+  opening_odds?: number | null;
+  current_odds?: number | null;
+  opening_line?: number | null;
+  current_line?: number | null;
+  line_alerts?: unknown[] | null;
+  last_line_check?: string | null;
 }
 
 export interface GameAnalysisResult {
