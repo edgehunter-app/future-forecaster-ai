@@ -88,7 +88,7 @@ export function useLineMonitor() {
         let currentBestOdds = -9999;
         let bestBook = "";
         for (const b of game.bookmakers ?? []) {
-          const o = side === "home" ? b.moneyline?.home : b.moneyline?.away;
+          const o = side === "home" ? b.homeMoneyline : b.awayMoneyline;
           if (typeof o === "number" && o > currentBestOdds) {
             currentBestOdds = o;
             bestBook = b.name ?? b.key ?? "";
