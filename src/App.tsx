@@ -85,6 +85,7 @@ function AppRoutes() {
     return (
       <Suspense fallback={<PageLoadingSkeleton />}>
         <Routes>
+          <Route path="/horse-racing" element={wrap(<HorseRacing />)} />
           <Route path="*" element={<Auth />} />
         </Routes>
       </Suspense>
