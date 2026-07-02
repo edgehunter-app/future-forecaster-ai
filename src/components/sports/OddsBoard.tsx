@@ -562,9 +562,8 @@ export function GolfLeaderboardCard({
     tournament.name.toLowerCase().replace(/\s+/g, "") ===
       oddsName.toLowerCase().replace(/\s+/g, "");
 
-  const analyzeTournamentName =
-    oddsName || tournament?.name || "Golf Tournament";
-  const canAnalyze = players.length > 0 || liveRows.length > 0;
+  const analyzeTournamentName = tournament?.name ?? "Golf Tournament";
+
 
   const buildPlayerOdds = () => {
     return players.slice(0, 30).map((p) => ({
@@ -810,7 +809,7 @@ export function GolfLeaderboardCard({
       )}
 
       {/* Claude AI Analysis */}
-      {canAnalyze && (
+      {liveRows.length > 0 && (
         analysis ? (
           <GolfAnalysisPanel
             result={analysis}
@@ -822,11 +821,7 @@ export function GolfLeaderboardCard({
             <button
               onClick={handleAnalyze}
               disabled={analyzing}
-              className={cn(
-                "flex w-full items-center justify-center gap-2 rounded-md",
-                "bg-gradient-to-r from-purple to-purple/80 px-3 h-11 text-white font-semibold",
-                "hover:from-purple/90 hover:to-purple/70 transition-colors disabled:opacity-60",
-              )}
+              className="w-full flex items-center justify-center gap-2 py-3 px-4 rounded-xl font-semibold text-sm bg-gradient-to-r from-purple-600 to-purple-700 text-white hover:from-purple-500 hover:to-purple-600 transition disabled:opacity-60"
             >
               {analyzing ? (
                 <>
