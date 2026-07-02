@@ -38,33 +38,30 @@ Deno.serve(async (req) => {
     out.golf = golf;
     out.horseRacing = horseRacing;
 
-    // 2 + 3. Leagues
-    if (golfId) {
-      const r = await getJson(`${BASE}/list_of_leagues?sport_id=${golfId}`);
-      console.log("[pinnacle] golf leagues:", JSON.stringify(r.body).slice(0, 1500));
-      out.golfLeagues = r;
+    // Probe multiple endpoint path variants against golf (sport_id=16)
+    const pathVariants = [
+      `/list_of_league?sport_id=${golfId}`,
+      `/list_of_leagues?sport_id=${golfId}`,
+      `/leagues?sport_id=${golfId}`,
+      `/list_of_events?sport_id=${golfId}`,
+      `/list_of_event?sport_id=${golfId}`,
+      `/get_special_markets?sport_id=${golfId}`,
+      `/get_markets?sport_id=${golfId}`,
+      `/markets?sport_id=${golfId}`,
+      `/kit/v1/leagues?sport_id=${golfId}`,
+      `/kit/v1/markets?sport_id=${golfId}`,
+      `/kit/v1/special-markets?sport_id=${golfId}`,
+    ];
+    const probes: any[] = [];
+    for (const p of pathVariants) {
+      const r = await getJson(`${BASE}${p}`);
+      probes.push({
+        path: p,
+        status: r.status,
+        preview: typeof r.body === "string" ? r.body.slice(0, 200) : JSON.stringify(r.body).slice(0, 400),
+      });
     }
-    if (hrId) {
-      const r = await getJson(`${BASE}/list_of_leagues?sport_id=${hrId}`);
-      console.log("[pinnacle] HR leagues:", JSON.stringify(r.body).slice(0, 1500));
-      out.hrLeagues = r;
-    }
-
-    // 4 + 5. Events (endpoint is /events per Pinnacle Odds RapidAPI docs)
-    if (golfId) {
-      const r = await getJson(`${BASE}/events?sport_id=${golfId}`);
-      const count = (r.body as any)?.events?.length ?? (r.body as any)?.length ?? "unknown";
-      console.log("[pinnacle] golf events count:", count);
-      console.log("[pinnacle] golf events preview:", JSON.stringify(r.body).slice(0, 1500));
-      out.golfEvents = { status: r.status, count, preview: JSON.stringify(r.body).slice(0, 2000) };
-    }
-    if (hrId) {
-      const r = await getJson(`${BASE}/events?sport_id=${hrId}`);
-      const count = (r.body as any)?.events?.length ?? (r.body as any)?.length ?? "unknown";
-      console.log("[pinnacle] HR events count:", count);
-      console.log("[pinnacle] HR events preview:", JSON.stringify(r.body).slice(0, 1500));
-      out.hrEvents = { status: r.status, count, preview: JSON.stringify(r.body).slice(0, 2000) };
-    }
+    out.probes = probes;
   } catch (err) {
     console.error("[pinnacle] error:", err);
     out.error = String(err);
