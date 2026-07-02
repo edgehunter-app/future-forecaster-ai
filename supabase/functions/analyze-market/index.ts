@@ -649,7 +649,9 @@ ${hasOdds ? `1. Identify the top 3 value plays in this field based on odds vs tr
 2. Pick ONE player to WATCH as most likely to win from here.
 3. Produce a watchList of the top 3 contenders with position, total, and reason.
 4. Set "noOddsAvailable": true. Set odds and bestBook to null. Omit valuePlay and lineShopping (or set to null).
-5. Do NOT invent odds or books.`}
+5. Do NOT invent odds or books.
+6. IMPORTANT: "recommendation" MUST be the actual full player name of the top contender (e.g. "Scottie Scheffler"). Do NOT return "NO BET AVAILABLE", "N/A", or any placeholder. Set "betType" to "watch". Set "confidence" and "edge" to 0. Set "suggestedAmount" to 0.
+7. Only use players, positions, and totals from the LEADERBOARD block above. Do NOT reference any other tournament, venue, or course.`}
 
 ${contextBlock}
 
