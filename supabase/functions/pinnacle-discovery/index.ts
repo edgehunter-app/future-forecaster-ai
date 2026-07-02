@@ -9,15 +9,16 @@ Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
 
   const PINNACLE_KEY = Deno.env.get("PINNACLE_API_KEY");
+  const HOST = "pinnalce-odds-fast-cheap-api.p.rapidapi.com";
   const headers = {
-    "x-rapidapi-host": "pinnacle-odds.p.rapidapi.com",
+    "x-rapidapi-host": HOST,
     "x-rapidapi-key": PINNACLE_KEY ?? "",
   };
 
   const variations = [
-    "https://pinnacle-odds.p.rapidapi.com/kit/v1/sports",
-    "https://pinnacle-odds.p.rapidapi.com/sports",
-    "https://pinnacle-odds.p.rapidapi.com/list_of_sports",
+    `https://${HOST}/list_of_sports`,
+    `https://${HOST}/sports`,
+    `https://${HOST}/kit/v1/sports`,
   ];
 
   const out: Record<string, unknown> = { keyExists: !!PINNACLE_KEY, keyLength: PINNACLE_KEY?.length ?? 0 };
