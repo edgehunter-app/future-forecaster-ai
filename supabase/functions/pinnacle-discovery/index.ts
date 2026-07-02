@@ -25,57 +25,44 @@ Deno.serve(async (req) => {
     return { status: res.status, body };
   };
 
+  const paths = [
+    "/get_special_markets",
+    "/special_markets",
+    "/list_of_special",
+    "/get_special",
+    "/outrights",
+    "/get_odds",
+    "/get_event_details",
+    "/list_of_special_markets",
+    "/specials",
+    "/get_specials",
+    "/kit/v1/special",
+    "/kit/v1/specials",
+    "/kit/v1/outrights",
+  ];
+
+  const probes: any[] = [];
   try {
-    // 1. Sports list
-    const sports = await getJson(`${BASE}/list_of_sports`);
-    out.sportsStatus = sports.status;
-    const results = (sports.body as any)?.results ?? [];
-    const golf = results.find((s: any) => /golf/i.test(s.name));
-    const horseRacing = results.find((s: any) => /horse/i.test(s.name));
-    const golfId = golf?.id;
-    const hrId = horseRacing?.id;
-    console.log("[pinnacle] golf ID:", golfId, "| horse racing ID:", hrId);
-    out.golf = golf;
-    out.horseRacing = horseRacing;
-
-    // Leagues
-    const golfLeaguesR = await getJson(`${BASE}/list_of_league?sport_id=${golfId}`);
-    const hrLeaguesR = await getJson(`${BASE}/list_of_league?sport_id=${hrId}`);
-    const golfLeagues = (golfLeaguesR.body as any)?.results ?? [];
-    const hrLeagues = (hrLeaguesR.body as any)?.results ?? [];
-    console.log("[pinnacle] golf leagues count:", golfLeagues.length);
-    console.log("[pinnacle] HR leagues count:", hrLeagues.length);
-    out.golfLeagues = golfLeagues;
-    out.hrLeagues = hrLeagues;
-
-    // Sport-level events
-    const golfEventsAll = await getJson(`${BASE}/list_of_events?sport_id=${golfId}`);
-    const hrEventsAll = await getJson(`${BASE}/list_of_events?sport_id=${hrId}`);
-    out.golfEventsSportLevel = {
-      status: golfEventsAll.status,
-      count: (golfEventsAll.body as any)?.results?.length ?? 0,
-      preview: JSON.stringify(golfEventsAll.body).slice(0, 1500),
-    };
-    out.hrEventsSportLevel = {
-      status: hrEventsAll.status,
-      count: (hrEventsAll.body as any)?.results?.length ?? 0,
-      preview: JSON.stringify(hrEventsAll.body).slice(0, 1500),
-    };
-
-    // Try events by league_id for first 3 golf leagues and first 3 HR leagues
-    const leagueProbes: any[] = [];
-    for (const lg of [...golfLeagues.slice(0, 5), ...hrLeagues.slice(0, 5)]) {
-      const r = await getJson(`${BASE}/list_of_events?sport_id=${golfLeagues.includes(lg) ? golfId : hrId}&league_ids=${lg.id}`);
-      const count = (r.body as any)?.results?.length ?? 0;
-      leagueProbes.push({
-        leagueId: lg.id,
-        leagueName: lg.name,
-        status: r.status,
-        count,
-        preview: JSON.stringify(r.body).slice(0, 800),
-      });
+    for (const path of paths) {
+      try {
+        const res = await fetch(`${BASE}${path}`, { headers });
+        let bodyPreview = "";
+        if (res.ok) {
+          const json = await res.json();
+          bodyPreview = JSON.stringify(json).slice(0, 400);
+          console.log(`[pinnacle-probe] ${path} => ${res.status} SUCCESS:`, bodyPreview);
+        } else {
+          bodyPreview = (await res.text()).slice(0, 200);
+          console.log(`[pinnacle-probe] ${path} => ${res.status}:`, bodyPreview);
+        }
+        probes.push({ path, status: res.status, preview: bodyPreview });
+      } catch (err) {
+        console.log(`[pinnacle-probe] ${path} failed:`, err);
+        probes.push({ path, error: String(err) });
+      }
+      await new Promise((r) => setTimeout(r, 200));
     }
-    out.leagueEventProbes = leagueProbes;
+    out.probes = probes;
   } catch (err) {
     console.error("[pinnacle] error:", err);
     out.error = String(err);
