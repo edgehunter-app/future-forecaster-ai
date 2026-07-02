@@ -562,9 +562,8 @@ export function GolfLeaderboardCard({
     tournament.name.toLowerCase().replace(/\s+/g, "") ===
       oddsName.toLowerCase().replace(/\s+/g, "");
 
-  const analyzeTournamentName =
-    oddsName || tournament?.name || "Golf Tournament";
-  const canAnalyze = players.length > 0 || liveRows.length > 0;
+  const analyzeTournamentName = tournament?.name ?? "Golf Tournament";
+
 
   const buildPlayerOdds = () => {
     return players.slice(0, 30).map((p) => ({
