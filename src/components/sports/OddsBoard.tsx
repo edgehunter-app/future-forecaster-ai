@@ -574,33 +574,39 @@ export function GolfLeaderboardCard({
     }));
   };
 
-  const handleAnalyze = async () => {
+  const [analyzedTournamentName, setAnalyzedTournamentName] = useState<string>("");
+
+  const handleAnalyze = async (mode: "leaderboard" | "odds") => {
     if (analyzing) return;
     setAnalyzing(true);
     setAnalysisError(null);
     try {
-      const dates =
-        liveRange ||
-        (oddsMajor ? oddsMajor.range : "TBD");
-      const course = oddsMajor?.venue ?? null;
+      const isOddsMode = mode === "odds";
+      const targetName = isOddsMode ? oddsName : analyzeTournamentName;
+      const targetDates = isOddsMode
+        ? (oddsMajor ? oddsMajor.range : "TBD")
+        : (liveRange || (oddsMajor ? oddsMajor.range : "TBD"));
+      const targetCourse = isOddsMode ? (oddsMajor?.venue ?? null) : (oddsMajor?.venue ?? null);
+      const playerOdds = isOddsMode ? buildPlayerOdds() : [];
       console.log("[Golf Analyze] sending:", {
         type: "golf",
-        tournamentName: analyzeTournamentName,
-        players: players?.length ?? 0,
+        tournamentName: targetName,
+        players: playerOdds.length,
         leaderboard: liveRows?.length ?? 0,
         hasOddsGame: !!game,
-        dates,
-        course,
+        mode,
+        dates: targetDates,
+        course: targetCourse,
       });
       const { data, error } = await supabase.functions.invoke("analyze-market", {
         body: {
           type: "golf",
-          tournamentName: analyzeTournamentName,
-          dates,
-          course,
+          tournamentName: targetName,
+          dates: targetDates,
+          course: targetCourse,
           purse: tournament?.purse ?? 0,
           leaderboard: liveRows,
-          players: buildPlayerOdds(),
+          players: playerOdds,
           bankroll: settings.bankroll,
           kellyMultiplier: settings.kellyMultiplier,
           maxPositionPct: (settings.maxPosition ?? 0.05) * 100,
@@ -610,6 +616,7 @@ export function GolfLeaderboardCard({
       const d = data as Record<string, unknown> | null;
       if (!d) throw new Error("Empty response");
       if (typeof d.error === "string") throw new Error(d.error);
+      setAnalyzedTournamentName(targetName);
       setAnalysis(d as GolfAnalysisResult);
     } catch (err) {
       setAnalysisError(err instanceof Error ? err.message : "Analysis failed");
@@ -735,17 +742,43 @@ export function GolfLeaderboardCard({
               {expanded ? "Show top 15" : `Show all ${liveRows.length} players`}
             </button>
           )}
+
+          {/* Analyze John Deere — leaderboard only */}
+          {liveRows.length > 0 && (
+            <button
+              onClick={() => handleAnalyze("leaderboard")}
+              disabled={analyzing}
+              className="w-full flex items-center justify-center gap-2 py-3 px-4 rounded-xl font-semibold text-sm bg-gradient-to-r from-purple-600 to-purple-700 text-white hover:from-purple-500 hover:to-purple-600 transition disabled:opacity-60"
+            >
+              {analyzing ? (
+                <>
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                  <span className="text-sm">Analyzing field…</span>
+                </>
+              ) : (
+                <>
+                  <Brain className="h-4 w-4" />
+                  <span className="text-sm">
+                    🤖 Analyze {tournament?.name ?? "Tournament"} · Who's in contention?
+                  </span>
+                </>
+              )}
+            </button>
+          )}
         </section>
       )}
 
       {/* ===== Section 2: Betting Odds (Odds API) — only when distinct from live ===== */}
       {players.length > 0 && !sameEvent && (
         <section className="space-y-2 border-t border-border/60 pt-3">
+          <div className="flex items-center justify-center">
+            <div className="h-px flex-1 bg-border/60" />
+          </div>
           <header className="flex items-start justify-between gap-2">
             <div>
               <div className="flex items-center gap-2">
                 <span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
-                  💰 Outright Winner Odds
+                  📊 Outright Winner Odds
                 </span>
               </div>
               <div className="text-base font-extrabold text-foreground">{oddsName}</div>
@@ -798,28 +831,11 @@ export function GolfLeaderboardCard({
               {expanded ? "Show top 10" : `Show all ${players.length} players`}
             </button>
           )}
-        </section>
-      )}
 
-      {/* Fallback: no live tournament & no odds */}
-      {!tournament && players.length === 0 && (
-        <div className="rounded-md border border-border/60 bg-background/40 p-4 text-center text-[11px] text-muted-foreground">
-          No golf data available right now.
-        </div>
-      )}
-
-      {/* Claude AI Analysis */}
-      {liveRows.length > 0 && (
-        analysis ? (
-          <GolfAnalysisPanel
-            result={analysis}
-            tournamentName={analyzeTournamentName}
-            onClear={() => setAnalysis(null)}
-          />
-        ) : (
-          <div className="space-y-2">
+          {/* Analyze The Open — odds + leaderboard */}
+          {players.length > 0 && (
             <button
-              onClick={handleAnalyze}
+              onClick={() => handleAnalyze("odds")}
               disabled={analyzing}
               className="w-full flex items-center justify-center gap-2 py-3 px-4 rounded-xl font-semibold text-sm bg-gradient-to-r from-purple-600 to-purple-700 text-white hover:from-purple-500 hover:to-purple-600 transition disabled:opacity-60"
             >
@@ -832,27 +848,43 @@ export function GolfLeaderboardCard({
                 <>
                   <Brain className="h-4 w-4" />
                   <span className="text-sm">
-                    🤖 Analyze {analyzeTournamentName} · Find Value
+                    🤖 Analyze {oddsName} · Find Value
                   </span>
                 </>
               )}
             </button>
-            {analysisError && (
-              <div className="rounded-md border border-destructive/40 bg-destructive/10 p-2.5 flex items-start gap-2">
-                <AlertCircle className="h-3.5 w-3.5 mt-0.5 text-destructive shrink-0" />
-                <div className="flex-1">
-                  <p className="text-[11px] text-destructive">{analysisError}</p>
-                  <button
-                    onClick={handleAnalyze}
-                    className="mt-1.5 rounded-md border border-destructive/40 bg-background px-2 py-0.5 text-[10px] font-semibold text-destructive hover:bg-destructive/10"
-                  >
-                    Try Again
-                  </button>
-                </div>
-              </div>
-            )}
+          )}
+        </section>
+      )}
+
+      {/* Fallback: no live tournament & no odds */}
+      {!tournament && players.length === 0 && (
+        <div className="rounded-md border border-border/60 bg-background/40 p-4 text-center text-[11px] text-muted-foreground">
+          No golf data available right now.
+        </div>
+      )}
+
+      {/* Claude AI Analysis result panel */}
+      {analysis && (
+        <GolfAnalysisPanel
+          result={analysis}
+          tournamentName={analyzedTournamentName || analyzeTournamentName}
+          onClear={() => setAnalysis(null)}
+        />
+      )}
+      {analysisError && !analysis && (
+        <div className="rounded-md border border-destructive/40 bg-destructive/10 p-2.5 flex items-start gap-2">
+          <AlertCircle className="h-3.5 w-3.5 mt-0.5 text-destructive shrink-0" />
+          <div className="flex-1">
+            <p className="text-[11px] text-destructive">{analysisError}</p>
+            <button
+              onClick={() => handleAnalyze("leaderboard")}
+              className="mt-1.5 rounded-md border border-destructive/40 bg-background px-2 py-0.5 text-[10px] font-semibold text-destructive hover:bg-destructive/10"
+            >
+              Try Again
+            </button>
           </div>
-        )
+        </div>
       )}
 
       <GamblingDisclaimer variant="inline" />
