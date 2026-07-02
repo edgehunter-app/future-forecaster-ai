@@ -592,14 +592,22 @@ function buildGolfPrompt(p: AnalyzeBody): string {
         `${pl.position ?? "-"}. ${pl.firstName ?? ""} ${pl.lastName ?? ""} — ${pl.total ?? "-"} (Today: ${pl.currentRoundScore ?? "-"})`
       ).join("\n")
     : "Tournament not yet started — pre-tournament analysis";
-  const playersBlock = players.length > 0
+  const hasOdds = players.length > 0;
+  const playersBlock = hasOdds
     ? players.slice(0, 20).map((pl: Any) => {
         const bookStr = Object.entries(pl.bookOdds ?? {})
           .map(([book, odds]) => `${book} ${odds}`)
           .join(" | ");
         return `${pl.name}: Best ${pl.bestOdds} at ${pl.bestBook}${bookStr ? " | " + bookStr : ""}`;
       }).join("\n")
-    : "No odds available";
+    : `NO BETTING ODDS AVAILABLE for this event on the current data plan.
+Base analysis on leaderboard position, course fit, and performance trends only.
+Do NOT reference specific odds, prices, books, edge, or line-shopping.
+Focus on:
+  - Who is in the best position to win
+  - Who has momentum after recent rounds
+  - Course history and fit
+  - Notable storylines`;
   const inProgress = lb.length > 0;
   const contextBlock = inProgress
     ? `Tournament is IN PROGRESS. Consider:
@@ -633,11 +641,15 @@ USER RISK PROFILE:
   Max position: ${maxPct}% = $${((bankroll * maxPct) / 100).toFixed(0)}
 
 ANALYSIS INSTRUCTIONS:
-1. Identify the top 3 value plays in this field based on odds vs true probability
+${hasOdds ? `1. Identify the top 3 value plays in this field based on odds vs true probability
 2. Look for line shopping opportunities where books disagree significantly
 3. Consider course fit, recent form, and major championship experience
 4. Suggest one primary recommendation and one each-way value play
-5. Note any players offering exceptional value at their current price
+5. Note any players offering exceptional value at their current price` : `1. No odds are available — do a pure leaderboard/tournament read.
+2. Pick ONE player to WATCH as most likely to win from here.
+3. Produce a watchList of the top 3 contenders with position, total, and reason.
+4. Set "noOddsAvailable": true. Set odds and bestBook to null. Omit valuePlay and lineShopping (or set to null).
+5. Do NOT invent odds or books.`}
 
 ${contextBlock}
 
@@ -645,8 +657,10 @@ Respond with ONLY valid JSON, no markdown:
 {
   "recommendation": "player full name",
   "betType": "outright" | "each-way" | "top5" | "top10",
-  "odds": best available American odds (number),
-  "bestBook": "book name",
+  "odds": best available American odds (number) or null if no odds available,
+  "bestBook": "book name" or null,
+  "noOddsAvailable": boolean,
+  "watchList": [ { "player": "name", "position": "T2", "total": "-12", "reason": "why to watch" } ],
   "confidence": 0-100,
   "edge": decimal e.g. 0.04,
   "suggestedAmount": dollar amount,
