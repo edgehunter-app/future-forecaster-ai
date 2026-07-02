@@ -586,7 +586,14 @@ export function GolfLeaderboardCard({
       const targetDates = isOddsMode
         ? (oddsMajor ? oddsMajor.range : "TBD")
         : (liveRange || (oddsMajor ? oddsMajor.range : "TBD"));
-      const targetCourse = isOddsMode ? (oddsMajor?.venue ?? null) : (oddsMajor?.venue ?? null);
+      // For leaderboard mode use the ACTUAL course from live tournament data,
+      // not the odds-market major venue (would mix e.g. John Deere with Royal Portrush).
+      const liveCourse =
+        liveRows?.[0]?.rounds?.[0]?.courseName ??
+        null;
+      const targetCourse = isOddsMode
+        ? (oddsMajor?.venue ?? null)
+        : liveCourse;
       const playerOdds = isOddsMode ? buildPlayerOdds() : [];
       console.log("[Golf Analyze] sending:", {
         type: "golf",
