@@ -34,6 +34,8 @@ export interface GolfAnalysisResult {
   keyFactors?: string[];
   riskLevel?: "low" | "medium" | "high";
   warningFlags?: string[];
+  noOddsAvailable?: boolean;
+  watchList?: Array<{ player?: string; position?: string; total?: string; reason?: string }>;
 }
 
 interface Props {
@@ -58,10 +60,15 @@ export default function GolfAnalysisPanel({ result, tournamentName, onClear }: P
 
   const ls = result.lineShopping;
   const hasLineShop =
+    !result.noOddsAvailable &&
     !!ls?.player && Number.isFinite(ls?.bestOdds ?? NaN) && Number.isFinite(ls?.worstOdds ?? NaN);
   const showValuePlay =
+    !result.noOddsAvailable &&
     !!result.valuePlay?.player &&
     result.valuePlay.player.toLowerCase() !== (result.recommendation ?? "").toLowerCase();
+
+  const noOdds = !!result.noOddsAvailable;
+  const topWatch = noOdds ? (result.watchList ?? []).find((w) => (w.player ?? "").toLowerCase() === player.toLowerCase()) : undefined;
 
   return (
     <div className="rounded-lg border border-purple/40 bg-gradient-to-br from-purple/10 to-card p-3 sm:p-4 space-y-3 animate-in fade-in slide-in-from-top-2 duration-200">
@@ -69,7 +76,7 @@ export default function GolfAnalysisPanel({ result, tournamentName, onClear }: P
         <div className="flex items-center gap-1.5 text-purple">
           <Brain className="h-3.5 w-3.5" />
           <span className="text-[11px] font-bold uppercase tracking-wide">
-            🤖 Claude Golf Analysis
+            {noOdds ? "🤖 Claude Tournament Analysis" : "🤖 Claude Golf Analysis"}
           </span>
         </div>
         <div className="flex items-center gap-2">
@@ -83,31 +90,64 @@ export default function GolfAnalysisPanel({ result, tournamentName, onClear }: P
           </button>
         </div>
       </div>
-      <div className="text-[11px] text-muted-foreground -mt-1">{tournamentName}</div>
+      <div className="text-[11px] text-muted-foreground -mt-1">
+        {tournamentName}
+        {noOdds && " · Leaderboard analysis · Odds not available for this event"}
+      </div>
 
       {/* Top recommendation */}
       <div className="rounded-md border border-purple/40 bg-purple/10 px-3 py-3 text-center">
         <div className="text-base sm:text-xl font-extrabold leading-tight text-foreground">
-          BET {player.toUpperCase()}
+          {noOdds ? "WATCH" : "BET"} {player.toUpperCase()}
         </div>
         <div className="mt-0.5 text-[11px] tracking-wide text-muted-foreground">
-          {betLabel}
-          {result.odds ? ` · ${fmtOdds(result.odds)}` : ""}
-          {result.bestBook ? ` at ${result.bestBook}` : ""}
+          {noOdds
+            ? topWatch
+              ? `Current position: ${topWatch.position ?? "-"} at ${topWatch.total ?? "-"}`
+              : "Check your sportsbook for current odds"
+            : `${betLabel}${result.odds ? ` · ${fmtOdds(result.odds)}` : ""}${result.bestBook ? ` at ${result.bestBook}` : ""}`}
         </div>
       </div>
 
       {/* Metrics */}
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
-        <Metric label="Best Odds" value={fmtOdds(result.odds)} tone="text-success" />
-        <Metric label="Confidence" value={`${result.confidence ?? 0}%`} tone="text-info" />
-        <Metric
-          label="Edge"
-          value={`${(result.edge ?? 0) >= 0 ? "+" : ""}${((result.edge ?? 0) * 100).toFixed(1)}%`}
-          tone="text-success"
-        />
-        <Metric label="Suggested" value={`$${result.suggestedAmount ?? 0}`} tone="text-foreground" />
-      </div>
+      {noOdds ? (
+        <div className="rounded-md border border-border/60 bg-background/40 p-2 text-[11px] text-muted-foreground text-center">
+          Check your sportsbook for current odds — no live odds feed for this event.
+        </div>
+      ) : (
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+          <Metric label="Best Odds" value={fmtOdds(result.odds)} tone="text-success" />
+          <Metric label="Confidence" value={`${result.confidence ?? 0}%`} tone="text-info" />
+          <Metric
+            label="Edge"
+            value={`${(result.edge ?? 0) >= 0 ? "+" : ""}${((result.edge ?? 0) * 100).toFixed(1)}%`}
+            tone="text-success"
+          />
+          <Metric label="Suggested" value={`$${result.suggestedAmount ?? 0}`} tone="text-foreground" />
+        </div>
+      )}
+
+      {/* Watch list (no-odds mode) */}
+      {noOdds && Array.isArray(result.watchList) && result.watchList.length > 0 && (
+        <div>
+          <div className="mb-1.5 text-[10px] uppercase font-semibold text-muted-foreground">
+            Players to Watch
+          </div>
+          <ol className="space-y-1.5">
+            {result.watchList.slice(0, 3).map((w, i) => (
+              <li key={i} className="rounded-md border border-border/60 bg-background/40 p-2 text-[11px]">
+                <div className="font-bold text-foreground">
+                  {i + 1}. {w.player ?? "—"}{" "}
+                  <span className="text-muted-foreground font-normal">
+                    · {w.position ?? "-"} at {w.total ?? "-"}
+                  </span>
+                </div>
+                {w.reason && <div className="mt-0.5 text-muted-foreground">{w.reason}</div>}
+              </li>
+            ))}
+          </ol>
+        </div>
+      )}
 
       {/* Value play */}
       {showValuePlay && result.valuePlay && (
