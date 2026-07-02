@@ -742,6 +742,29 @@ export function GolfLeaderboardCard({
               {expanded ? "Show top 15" : `Show all ${liveRows.length} players`}
             </button>
           )}
+
+          {/* Analyze John Deere — leaderboard only */}
+          {liveRows.length > 0 && (
+            <button
+              onClick={() => handleAnalyze("leaderboard")}
+              disabled={analyzing}
+              className="w-full flex items-center justify-center gap-2 py-3 px-4 rounded-xl font-semibold text-sm bg-gradient-to-r from-purple-600 to-purple-700 text-white hover:from-purple-500 hover:to-purple-600 transition disabled:opacity-60"
+            >
+              {analyzing ? (
+                <>
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                  <span className="text-sm">Analyzing field…</span>
+                </>
+              ) : (
+                <>
+                  <Brain className="h-4 w-4" />
+                  <span className="text-sm">
+                    🤖 Analyze {tournament?.name ?? "Tournament"} · Who's in contention?
+                  </span>
+                </>
+              )}
+            </button>
+          )}
         </section>
       )}
 
