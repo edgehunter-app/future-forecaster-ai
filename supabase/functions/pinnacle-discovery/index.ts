@@ -38,30 +38,44 @@ Deno.serve(async (req) => {
     out.golf = golf;
     out.horseRacing = horseRacing;
 
-    // Probe multiple endpoint path variants against golf (sport_id=16)
-    const pathVariants = [
-      `/list_of_league?sport_id=${golfId}`,
-      `/list_of_leagues?sport_id=${golfId}`,
-      `/leagues?sport_id=${golfId}`,
-      `/list_of_events?sport_id=${golfId}`,
-      `/list_of_event?sport_id=${golfId}`,
-      `/get_special_markets?sport_id=${golfId}`,
-      `/get_markets?sport_id=${golfId}`,
-      `/markets?sport_id=${golfId}`,
-      `/kit/v1/leagues?sport_id=${golfId}`,
-      `/kit/v1/markets?sport_id=${golfId}`,
-      `/kit/v1/special-markets?sport_id=${golfId}`,
-    ];
-    const probes: any[] = [];
-    for (const p of pathVariants) {
-      const r = await getJson(`${BASE}${p}`);
-      probes.push({
-        path: p,
+    // Leagues
+    const golfLeaguesR = await getJson(`${BASE}/list_of_league?sport_id=${golfId}`);
+    const hrLeaguesR = await getJson(`${BASE}/list_of_league?sport_id=${hrId}`);
+    const golfLeagues = (golfLeaguesR.body as any)?.results ?? [];
+    const hrLeagues = (hrLeaguesR.body as any)?.results ?? [];
+    console.log("[pinnacle] golf leagues count:", golfLeagues.length);
+    console.log("[pinnacle] HR leagues count:", hrLeagues.length);
+    out.golfLeagues = golfLeagues;
+    out.hrLeagues = hrLeagues;
+
+    // Sport-level events
+    const golfEventsAll = await getJson(`${BASE}/list_of_events?sport_id=${golfId}`);
+    const hrEventsAll = await getJson(`${BASE}/list_of_events?sport_id=${hrId}`);
+    out.golfEventsSportLevel = {
+      status: golfEventsAll.status,
+      count: (golfEventsAll.body as any)?.results?.length ?? 0,
+      preview: JSON.stringify(golfEventsAll.body).slice(0, 1500),
+    };
+    out.hrEventsSportLevel = {
+      status: hrEventsAll.status,
+      count: (hrEventsAll.body as any)?.results?.length ?? 0,
+      preview: JSON.stringify(hrEventsAll.body).slice(0, 1500),
+    };
+
+    // Try events by league_id for first 3 golf leagues and first 3 HR leagues
+    const leagueProbes: any[] = [];
+    for (const lg of [...golfLeagues.slice(0, 5), ...hrLeagues.slice(0, 5)]) {
+      const r = await getJson(`${BASE}/list_of_events?sport_id=${golfLeagues.includes(lg) ? golfId : hrId}&league_ids=${lg.id}`);
+      const count = (r.body as any)?.results?.length ?? 0;
+      leagueProbes.push({
+        leagueId: lg.id,
+        leagueName: lg.name,
         status: r.status,
-        preview: typeof r.body === "string" ? r.body.slice(0, 200) : JSON.stringify(r.body).slice(0, 400),
+        count,
+        preview: JSON.stringify(r.body).slice(0, 800),
       });
     }
-    out.probes = probes;
+    out.leagueEventProbes = leagueProbes;
   } catch (err) {
     console.error("[pinnacle] error:", err);
     out.error = String(err);
