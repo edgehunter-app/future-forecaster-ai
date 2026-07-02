@@ -864,51 +864,27 @@ export function GolfLeaderboardCard({
         </div>
       )}
 
-      {/* Claude AI Analysis */}
-      {liveRows.length > 0 && (
-        analysis ? (
-          <GolfAnalysisPanel
-            result={analysis}
-            tournamentName={analyzeTournamentName}
-            onClear={() => setAnalysis(null)}
-          />
-        ) : (
-          <div className="space-y-2">
+      {/* Claude AI Analysis result panel */}
+      {analysis && (
+        <GolfAnalysisPanel
+          result={analysis}
+          tournamentName={analyzedTournamentName || analyzeTournamentName}
+          onClear={() => setAnalysis(null)}
+        />
+      )}
+      {analysisError && !analysis && (
+        <div className="rounded-md border border-destructive/40 bg-destructive/10 p-2.5 flex items-start gap-2">
+          <AlertCircle className="h-3.5 w-3.5 mt-0.5 text-destructive shrink-0" />
+          <div className="flex-1">
+            <p className="text-[11px] text-destructive">{analysisError}</p>
             <button
-              onClick={handleAnalyze}
-              disabled={analyzing}
-              className="w-full flex items-center justify-center gap-2 py-3 px-4 rounded-xl font-semibold text-sm bg-gradient-to-r from-purple-600 to-purple-700 text-white hover:from-purple-500 hover:to-purple-600 transition disabled:opacity-60"
+              onClick={() => handleAnalyze("leaderboard")}
+              className="mt-1.5 rounded-md border border-destructive/40 bg-background px-2 py-0.5 text-[10px] font-semibold text-destructive hover:bg-destructive/10"
             >
-              {analyzing ? (
-                <>
-                  <Loader2 className="h-4 w-4 animate-spin" />
-                  <span className="text-sm">Analyzing field…</span>
-                </>
-              ) : (
-                <>
-                  <Brain className="h-4 w-4" />
-                  <span className="text-sm">
-                    🤖 Analyze {analyzeTournamentName} · Find Value
-                  </span>
-                </>
-              )}
+              Try Again
             </button>
-            {analysisError && (
-              <div className="rounded-md border border-destructive/40 bg-destructive/10 p-2.5 flex items-start gap-2">
-                <AlertCircle className="h-3.5 w-3.5 mt-0.5 text-destructive shrink-0" />
-                <div className="flex-1">
-                  <p className="text-[11px] text-destructive">{analysisError}</p>
-                  <button
-                    onClick={handleAnalyze}
-                    className="mt-1.5 rounded-md border border-destructive/40 bg-background px-2 py-0.5 text-[10px] font-semibold text-destructive hover:bg-destructive/10"
-                  >
-                    Try Again
-                  </button>
-                </div>
-              </div>
-            )}
           </div>
-        )
+        </div>
       )}
 
       <GamblingDisclaimer variant="inline" />
