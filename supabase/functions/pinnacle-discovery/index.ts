@@ -10,46 +10,65 @@ Deno.serve(async (req) => {
 
   const PINNACLE_KEY = Deno.env.get("PINNACLE_API_KEY");
   const HOST = "pinnalce-odds-fast-cheap-api.p.rapidapi.com";
+  const BASE = `https://${HOST}`;
   const headers = {
     "x-rapidapi-host": HOST,
     "x-rapidapi-key": PINNACLE_KEY ?? "",
   };
 
-  const variations = [
-    `https://${HOST}/list_of_sports`,
-    `https://${HOST}/sports`,
-    `https://${HOST}/kit/v1/sports`,
-  ];
+  const out: Record<string, unknown> = { keyExists: !!PINNACLE_KEY };
 
-  const out: Record<string, unknown> = { keyExists: !!PINNACLE_KEY, keyLength: PINNACLE_KEY?.length ?? 0 };
-  const attempts: any[] = [];
-  console.log("[pinnacle] key exists:", !!PINNACLE_KEY, "length:", PINNACLE_KEY?.length ?? 0);
+  const getJson = async (url: string) => {
+    const res = await fetch(url, { headers });
+    const body = res.ok ? await res.json() : await res.text();
+    console.log(`[pinnacle] ${url} => ${res.status}`);
+    return { status: res.status, body };
+  };
 
-  for (const url of variations) {
-    try {
-      const res = await fetch(url, { headers });
-      console.log(`[pinnacle] ${url} => status ${res.status}`);
-      const attempt: any = { url, status: res.status };
-      if (res.ok) {
-        const json = await res.json();
-        const preview = JSON.stringify(json).slice(0, 500);
-        console.log("[pinnacle] success preview:", preview);
-        attempt.preview = preview;
-        attempts.push(attempt);
-        out.success = attempt;
-        break;
-      } else {
-        const text = await res.text();
-        console.log("[pinnacle] error body:", text.slice(0, 300));
-        attempt.error = text.slice(0, 300);
-        attempts.push(attempt);
-      }
-    } catch (err) {
-      console.error(`[pinnacle] fetch error ${url}:`, err);
-      attempts.push({ url, error: String(err) });
+  try {
+    // 1. Sports list
+    const sports = await getJson(`${BASE}/list_of_sports`);
+    out.sportsStatus = sports.status;
+    const results = (sports.body as any)?.results ?? [];
+    const golf = results.find((s: any) => /golf/i.test(s.name));
+    const horseRacing = results.find((s: any) => /horse/i.test(s.name));
+    const golfId = golf?.id;
+    const hrId = horseRacing?.id;
+    console.log("[pinnacle] golf ID:", golfId, "| horse racing ID:", hrId);
+    out.golf = golf;
+    out.horseRacing = horseRacing;
+
+    // 2 + 3. Leagues
+    if (golfId) {
+      const r = await getJson(`${BASE}/list_of_leagues?sport_id=${golfId}`);
+      console.log("[pinnacle] golf leagues:", JSON.stringify(r.body).slice(0, 1500));
+      out.golfLeagues = r;
     }
+    if (hrId) {
+      const r = await getJson(`${BASE}/list_of_leagues?sport_id=${hrId}`);
+      console.log("[pinnacle] HR leagues:", JSON.stringify(r.body).slice(0, 1500));
+      out.hrLeagues = r;
+    }
+
+    // 4 + 5. Events (endpoint is /events per Pinnacle Odds RapidAPI docs)
+    if (golfId) {
+      const r = await getJson(`${BASE}/events?sport_id=${golfId}`);
+      const count = (r.body as any)?.events?.length ?? (r.body as any)?.length ?? "unknown";
+      console.log("[pinnacle] golf events count:", count);
+      console.log("[pinnacle] golf events preview:", JSON.stringify(r.body).slice(0, 1500));
+      out.golfEvents = { status: r.status, count, preview: JSON.stringify(r.body).slice(0, 2000) };
+    }
+    if (hrId) {
+      const r = await getJson(`${BASE}/events?sport_id=${hrId}`);
+      const count = (r.body as any)?.events?.length ?? (r.body as any)?.length ?? "unknown";
+      console.log("[pinnacle] HR events count:", count);
+      console.log("[pinnacle] HR events preview:", JSON.stringify(r.body).slice(0, 1500));
+      out.hrEvents = { status: r.status, count, preview: JSON.stringify(r.body).slice(0, 2000) };
+    }
+  } catch (err) {
+    console.error("[pinnacle] error:", err);
+    out.error = String(err);
   }
-  out.attempts = attempts;
 
   return new Response(JSON.stringify(out, null, 2), {
     headers: { ...corsHeaders, "Content-Type": "application/json" },
