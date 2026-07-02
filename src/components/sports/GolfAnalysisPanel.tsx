@@ -58,17 +58,44 @@ export default function GolfAnalysisPanel({ result, tournamentName, onClear }: P
           ? "Top 10 Finish"
           : "Outright Winner";
 
+  // Robust detection: any of these signals mean we have no real odds to render.
+  const recNorm = (result.recommendation ?? "").trim().toUpperCase();
+  const oddsNum = typeof result.odds === "number" ? result.odds : Number(result.odds);
+  const hasOdds =
+    Number.isFinite(oddsNum) &&
+    oddsNum !== 0 &&
+    recNorm !== "NO BET AVAILABLE" &&
+    recNorm !== "N/A" &&
+    recNorm !== "";
+  const isLeaderboardOnly =
+    !hasOdds ||
+    result.noOddsAvailable === true ||
+    result.betType === "watch";
+
   const ls = result.lineShopping;
   const hasLineShop =
-    !result.noOddsAvailable &&
+    !isLeaderboardOnly &&
     !!ls?.player && Number.isFinite(ls?.bestOdds ?? NaN) && Number.isFinite(ls?.worstOdds ?? NaN);
   const showValuePlay =
-    !result.noOddsAvailable &&
+    !isLeaderboardOnly &&
     !!result.valuePlay?.player &&
     result.valuePlay.player.toLowerCase() !== (result.recommendation ?? "").toLowerCase();
 
-  const noOdds = !!result.noOddsAvailable;
-  const topWatch = noOdds ? (result.watchList ?? []).find((w) => (w.player ?? "").toLowerCase() === player.toLowerCase()) : undefined;
+  const noOdds = isLeaderboardOnly;
+  const watchList = (result.watchList && result.watchList.length > 0)
+    ? result.watchList
+    : (result.topPicks ?? []).map((tp) => ({
+        player: tp.player,
+        position: "",
+        total: "",
+        reason: tp.reason,
+      }));
+  const topWatch = noOdds
+    ? watchList.find((w) => (w.player ?? "").toLowerCase() === player.toLowerCase())
+    : undefined;
+  const displayPlayer = noOdds && (recNorm === "NO BET AVAILABLE" || recNorm === "N/A" || recNorm === "")
+    ? (watchList[0]?.player ?? "Top Contender")
+    : player;
 
   return (
     <div className="rounded-lg border border-purple/40 bg-gradient-to-br from-purple/10 to-card p-3 sm:p-4 space-y-3 animate-in fade-in slide-in-from-top-2 duration-200">
@@ -92,29 +119,25 @@ export default function GolfAnalysisPanel({ result, tournamentName, onClear }: P
       </div>
       <div className="text-[11px] text-muted-foreground -mt-1">
         {tournamentName}
-        {noOdds && " · Leaderboard analysis · Odds not available for this event"}
+        {noOdds && " · Leaderboard Analysis · No betting odds available for this event"}
       </div>
 
       {/* Top recommendation */}
       <div className="rounded-md border border-purple/40 bg-purple/10 px-3 py-3 text-center">
         <div className="text-base sm:text-xl font-extrabold leading-tight text-foreground">
-          {noOdds ? "WATCH" : "BET"} {player.toUpperCase()}
+          {noOdds ? "WATCH" : "BET"} {displayPlayer.toUpperCase()}
         </div>
         <div className="mt-0.5 text-[11px] tracking-wide text-muted-foreground">
           {noOdds
             ? topWatch
-              ? `Current position: ${topWatch.position ?? "-"} at ${topWatch.total ?? "-"}`
-              : "Check your sportsbook for current odds"
+              ? `Current position: ${topWatch.position || "-"} at ${topWatch.total || "-"}`
+              : "Based on live leaderboard momentum"
             : `${betLabel}${result.odds ? ` · ${fmtOdds(result.odds)}` : ""}${result.bestBook ? ` at ${result.bestBook}` : ""}`}
         </div>
       </div>
 
       {/* Metrics */}
-      {noOdds ? (
-        <div className="rounded-md border border-border/60 bg-background/40 p-2 text-[11px] text-muted-foreground text-center">
-          Check your sportsbook for current odds — no live odds feed for this event.
-        </div>
-      ) : (
+      {!noOdds && (
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
           <Metric label="Best Odds" value={fmtOdds(result.odds)} tone="text-success" />
           <Metric label="Confidence" value={`${result.confidence ?? 0}%`} tone="text-info" />
@@ -128,19 +151,21 @@ export default function GolfAnalysisPanel({ result, tournamentName, onClear }: P
       )}
 
       {/* Watch list (no-odds mode) */}
-      {noOdds && Array.isArray(result.watchList) && result.watchList.length > 0 && (
+      {noOdds && watchList.length > 0 && (
         <div>
           <div className="mb-1.5 text-[10px] uppercase font-semibold text-muted-foreground">
-            Players to Watch
+            👀 Who to Watch
           </div>
           <ol className="space-y-1.5">
-            {result.watchList.slice(0, 3).map((w, i) => (
+            {watchList.slice(0, 3).map((w, i) => (
               <li key={i} className="rounded-md border border-border/60 bg-background/40 p-2 text-[11px]">
                 <div className="font-bold text-foreground">
                   {i + 1}. {w.player ?? "—"}{" "}
-                  <span className="text-muted-foreground font-normal">
-                    · {w.position ?? "-"} at {w.total ?? "-"}
-                  </span>
+                  {(w.position || w.total) && (
+                    <span className="text-muted-foreground font-normal">
+                      · {w.position || "-"} at {w.total || "-"}
+                    </span>
+                  )}
                 </div>
                 {w.reason && <div className="mt-0.5 text-muted-foreground">{w.reason}</div>}
               </li>
@@ -185,8 +210,8 @@ export default function GolfAnalysisPanel({ result, tournamentName, onClear }: P
         </div>
       )}
 
-      {/* Top picks */}
-      {Array.isArray(result.topPicks) && result.topPicks.length > 0 && (
+      {/* Top picks (odds mode only — watchList covers no-odds mode) */}
+      {!noOdds && Array.isArray(result.topPicks) && result.topPicks.length > 0 && (
         <div>
           <div className="mb-1.5 text-[10px] uppercase font-semibold text-muted-foreground">
             Top Picks
@@ -258,34 +283,42 @@ export default function GolfAnalysisPanel({ result, tournamentName, onClear }: P
       )}
 
       {/* Log Bet */}
-      <button
-        onClick={() => setLogOpen(true)}
-        className={cn(
-          "inline-flex w-full items-center justify-center gap-2 rounded-md",
-          "bg-info px-3 py-2 text-[12px] font-semibold text-white hover:bg-info/90",
-        )}
-      >
-        <Save className="h-3.5 w-3.5" />
-        Log this bet
-      </button>
+      {noOdds ? (
+        <div className="rounded-md border border-info/40 bg-info/10 p-3 text-[11px] text-info">
+          ℹ️ Check your sportsbook for live in-tournament betting markets on {tournamentName}.
+        </div>
+      ) : (
+        <>
+          <button
+            onClick={() => setLogOpen(true)}
+            className={cn(
+              "inline-flex w-full items-center justify-center gap-2 rounded-md",
+              "bg-info px-3 py-2 text-[12px] font-semibold text-white hover:bg-info/90",
+            )}
+          >
+            <Save className="h-3.5 w-3.5" />
+            Log this bet
+          </button>
 
-      <LogBetModal
-        open={logOpen}
-        onClose={() => setLogOpen(false)}
-        onSubmit={async (b) => {
-          const r = await logBet(b);
-          if (r) toast.success("Bet logged");
-          else toast.error("Failed to log bet");
-        }}
-        initial={{
-          title: `${player} Outright — ${tournamentName}`,
-          sport: "Golf",
-          bet_type: "Futures",
-          pick: player,
-          odds: result.odds ?? 0,
-          sportsbook: result.bestBook ?? "Other",
-        }}
-      />
+          <LogBetModal
+            open={logOpen}
+            onClose={() => setLogOpen(false)}
+            onSubmit={async (b) => {
+              const r = await logBet(b);
+              if (r) toast.success("Bet logged");
+              else toast.error("Failed to log bet");
+            }}
+            initial={{
+              title: `${player} Outright — ${tournamentName}`,
+              sport: "Golf",
+              bet_type: "Futures",
+              pick: player,
+              odds: result.odds ?? 0,
+              sportsbook: result.bestBook ?? "Other",
+            }}
+          />
+        </>
+      )}
     </div>
   );
 }
