@@ -574,33 +574,39 @@ export function GolfLeaderboardCard({
     }));
   };
 
-  const handleAnalyze = async () => {
+  const [analyzedTournamentName, setAnalyzedTournamentName] = useState<string>("");
+
+  const handleAnalyze = async (mode: "leaderboard" | "odds") => {
     if (analyzing) return;
     setAnalyzing(true);
     setAnalysisError(null);
     try {
-      const dates =
-        liveRange ||
-        (oddsMajor ? oddsMajor.range : "TBD");
-      const course = oddsMajor?.venue ?? null;
+      const isOddsMode = mode === "odds";
+      const targetName = isOddsMode ? oddsName : analyzeTournamentName;
+      const targetDates = isOddsMode
+        ? (oddsMajor ? oddsMajor.range : "TBD")
+        : (liveRange || (oddsMajor ? oddsMajor.range : "TBD"));
+      const targetCourse = isOddsMode ? (oddsMajor?.venue ?? null) : (oddsMajor?.venue ?? null);
+      const playerOdds = isOddsMode ? buildPlayerOdds() : [];
       console.log("[Golf Analyze] sending:", {
         type: "golf",
-        tournamentName: analyzeTournamentName,
-        players: players?.length ?? 0,
+        tournamentName: targetName,
+        players: playerOdds.length,
         leaderboard: liveRows?.length ?? 0,
         hasOddsGame: !!game,
-        dates,
-        course,
+        mode,
+        dates: targetDates,
+        course: targetCourse,
       });
       const { data, error } = await supabase.functions.invoke("analyze-market", {
         body: {
           type: "golf",
-          tournamentName: analyzeTournamentName,
-          dates,
-          course,
+          tournamentName: targetName,
+          dates: targetDates,
+          course: targetCourse,
           purse: tournament?.purse ?? 0,
           leaderboard: liveRows,
-          players: buildPlayerOdds(),
+          players: playerOdds,
           bankroll: settings.bankroll,
           kellyMultiplier: settings.kellyMultiplier,
           maxPositionPct: (settings.maxPosition ?? 0.05) * 100,
@@ -610,6 +616,7 @@ export function GolfLeaderboardCard({
       const d = data as Record<string, unknown> | null;
       if (!d) throw new Error("Empty response");
       if (typeof d.error === "string") throw new Error(d.error);
+      setAnalyzedTournamentName(targetName);
       setAnalysis(d as GolfAnalysisResult);
     } catch (err) {
       setAnalysisError(err instanceof Error ? err.message : "Analysis failed");
