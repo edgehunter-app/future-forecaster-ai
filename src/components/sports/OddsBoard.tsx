@@ -771,11 +771,14 @@ export function GolfLeaderboardCard({
       {/* ===== Section 2: Betting Odds (Odds API) — only when distinct from live ===== */}
       {players.length > 0 && !sameEvent && (
         <section className="space-y-2 border-t border-border/60 pt-3">
+          <div className="flex items-center justify-center">
+            <div className="h-px flex-1 bg-border/60" />
+          </div>
           <header className="flex items-start justify-between gap-2">
             <div>
               <div className="flex items-center gap-2">
                 <span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
-                  💰 Outright Winner Odds
+                  📊 Outright Winner Odds
                 </span>
               </div>
               <div className="text-base font-extrabold text-foreground">{oddsName}</div>
@@ -826,6 +829,29 @@ export function GolfLeaderboardCard({
               className="text-[11px] font-semibold text-info hover:underline"
             >
               {expanded ? "Show top 10" : `Show all ${players.length} players`}
+            </button>
+          )}
+
+          {/* Analyze The Open — odds + leaderboard */}
+          {players.length > 0 && (
+            <button
+              onClick={() => handleAnalyze("odds")}
+              disabled={analyzing}
+              className="w-full flex items-center justify-center gap-2 py-3 px-4 rounded-xl font-semibold text-sm bg-gradient-to-r from-purple-600 to-purple-700 text-white hover:from-purple-500 hover:to-purple-600 transition disabled:opacity-60"
+            >
+              {analyzing ? (
+                <>
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                  <span className="text-sm">Analyzing field…</span>
+                </>
+              ) : (
+                <>
+                  <Brain className="h-4 w-4" />
+                  <span className="text-sm">
+                    🤖 Analyze {oddsName} · Find Value
+                  </span>
+                </>
+              )}
             </button>
           )}
         </section>
