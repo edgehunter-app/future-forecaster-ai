@@ -88,13 +88,36 @@ Deno.serve(async (req) => {
     "/schedule",
     "/countries",
     "/sports",
+    "/openapi.json",
+    "/docs",
+    "/health",
+    "/form",
+    "/results",
+    "/entries",
   ];
   const extra: Record<string, unknown> = {};
   for (const p of extras) {
-    extra[p] = await hit(`${FORMFAV_BASE}${p}`, `probe ${p}`);
+    // /openapi.json is served at the root, not under /v1
+    const base = p === "/openapi.json" || p === "/docs" || p === "/health"
+      ? "https://api.formfav.com"
+      : FORMFAV_BASE;
+    extra[p] = await hit(`${base}${p}`, `probe ${p}`);
     await new Promise((res) => setTimeout(res, 200));
   }
   results.extra_probes = extra;
+
+  // Try recent Saratoga dates (meet runs mid-Jul to early-Sep). Also try a
+  // 2025 date as a historical sanity check.
+  const dateTries = ["2026-07-16", "2026-07-17", "2026-07-18", "2026-07-19", "2025-08-02"];
+  const dateResults: Record<string, unknown> = {};
+  for (const d of dateTries) {
+    dateResults[`saratoga_${d}`] = await hit(
+      `${FORMFAV_BASE}/form?date=${d}&track=saratoga&race=1&country=us`,
+      `saratoga ${d}`,
+    );
+    await new Promise((res) => setTimeout(res, 200));
+  }
+  results.date_tries = dateResults;
 
   return new Response(JSON.stringify(results, null, 2), {
     headers: { ...corsHeaders, "Content-Type": "application/json" },
