@@ -132,6 +132,28 @@ Deno.serve(async (req) => {
     const url = new URL(req.url);
     const requested = url.searchParams.get("date");
     const alsoScanSaturday = url.searchParams.get("probeSaturday") === "1";
+    const probeUK = url.searchParams.get("probeUK") === "1";
+
+    if (probeUK) {
+      const results: Record<string, unknown> = {};
+      const tracks = ["ascot", "newmarket", "goodwood", "york", "sandown-park", "kempton-park", "chelmsford-city"];
+      const dates = ["2026-07-08", "2026-07-09", "2026-07-10", "2026-07-11", "2026-07-12"];
+      for (const t of tracks) {
+        for (const d of dates) {
+          const u = `${FORMFAV_BASE}/form?date=${d}&track=${t}&race=1`;
+          const res = await fetch(u, { headers, signal: AbortSignal.timeout(5000) });
+          const body = res.ok ? await res.json() : (await res.text()).slice(0, 160);
+          results[`${t}@${d}`] = { status: res.status, body };
+          console.log(`[uk-probe] ${t} ${d}: ${res.status}`);
+          if (res.ok) {
+            console.log(`[uk-probe] FIRST SUCCESS full payload:`, JSON.stringify(body).slice(0, 3000));
+            return new Response(JSON.stringify({ probeUK: true, results }, null, 2), { headers: CORS_HEADERS });
+          }
+          await new Promise((r) => setTimeout(r, 200));
+        }
+      }
+      return new Response(JSON.stringify({ probeUK: true, results }, null, 2), { headers: CORS_HEADERS });
+    }
 
     const today = new Date().toISOString().split("T")[0];
     const primaryDate = requested ?? today;
