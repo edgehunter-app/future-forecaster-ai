@@ -12,7 +12,7 @@ async function hit(url: string, label: string) {
   try {
     const res = await fetch(url, {
       headers: {
-        Authorization: `Bearer ${FORMFAV_KEY}`,
+        "X-API-Key": FORMFAV_KEY ?? "",
         "Content-Type": "application/json",
       },
       signal: AbortSignal.timeout(8000),
