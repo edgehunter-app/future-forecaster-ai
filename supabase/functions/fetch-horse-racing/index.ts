@@ -135,6 +135,27 @@ Deno.serve(async (req) => {
     const probeUK = url.searchParams.get("probeUK") === "1";
 
     if (probeUK) {
+      // Diagnostic 1: fetch /form with NO args to see full list of required
+      // params (server returns a FastAPI 422 detail array).
+      const noArgs = await fetch(`${FORMFAV_BASE}/form`, { headers });
+      const noArgsBody = await noArgs.text();
+      console.log(`[uk-probe] /form no-args status=${noArgs.status} body=${noArgsBody}`);
+
+      // Diagnostic 2: try one UK track with country=gb / country=uk / no country.
+      const variants = [
+        `/form?date=2026-07-08&track=ascot&race=1&country=gb`,
+        `/form?date=2026-07-08&track=ascot&race=1&country=uk`,
+        `/form?date=2026-07-08&track=ascot&race=1`,
+        `/form?date=2026-07-08&track=ascot&race=1&race_code=gallops`,
+        `/form?date=2026-07-08&track=ascot&race=1&country=gb&race_code=gallops`,
+      ];
+      for (const v of variants) {
+        const r = await fetch(`${FORMFAV_BASE}${v}`, { headers });
+        const body = (await r.text()).slice(0, 400);
+        console.log(`[uk-probe] variant ${v} → ${r.status} ${body}`);
+        await new Promise((res) => setTimeout(res, 150));
+      }
+
       const results: Record<string, unknown> = {};
       const tracks = ["ascot", "newmarket", "goodwood", "york", "sandown-park", "kempton-park", "chelmsford-city"];
       const dates = ["2026-07-08", "2026-07-09", "2026-07-10", "2026-07-11", "2026-07-12"];
