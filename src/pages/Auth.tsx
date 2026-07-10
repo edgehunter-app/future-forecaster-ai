@@ -73,11 +73,10 @@ export default function Auth() {
   };
 
   const google = async () => {
-    const { error } = await supabase.auth.signInWithOAuth({
-      provider: "google",
-      options: { redirectTo: `${window.location.origin}/` },
+    const result = await lovable.auth.signInWithOAuth("google", {
+      redirect_uri: window.location.origin,
     });
-    if (error) showToast(error.message, "error");
+    if (result.error) showToast(result.error.message, "error");
   };
 
   const forgotPassword = async () => {
@@ -285,12 +284,6 @@ export default function Auth() {
                 Continue with Google
               </button>
 
-              <button
-                onClick={demo}
-                className="w-full mt-3 min-h-[44px] rounded-md px-4 py-2 text-sm font-semibold text-muted-foreground hover:text-foreground transition-colors"
-              >
-                Continue with demo →
-              </button>
             </>
           )}
         </div>
