@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { CheckCircle2, Loader2 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
-import { useAppStore } from "@/store/useAppStore";
+import { lovable } from "@/integrations/lovable";
 import { useToast } from "@/components/ui/AppToast";
 import { cn } from "@/lib/utils";
 import { EdgeHunterLogo } from "@/components/brand/EdgeHunterLogo";
@@ -11,7 +11,6 @@ type Mode = "signup" | "signin";
 
 export default function Auth() {
   const navigate = useNavigate();
-  const setDemoMode = useAppStore((s) => s.setDemoMode);
   const { showToast } = useToast();
 
   const [mode, setMode] = useState<Mode>(() => {
@@ -74,11 +73,10 @@ export default function Auth() {
   };
 
   const google = async () => {
-    const { error } = await supabase.auth.signInWithOAuth({
-      provider: "google",
-      options: { redirectTo: `${window.location.origin}/` },
+    const result = await lovable.auth.signInWithOAuth("google", {
+      redirect_uri: window.location.origin,
     });
-    if (error) showToast(error.message, "error");
+    if (result.error) showToast(result.error.message, "error");
   };
 
   const forgotPassword = async () => {
@@ -91,11 +89,6 @@ export default function Auth() {
     });
     if (error) showToast(error.message, "error");
     else showToast("Password reset email sent", "success");
-  };
-
-  const demo = () => {
-    setDemoMode(true);
-    navigate("/");
   };
 
   const inputCls =
@@ -290,12 +283,6 @@ export default function Auth() {
                 Continue with Google
               </button>
 
-              <button
-                onClick={demo}
-                className="w-full mt-3 min-h-[44px] rounded-md px-4 py-2 text-sm font-semibold text-muted-foreground hover:text-foreground transition-colors"
-              >
-                Continue with demo →
-              </button>
             </>
           )}
         </div>
