@@ -1,8 +1,7 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { CheckCircle2, Loader2 } from "lucide-react";
-import { supabase } from "@/integrations/supabase/client";
-import { useAppStore } from "@/store/useAppStore";
+import { lovable } from "@/integrations/lovable";
 import { useToast } from "@/components/ui/AppToast";
 import { cn } from "@/lib/utils";
 import { EdgeHunterLogo } from "@/components/brand/EdgeHunterLogo";
@@ -11,7 +10,6 @@ type Mode = "signup" | "signin";
 
 export default function Auth() {
   const navigate = useNavigate();
-  const setDemoMode = useAppStore((s) => s.setDemoMode);
   const { showToast } = useToast();
 
   const [mode, setMode] = useState<Mode>(() => {
