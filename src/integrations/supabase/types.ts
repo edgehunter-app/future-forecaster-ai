@@ -300,12 +300,18 @@ export type Database = {
           email_frequency: string
           favorite_categories: string[]
           id: string
+          is_beta_tester: boolean
           kelly_multiplier: number
           max_position: number
           min_confidence: number
           scan_interval: string
           show_position_details: boolean
           show_wallet_addresses: boolean
+          stripe_customer_id: string | null
+          stripe_subscription_id: string | null
+          subscription_ends_at: string | null
+          subscription_status: string
+          subscription_tier: string
           telegram_chat_id: string
           telegram_enabled: boolean
           updated_at: string
@@ -323,12 +329,18 @@ export type Database = {
           email_frequency?: string
           favorite_categories?: string[]
           id: string
+          is_beta_tester?: boolean
           kelly_multiplier?: number
           max_position?: number
           min_confidence?: number
           scan_interval?: string
           show_position_details?: boolean
           show_wallet_addresses?: boolean
+          stripe_customer_id?: string | null
+          stripe_subscription_id?: string | null
+          subscription_ends_at?: string | null
+          subscription_status?: string
+          subscription_tier?: string
           telegram_chat_id?: string
           telegram_enabled?: boolean
           updated_at?: string
@@ -346,12 +358,18 @@ export type Database = {
           email_frequency?: string
           favorite_categories?: string[]
           id?: string
+          is_beta_tester?: boolean
           kelly_multiplier?: number
           max_position?: number
           min_confidence?: number
           scan_interval?: string
           show_position_details?: boolean
           show_wallet_addresses?: boolean
+          stripe_customer_id?: string | null
+          stripe_subscription_id?: string | null
+          subscription_ends_at?: string | null
+          subscription_status?: string
+          subscription_tier?: string
           telegram_chat_id?: string
           telegram_enabled?: boolean
           updated_at?: string
