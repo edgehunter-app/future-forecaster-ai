@@ -31,6 +31,7 @@ export interface GolfDataProps {
   isLive: boolean;
   loading: boolean;
   onRefresh: () => void;
+  error?: string | null;
 }
 
 // Major-tournament metadata. Odds API outright markets only cover the 4 majors,
@@ -162,11 +163,21 @@ export default function OddsBoard({ games, loading, mispricings = [], onRefresh,
 
       {tab === "games" && (
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          {games.map((g) =>
-            g.isOutright && g.players?.length
-              ? <GolfLeaderboardCard key={g.id} game={g} golf={golfData} />
-              : <GameCard key={g.id} game={g} mispricings={mispricings} />,
-          )}
+          {(() => {
+            if (import.meta.env.DEV) {
+              console.log("[OddsBoard] golf props received:", {
+                tournament: golfData?.tournament?.name,
+                leaderboard: golfData?.leaderboard?.rows?.length ?? 0,
+                isLive: golfData?.isLive,
+                golfGames: games.filter((g) => g.isOutright && g.players?.length).length,
+              });
+            }
+            return games.map((g) =>
+              g.isOutright && g.players?.length
+                ? <GolfLeaderboardCard key={g.id} game={g} golf={golfData} />
+                : <GameCard key={g.id} game={g} mispricings={mispricings} />,
+            );
+          })()}
         </div>
       )}
 
@@ -667,6 +678,16 @@ export function GolfLeaderboardCard({
       </div>
 
       {/* ===== Section 1: Live Leaderboard (Live Golf Data API) ===== */}
+      {!tournament && golf?.error && (
+        <div className="rounded-md border border-warning/40 bg-warning/10 p-3 text-[11px] text-warning">
+          <div className="font-bold uppercase mb-1">⚠️ Live leaderboard unavailable</div>
+          <div className="text-warning/90">
+            {/quota|429/i.test(golf.error)
+              ? "RapidAPI Live Golf Data monthly quota exhausted — upgrade the plan or wait for the monthly reset to see live tournament rows."
+              : golf.error}
+          </div>
+        </div>
+      )}
       {tournament && (
         <section className="space-y-2">
           <header className="flex items-start justify-between gap-2">
