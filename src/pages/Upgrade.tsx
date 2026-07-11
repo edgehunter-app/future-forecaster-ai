@@ -6,8 +6,8 @@ import { useToast } from "@/components/ui/AppToast";
 import { cn } from "@/lib/utils";
 import { useState } from "react";
 
-const PRO_PRICE_ID = "price_1Ts4bH4xj8SLZzGvvkd7bpVy";
-const ELITE_PRICE_ID = "price_1Ts4dg4xj8SLZzGv7131R1yx";
+const PRO_PRICE_ID = "price_1Ts6wq5MCjCsVPzSQYekGmmZ";
+const ELITE_PRICE_ID = "price_1Ts6y95MCjCsVPzSSzBZ4u5R";
 
 const PRO_FEATURES = [
   "Unlimited AI analysis",
