@@ -986,7 +986,15 @@ Deno.serve(async (req) => {
         const context = type === "golf"
           ? `TOURNAMENT: ${body.tournamentName ?? "?"} — ${body.dates ?? "?"}`
           : `MATCHUP: ${body.awayTeam ?? "?"} @ ${body.homeTeam ?? "?"} (${body.league ?? "?"})`;
-        const daPrompt = `You are the Devil's Advocate for EdgeHunter. Your ONLY job is to argue AGAINST the following bet recommendation.
+        const daLeagueStr = type === "sports" ? String(body.league ?? "") : "";
+        const isDAMMALeague = /mma|ufc|mixed martial|bellator|pfl/i.test(daLeagueStr)
+          || String(body.sport ?? "").toLowerCase().includes("mma");
+        const daMMABlock = isDAMMALeague
+          ? `IMPORTANT: This fight is happening TONIGHT - ${new Date().toISOString().split("T")[0]}. Do not argue that the fight may not happen or is hypothetical. It is confirmed and live. Focus your arguments on fighting styles, current form, and betting market factors only.`
+          : "";
+        const daPrompt = `You are the Devil's Advocate for EdgeHunter. Current date: ${new Date().toISOString().split("T")[0]}. ${daMMABlock}
+Your ONLY job is to argue AGAINST the following bet recommendation.
+
 
 RECOMMENDED BET:
   Pick: ${mainSummary.recommendedTeam}
