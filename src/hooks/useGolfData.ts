@@ -47,10 +47,16 @@ interface GolfCurrentResponse {
   leaderboard: GolfLeaderboard | null;
   isLive: boolean;
   error?: string;
+  cachedAt?: string;
+  nextRefreshAt?: string;
+  cacheMinutes?: number;
+  servedFromCache?: boolean;
 }
 
-const CACHE_KEY = "eh.golfDataCache.v3";
-const TTL_MS = 15 * 60 * 1000;
+const CACHE_KEY = "eh.golfDataCache.v4";
+const TTL_MS = 30 * 60 * 1000; // 30 min — matches server cache
+const MANUAL_REFRESH_KEY = "golf_manual_refresh";
+const MANUAL_REFRESH_COOLDOWN_MS = 30 * 60 * 1000;
 
 interface CachedPayload {
   fetchedAt: number;
