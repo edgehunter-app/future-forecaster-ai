@@ -538,7 +538,15 @@ export function GolfLeaderboardCard({
     ? getTournamentStatus(new Date(tournament.startMs), new Date(tournament.endMs))
     : null;
   const isLiveNow = status?.label === "🟢 LIVE";
-  const showLive = isLiveNow && liveRows.length > 0;
+  // Render the live leaderboard whenever the API actually returned rows —
+  // date-based `isLiveNow` can be false for early/late tee times or when the
+  // upstream reports "In Progress" for a schedule day we don't yet count.
+  const showLive = liveRows.length > 0;
+  if (import.meta.env.DEV) {
+    console.log("[GolfCard] tournament:", tournament?.name, "tournId:", tournament?.tournId,
+      "isLive(prop):", golf?.isLive, "isLiveNow(date):", isLiveNow,
+      "liveRows:", liveRows.length, "loading:", loading);
+  }
   const visibleLive = expanded ? liveRows : liveRows.slice(0, 15);
   const visibleOdds = expanded ? players : players.slice(0, 10);
 
@@ -648,7 +656,7 @@ export function GolfLeaderboardCard({
       <div className="flex items-center justify-between gap-2">
         <div className="text-xs font-bold uppercase text-amber-300">⛳ Golf</div>
         <button
-          onClick={() => fetchCurrent()}
+          onClick={() => fetchCurrent(true)}
           disabled={loading}
           className="inline-flex items-center gap-1 rounded-md border border-border bg-card px-2 py-1 text-[10px] font-semibold text-foreground hover:bg-secondary disabled:opacity-50"
           title="Refresh live golf data"
