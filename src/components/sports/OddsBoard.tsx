@@ -32,6 +32,8 @@ export interface GolfDataProps {
   loading: boolean;
   onRefresh: () => void;
   error?: string | null;
+  fetchedAt?: number | null;
+  nextRefreshAt?: number | null;
 }
 
 // Major-tournament metadata. Odds API outright markets only cover the 4 majors,
