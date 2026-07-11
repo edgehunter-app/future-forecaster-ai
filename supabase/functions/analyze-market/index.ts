@@ -73,6 +73,21 @@ function buildSportsPrompt(p: AnalyzeBody): string {
   const bankroll = p.bankroll ?? 1000;
   const kelly = p.kellyMultiplier ?? 0.25;
   const maxPct = p.maxPositionPct ?? 5;
+  const todayStr = new Date().toISOString().split("T")[0];
+  const leagueStr = String(p.league ?? "");
+  const isMMA = /mma|ufc|mixed martial|bellator|pfl/i.test(leagueStr)
+    || String(p.sport ?? "").toLowerCase().includes("mma");
+  const mmaLiveBlock = isMMA
+    ? `
+TODAY'S DATE: ${todayStr}
+This is a LIVE betting market for a fight that is scheduled TONIGHT.
+Do not treat this as a hypothetical or future event. The odds are live
+and the fight is happening today.
+Do not speculate about whether the fight will happen — it is confirmed
+and odds are posted across 6 sportsbooks.
+`
+    : "";
+
   const polyBlock = p.polymarketGap
     ? `
 PREDICTION MARKET SIGNAL:
