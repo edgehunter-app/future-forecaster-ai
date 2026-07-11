@@ -2,7 +2,7 @@ import { useState } from "react";
 import { NavLink, useNavigate, useLocation } from "react-router-dom";
 import {
   House, Zap, Trophy, TrendingUp, LayoutGrid,
-  Users, Clock, ArrowLeftRight, Settings as SettingsIcon, ChevronRight, BarChart2, Shield,
+  Users, Clock, ArrowLeftRight, Settings as SettingsIcon, ChevronRight, BarChart2, Shield, Star,
 } from "lucide-react";
 import BottomSheet from "@/components/ui/BottomSheet";
 import HorseIcon from "@/components/icons/HorseIcon";
@@ -10,6 +10,7 @@ import { useAppStore } from "@/store/useAppStore";
 import { cn } from "@/lib/utils";
 import { useIsAdmin } from "@/hooks/useIsAdmin";
 import { useLineMonitor } from "@/hooks/useLineMonitor";
+import { useSubscription } from "@/hooks/useSubscription";
 
 const MORE_ITEMS = [
   { to: "/tracker", label: "Bet Tracker", icon: BarChart2 },
@@ -28,13 +29,20 @@ export default function BottomTabBar() {
   const { pathname } = useLocation();
   const suggestionsCount = useAppStore((s) => s.suggestions.length);
   const { isAdmin } = useIsAdmin();
-  const moreItems = isAdmin ? [...MORE_ITEMS, ADMIN_ITEM] : MORE_ITEMS;
+  const { tier, isBeta, loading: subLoading } = useSubscription();
+  const showUpgrade = !subLoading && !isBeta && tier === "free";
   const fullGames = useAppStore((s) => s.fullGames);
   const strongMispricings = useAppStore((s) => s.sportsMispricings).filter(
     (m) => m.edge >= 0.05,
   ).length || (fullGames?.length ?? 0 > 0 ? 0 : 0);
   const { alerts } = useLineMonitor();
   const lineAlertCount = alerts.length;
+
+  const moreItems = [
+    ...(showUpgrade ? [{ to: "/upgrade", label: "Upgrade", icon: Star } as const] : []),
+    ...MORE_ITEMS,
+    ...(isAdmin ? [ADMIN_ITEM] : []),
+  ];
 
   const isMoreActive = moreItems.some((i) => pathname.startsWith(i.to));
 
