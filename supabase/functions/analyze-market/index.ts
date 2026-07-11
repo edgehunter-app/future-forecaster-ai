@@ -73,6 +73,21 @@ function buildSportsPrompt(p: AnalyzeBody): string {
   const bankroll = p.bankroll ?? 1000;
   const kelly = p.kellyMultiplier ?? 0.25;
   const maxPct = p.maxPositionPct ?? 5;
+  const todayStr = new Date().toISOString().split("T")[0];
+  const leagueStr = String(p.league ?? "");
+  const isMMA = /mma|ufc|mixed martial|bellator|pfl/i.test(leagueStr)
+    || String(p.sport ?? "").toLowerCase().includes("mma");
+  const mmaLiveBlock = isMMA
+    ? `
+TODAY'S DATE: ${todayStr}
+This is a LIVE betting market for a fight that is scheduled TONIGHT.
+Do not treat this as a hypothetical or future event. The odds are live
+and the fight is happening today.
+Do not speculate about whether the fight will happen — it is confirmed
+and odds are posted across 6 sportsbooks.
+`
+    : "";
+
   const polyBlock = p.polymarketGap
     ? `
 PREDICTION MARKET SIGNAL:
@@ -172,11 +187,9 @@ SMART WALLET SIGNALS:
 ${wallets.map((w: Any) => `- ${w.label} (Tier ${w.tier}): ${(w.winRate * 100).toFixed(0)}% win rate`).join("\n")}
 `
     : "No smart wallet data available for this game.";
-  const leagueStr = String(p.league ?? "");
   const isWorldCup = /world\s*cup/i.test(leagueStr) || /fifa/i.test(leagueStr);
   const isGolf = /golf|pga|masters|open championship|u\.?s\.? open/i.test(leagueStr);
-  const isMMA = /mma|ufc|mixed martial|bellator|pfl/i.test(leagueStr)
-    || String(p.sport ?? "").toLowerCase().includes("mma");
+
   const worldCupBlock = isWorldCup
     ? `
 FIFA WORLD CUP 2026 CONTEXT:
@@ -238,12 +251,17 @@ betType MUST be "moneyline". Do not recommend a spread or total for MMA.
 `
     : "";
   return `You are EdgeHunter's sports betting analyst.
+Current date: ${todayStr}
+This is a live betting market for a game/fight scheduled for today
+or the near future. Odds are live and actively being traded.
+${mmaLiveBlock}
 Your job is to find the BEST BET available given the current lines —
 not just flag large edges. Even a small edge is worth reporting.
 ALWAYS return a specific recommendation. Never return NO_EDGE if there
 are real games with real odds to analyze.
 
 MATCHUP: ${p.awayTeam} (AWAY) @ ${p.homeTeam} (HOME)
+
   HOME team = ${p.homeTeam}
   AWAY team = ${p.awayTeam}
 League: ${p.league}
@@ -968,7 +986,15 @@ Deno.serve(async (req) => {
         const context = type === "golf"
           ? `TOURNAMENT: ${body.tournamentName ?? "?"} — ${body.dates ?? "?"}`
           : `MATCHUP: ${body.awayTeam ?? "?"} @ ${body.homeTeam ?? "?"} (${body.league ?? "?"})`;
-        const daPrompt = `You are the Devil's Advocate for EdgeHunter. Your ONLY job is to argue AGAINST the following bet recommendation.
+        const daLeagueStr = type === "sports" ? String(body.league ?? "") : "";
+        const isDAMMALeague = /mma|ufc|mixed martial|bellator|pfl/i.test(daLeagueStr)
+          || String(body.sport ?? "").toLowerCase().includes("mma");
+        const daMMABlock = isDAMMALeague
+          ? `IMPORTANT: This fight is happening TONIGHT - ${new Date().toISOString().split("T")[0]}. Do not argue that the fight may not happen or is hypothetical. It is confirmed and live. Focus your arguments on fighting styles, current form, and betting market factors only.`
+          : "";
+        const daPrompt = `You are the Devil's Advocate for EdgeHunter. Current date: ${new Date().toISOString().split("T")[0]}. ${daMMABlock}
+Your ONLY job is to argue AGAINST the following bet recommendation.
+
 
 RECOMMENDED BET:
   Pick: ${mainSummary.recommendedTeam}
