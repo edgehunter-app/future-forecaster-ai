@@ -29,13 +29,20 @@ export default function BottomTabBar() {
   const { pathname } = useLocation();
   const suggestionsCount = useAppStore((s) => s.suggestions.length);
   const { isAdmin } = useIsAdmin();
-  const moreItems = isAdmin ? [...MORE_ITEMS, ADMIN_ITEM] : MORE_ITEMS;
+  const { tier, isBeta, loading: subLoading } = useSubscription();
+  const showUpgrade = !subLoading && !isBeta && tier === "free";
   const fullGames = useAppStore((s) => s.fullGames);
   const strongMispricings = useAppStore((s) => s.sportsMispricings).filter(
     (m) => m.edge >= 0.05,
   ).length || (fullGames?.length ?? 0 > 0 ? 0 : 0);
   const { alerts } = useLineMonitor();
   const lineAlertCount = alerts.length;
+
+  const moreItems = [
+    ...(showUpgrade ? [{ to: "/upgrade", label: "Upgrade", icon: Star } as const] : []),
+    ...MORE_ITEMS,
+    ...(isAdmin ? [ADMIN_ITEM] : []),
+  ];
 
   const isMoreActive = moreItems.some((i) => pathname.startsWith(i.to));
 
