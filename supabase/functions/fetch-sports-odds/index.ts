@@ -28,6 +28,8 @@ const ODDS_API_BASE = "https://api.the-odds-api.com/v4";
 const ODDS_API_PROVIDER = "the-odds-api";
 const ODDS_API_REMAINING_SENTINEL = "9999-12-31"; // used_at row that stores latest "remaining" header
 const ODDS_API_SOCCER_SPORTS = ["soccer_fifa_world_cup"];
+// MMA has one global feed on The Odds API — covers UFC, PFL, Bellator, etc.
+const ODDS_API_MMA_SPORTS = ["mma_mixed_martial_arts"];
 // The Odds API only carries major-winner outrights on the current plan —
 // no weekly PGA Tour or LIV feed. Real keys all use the `_winner` suffix.
 // We probe /sports first and only call the ones flagged active=true to
