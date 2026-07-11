@@ -529,6 +529,43 @@ export function GolfLeaderboardCard({
   const [oddsAnalysis, setOddsAnalysis] = useState<GolfAnalysisResult | null>(null);
 
 
+  const hasAnyData = !!tournament || (leaderboard?.rows?.length ?? 0) > 0;
+
+  // Empty state — no tournament, no odds, no leaderboard yet.
+  // Show a prompt so the user can trigger the (quota-protected) fetch.
+  if (!game && !hasAnyData) {
+    return (
+      <div className="rounded-lg border border-amber-400/40 bg-gradient-to-br from-amber-500/5 to-card p-4 space-y-3 md:col-span-2">
+        <GolfCardHeader
+          loading={loading}
+          fetchedAt={golf?.fetchedAt ?? null}
+          nextRefreshAt={golf?.nextRefreshAt ?? null}
+          onRefresh={() => golf?.onRefresh?.(true)}
+        />
+        <div className="rounded-md border border-border/60 bg-background/40 p-6 text-center space-y-3">
+          <div className="text-3xl">⛳</div>
+          <div className="text-sm font-semibold text-foreground">
+            Tap Refresh to load today's tournament leaderboard
+          </div>
+          <button
+            onClick={() => golf?.onRefresh?.(true)}
+            disabled={loading}
+            className="inline-flex items-center gap-1.5 rounded-md bg-amber-500 px-4 py-2 text-xs font-bold text-amber-950 hover:bg-amber-400 disabled:opacity-50"
+          >
+            <RotateCw className={cn("h-3.5 w-3.5", loading && "animate-spin")} />
+            Refresh Golf Data
+          </button>
+          <div className="text-[10px] text-muted-foreground italic">
+            Updates on demand to preserve API quota during beta
+          </div>
+          {golf?.error && (
+            <div className="text-[10px] text-warning">{golf.error}</div>
+          )}
+        </div>
+      </div>
+    );
+  }
+
   if (!game && !tournament) return null;
 
   const bookNames = Array.from(
