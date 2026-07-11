@@ -149,9 +149,10 @@ export function useGolfData() {
   }, []);
 
   useEffect(() => {
-    // Always fire on mount — cache check inside fetchCurrent will short-circuit
-    // if a fresh value exists, so the edge function is reached on cold starts.
-    void fetchCurrent(false);
+    // Golf data is fully independent of the Sportsbook API (RapidAPI) and the
+    // Odds API — it uses LIVE_GOLF_API_KEY. Fetch on mount, forcing a
+    // network call so a stale/empty cache never hides a live leaderboard.
+    void fetchCurrent(true);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
