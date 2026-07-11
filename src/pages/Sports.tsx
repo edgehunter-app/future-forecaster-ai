@@ -112,6 +112,11 @@ export default function Sports() {
     }),
     [golf.tournament, golf.leaderboard, golf.isLive, golf.loading, golf.fetchCurrent],
   );
+  if (import.meta.env.DEV) {
+    console.log("[Sports] passing leaderboard rows:",
+      golf.leaderboard?.rows?.length ?? 0,
+      "tournament:", golf.tournament?.name ?? "NONE");
+  }
 
   const [activeSport, setActiveSport] = useState<string>("all");
   const [wcBannerDismissed, setWcBannerDismissed] = useState(false);
