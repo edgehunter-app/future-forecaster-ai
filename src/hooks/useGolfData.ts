@@ -175,9 +175,29 @@ export function useGolfData() {
   }, []);
 
   useEffect(() => {
-    // Fetch on mount but DO NOT force — server-side golf_cache (30 min TTL)
-    // handles freshness, avoiding a quota call on every page load.
-    void fetchCurrent(false);
+    // NO automatic fetching on mount, tab change, or navigation.
+    // Golf data only loads on:
+    //   1. User taps the Refresh button in the Golf tab
+    //   2. Fresh sign-in event (below) — one call per new session
+    // Between refreshes the server-side golf_cache (30 min) serves
+    // repeated views without spending API quota.
+    let firedForSession = false;
+    const sessionFlag = "eh.golfLoginFetched";
+    if (typeof window !== "undefined" && window.sessionStorage.getItem(sessionFlag)) {
+      firedForSession = true;
+    }
+    const { data: sub } = supabase.auth.onAuthStateChange((event) => {
+      if (event !== "SIGNED_IN") return;
+      if (firedForSession) return;
+      firedForSession = true;
+      if (typeof window !== "undefined") {
+        window.sessionStorage.setItem(sessionFlag, "1");
+      }
+      // Non-forced: uses server 30-min golf_cache when warm, so this is
+      // at most one API call per (cache-cold) login across all users.
+      void fetchCurrent(false);
+    });
+    return () => sub.subscription.unsubscribe();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
