@@ -26,6 +26,7 @@ const BetTracker = lazy(() => import("./pages/BetTracker"));
 const HorseRacing = lazy(() => import("./pages/HorseRacing"));
 const NotFound = lazy(() => import("./pages/NotFound"));
 const Auth = lazy(() => import("./pages/Auth"));
+const Upgrade = lazy(() => import("./pages/Upgrade"));
 
 const queryClient = new QueryClient();
 
@@ -109,6 +110,7 @@ function AppRoutes() {
         <Route path="/horse-racing" element={wrap(<HorseRacing />)} />
         <Route path="/history" element={wrap(<History />)} />
         <Route path="/settings" element={wrap(<Settings />)} />
+        <Route path="/upgrade" element={wrap(<Upgrade />)} />
         <Route path="/admin" element={wrap(<Admin />)} />
         <Route path="*" element={<Suspense fallback={<PageLoadingSkeleton />}><NotFound /></Suspense>} />
       </Routes>
