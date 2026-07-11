@@ -157,6 +157,27 @@ export type Database = {
         }
         Relationships: []
       }
+      golf_cache: {
+        Row: {
+          created_at: string
+          expires_at: string
+          key: string
+          value: Json
+        }
+        Insert: {
+          created_at?: string
+          expires_at: string
+          key: string
+          value: Json
+        }
+        Update: {
+          created_at?: string
+          expires_at?: string
+          key?: string
+          value?: Json
+        }
+        Relationships: []
+      }
       markets_cache: {
         Row: {
           category: string
