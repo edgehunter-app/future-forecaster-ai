@@ -2,7 +2,7 @@ import { useState } from "react";
 import { NavLink, useNavigate, useLocation } from "react-router-dom";
 import {
   House, Zap, Trophy, TrendingUp, LayoutGrid,
-  Users, Clock, ArrowLeftRight, Settings as SettingsIcon, ChevronRight, BarChart2, Shield,
+  Users, Clock, ArrowLeftRight, Settings as SettingsIcon, ChevronRight, BarChart2, Shield, Star,
 } from "lucide-react";
 import BottomSheet from "@/components/ui/BottomSheet";
 import HorseIcon from "@/components/icons/HorseIcon";
@@ -10,6 +10,7 @@ import { useAppStore } from "@/store/useAppStore";
 import { cn } from "@/lib/utils";
 import { useIsAdmin } from "@/hooks/useIsAdmin";
 import { useLineMonitor } from "@/hooks/useLineMonitor";
+import { useSubscription } from "@/hooks/useSubscription";
 
 const MORE_ITEMS = [
   { to: "/tracker", label: "Bet Tracker", icon: BarChart2 },
