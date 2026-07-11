@@ -187,11 +187,9 @@ SMART WALLET SIGNALS:
 ${wallets.map((w: Any) => `- ${w.label} (Tier ${w.tier}): ${(w.winRate * 100).toFixed(0)}% win rate`).join("\n")}
 `
     : "No smart wallet data available for this game.";
-  const leagueStr = String(p.league ?? "");
   const isWorldCup = /world\s*cup/i.test(leagueStr) || /fifa/i.test(leagueStr);
   const isGolf = /golf|pga|masters|open championship|u\.?s\.? open/i.test(leagueStr);
-  const isMMA = /mma|ufc|mixed martial|bellator|pfl/i.test(leagueStr)
-    || String(p.sport ?? "").toLowerCase().includes("mma");
+
   const worldCupBlock = isWorldCup
     ? `
 FIFA WORLD CUP 2026 CONTEXT:
