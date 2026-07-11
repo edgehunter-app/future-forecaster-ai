@@ -82,16 +82,31 @@ Deno.serve(async (req) => {
   }
 
   const endpoints = [
-    "/",
-    "/tour/schedule",
-    "/schedule",
-    "/leaderboard",
-    "/tournaments",
-    "/tour/tournaments",
-    "/events",
-    "/rankings",
     "/world-rankings",
     "/scorecard/220/101017",
+    // tours / seasons enumeration
+    "/tours",
+    "/seasons",
+    "/tours/2",
+    "/tour/2/2026",
+    "/tours/2/2026",
+    // fixtures/schedule per tour+season (PGA=2, EUR=1 typical)
+    "/fixtures/2/2026",
+    "/fixtures/1/2026",
+    "/schedule/2/2026",
+    // leaderboard for known tournament id
+    "/leaderboard/220",
+    "/leaderboard/475",
+    "/entry-list/220",
+    "/players",
+    "/players/220",
+    "/tournament/220",
+    "/statistics/2/2026",
+    "/earnings/2/2026",
+    "/race-to-dubai/1/2026",
+    "/fedex-cup/2/2026",
+    // sometimes vendors expose an index at /endpoints
+    "/endpoints",
   ];
 
   const results: ProbeResult[] = [];
