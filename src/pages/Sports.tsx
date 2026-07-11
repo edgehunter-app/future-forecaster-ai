@@ -111,7 +111,7 @@ export default function Sports() {
       error: golf.error,
       fetchedAt: golf.fetchedAt,
       nextRefreshAt: golf.nextRefreshAt,
-      onRefresh: () => void golf.fetchCurrent(true),
+      onRefresh: (force?: boolean) => void golf.fetchCurrent(force ?? true),
     }),
     [golf.tournament, golf.leaderboard, golf.isLive, golf.loading, golf.error,
      golf.fetchedAt, golf.nextRefreshAt, golf.fetchCurrent],
@@ -543,24 +543,15 @@ export default function Sports() {
 
       {/* Main odds board */}
       {activeSport === "golf" ? (
-        // Golf tab renders independently of the Sportsbook API. The live
-        // leaderboard comes from LIVE_GOLF_API_KEY and outright odds come
-        // from the Odds API — neither depends on RapidAPI, so the card
-        // always renders when we have either data source.
-        golf.tournament || filteredGames.length > 0 ? (
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <GolfLeaderboardCard
-              golf={golfData}
-              game={filteredGames.find((g) => g.isOutright && g.players?.length)}
-            />
-          </div>
-        ) : golf.loading ? (
-          <div className="rounded-xl border border-border bg-card p-8 text-center text-sm text-muted-foreground">
-            Loading live golf data…
-          </div>
-        ) : (
-          <GolfEmptyState onClearCacheReload={handleClearGolfAndReload} loading={loading} />
-        )
+        // Golf tab always renders the card — the card itself handles the
+        // "Tap Refresh" empty state so the user can trigger the one manual
+        // API call (quota is 250/month).
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <GolfLeaderboardCard
+            golf={golfData}
+            game={filteredGames.find((g) => g.isOutright && g.players?.length)}
+          />
+        </div>
       ) : (
         <>
           {error && /quota|429|monthly|limit|exhaust/i.test(error) && (
