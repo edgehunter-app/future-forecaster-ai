@@ -49,7 +49,7 @@ interface GolfCurrentResponse {
   error?: string;
 }
 
-const CACHE_KEY = "eh.golfDataCache.v1";
+const CACHE_KEY = "eh.golfDataCache.v3";
 const TTL_MS = 15 * 60 * 1000;
 
 interface CachedPayload {

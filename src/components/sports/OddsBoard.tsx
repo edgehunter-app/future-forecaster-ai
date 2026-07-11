@@ -538,7 +538,15 @@ export function GolfLeaderboardCard({
     ? getTournamentStatus(new Date(tournament.startMs), new Date(tournament.endMs))
     : null;
   const isLiveNow = status?.label === "🟢 LIVE";
-  const showLive = isLiveNow && liveRows.length > 0;
+  // Render the live leaderboard whenever the API actually returned rows —
+  // date-based `isLiveNow` can be false for early/late tee times or when the
+  // upstream reports "In Progress" for a schedule day we don't yet count.
+  const showLive = liveRows.length > 0;
+  if (import.meta.env.DEV) {
+    console.log("[GolfCard] tournament:", tournament?.name, "tournId:", tournament?.tournId,
+      "isLive(prop):", golf?.isLive, "isLiveNow(date):", isLiveNow,
+      "liveRows:", liveRows.length, "loading:", loading);
+  }
   const visibleLive = expanded ? liveRows : liveRows.slice(0, 15);
   const visibleOdds = expanded ? players : players.slice(0, 10);
 
