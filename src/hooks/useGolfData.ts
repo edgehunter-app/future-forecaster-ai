@@ -99,10 +99,23 @@ export function useGolfData() {
   const [isLive, setIsLive] = useState<boolean>(cached?.data?.isLive ?? false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [fetchedAt, setFetchedAt] = useState<number | null>(cached?.fetchedAt ?? null);
+  const [nextRefreshAt, setNextRefreshAt] = useState<number | null>(
+    cached?.data?.nextRefreshAt ? new Date(cached.data.nextRefreshAt).getTime() : null,
+  );
   const inflight = useRef<Promise<void> | null>(null);
 
   const fetchCurrent = useCallback(async (force = false): Promise<void> => {
     if (inflight.current) return inflight.current;
+    // Rate-limit forced refreshes to protect the 250 req/MONTH quota.
+    if (force && typeof window !== "undefined") {
+      const last = Number(window.localStorage.getItem(MANUAL_REFRESH_KEY) ?? "0");
+      if (last && Date.now() - last < MANUAL_REFRESH_COOLDOWN_MS) {
+        console.log("[useGolfData] manual refresh blocked (cooldown active)");
+        return;
+      }
+      window.localStorage.setItem(MANUAL_REFRESH_KEY, String(Date.now()));
+    }
     if (!force) {
       const c = readCache();
       if (c) {
@@ -111,6 +124,8 @@ export function useGolfData() {
         setTournament(c.data.tournament);
         setLeaderboard(c.data.leaderboard);
         setIsLive(c.data.isLive);
+        setFetchedAt(c.fetchedAt);
+        if (c.data.nextRefreshAt) setNextRefreshAt(new Date(c.data.nextRefreshAt).getTime());
         return;
       }
     }
@@ -121,7 +136,7 @@ export function useGolfData() {
       try {
         const { data, error: invokeError } = await supabase.functions.invoke<GolfCurrentResponse>(
           "fetch-golf-data",
-          { body: { type: "current" } },
+          { body: { type: "current", forceRefresh: force } },
         );
         if (invokeError) throw invokeError;
         if (!data) throw new Error("empty response");
@@ -129,7 +144,8 @@ export function useGolfData() {
           "tournament=", data.tournament?.name ?? "NONE",
           "rows=", data.leaderboard?.rows?.length ?? 0,
           "isLive=", data.isLive,
-          "ok=", data.ok);
+          "ok=", data.ok,
+          "fromCache=", !!data.servedFromCache);
         // Only overwrite state when we actually got real data back.
         // Upstream 429s / transient errors return nulls — keep the
         // previously-rendered leaderboard visible instead of blanking it.
@@ -138,7 +154,11 @@ export function useGolfData() {
           setLeaderboard(data.leaderboard);
         }
         if (data.ok && data.isLive !== undefined) setIsLive(!!data.isLive);
-        if (data.ok) writeCache(data);
+        if (data.ok) {
+          writeCache(data);
+          setFetchedAt(Date.now());
+          if (data.nextRefreshAt) setNextRefreshAt(new Date(data.nextRefreshAt).getTime());
+        }
         if (!data.ok && data.error) setError(data.error);
         console.log("[useGolfData] SET leaderboard rows:",
           data.leaderboard?.rows?.length ?? "kept-previous");
@@ -155,12 +175,14 @@ export function useGolfData() {
   }, []);
 
   useEffect(() => {
-    // Golf data is fully independent of the Sportsbook API (RapidAPI) and the
-    // Odds API — it uses LIVE_GOLF_API_KEY. Fetch on mount, forcing a
-    // network call so a stale/empty cache never hides a live leaderboard.
-    void fetchCurrent(true);
+    // Fetch on mount but DO NOT force — server-side golf_cache (30 min TTL)
+    // handles freshness, avoiding a quota call on every page load.
+    void fetchCurrent(false);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  return { tournament, leaderboard, isLive, loading, error, fetchCurrent };
+  return {
+    tournament, leaderboard, isLive, loading, error, fetchCurrent,
+    fetchedAt, nextRefreshAt,
+  };
 }
