@@ -11,7 +11,7 @@ import { americanToImplied, americanPayout } from "@/lib/betMath";
 import type { NewBetInput } from "@/hooks/useBetTracker";
 import { cn } from "@/lib/utils";
 
-const SPORTS = ["NFL", "NBA", "MLB", "NHL", "EPL", "MLS", "Golf", "Polymarket", "Kalshi", "Other"];
+const SPORTS = ["NFL", "NBA", "MLB", "NHL", "EPL", "MLS", "Golf", "Horse Racing", "MMA", "UFC", "Polymarket", "Kalshi", "Other"];
 const BET_TYPES = ["Moneyline", "Spread", "Over/Under", "Prop", "Parlay", "Futures", "Other"];
 const BOOKS = [
   "DraftKings", "FanDuel", "BetMGM", "BetRivers", "ESPN Bet", "Caesars",
