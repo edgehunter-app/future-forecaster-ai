@@ -1362,3 +1362,60 @@ function PropsTab({ games }: { games: FullGame[] }) {
     </div>
   );
 }
+
+function formatRelativeMinutes(ms: number): string {
+  const mins = Math.floor(ms / 60_000);
+  if (mins < 1) return "just now";
+  if (mins === 1) return "1 min ago";
+  if (mins < 60) return `${mins} min ago`;
+  const hrs = Math.floor(mins / 60);
+  return hrs === 1 ? "1 hour ago" : `${hrs} hours ago`;
+}
+
+function GolfCardHeader({
+  loading, fetchedAt, nextRefreshAt, onRefresh,
+}: {
+  loading: boolean;
+  fetchedAt: number | null;
+  nextRefreshAt: number | null;
+  onRefresh: () => void;
+}) {
+  const [now, setNow] = useState(() => Date.now());
+  useEffect(() => {
+    const id = setInterval(() => setNow(Date.now()), 30_000);
+    return () => clearInterval(id);
+  }, []);
+  const canRefresh = !nextRefreshAt || now >= nextRefreshAt;
+  const minsUntil = nextRefreshAt
+    ? Math.max(0, Math.ceil((nextRefreshAt - now) / 60_000))
+    : 0;
+  const ago = fetchedAt ? formatRelativeMinutes(now - fetchedAt) : null;
+
+  return (
+    <div className="flex items-center justify-between gap-2 flex-wrap">
+      <div className="text-xs font-bold uppercase text-amber-300">⛳ Golf</div>
+      <div className="flex items-center gap-2">
+        {(ago || minsUntil > 0) && (
+          <div className="text-[10px] text-muted-foreground font-mono">
+            {ago && <>Updated {ago}</>}
+            {ago && minsUntil > 0 && <span className="opacity-50"> · </span>}
+            {minsUntil > 0 && <>Next update in {minsUntil} min</>}
+          </div>
+        )}
+        <button
+          onClick={onRefresh}
+          disabled={loading || !canRefresh}
+          className="inline-flex items-center gap-1 rounded-md border border-border bg-card px-2 py-1 text-[10px] font-semibold text-foreground hover:bg-secondary disabled:opacity-40 disabled:cursor-not-allowed"
+          title={
+            !canRefresh
+              ? `Rate-limited to protect monthly quota — try again in ${minsUntil} min`
+              : "Refresh live golf data"
+          }
+        >
+          <RotateCw className={cn("h-3 w-3", loading && "animate-spin")} />
+          Refresh
+        </button>
+      </div>
+    </div>
+  );
+}
