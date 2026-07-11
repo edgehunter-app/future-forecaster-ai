@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import {
-  Bell, Brain, Calculator, Check, Info, Key, Moon, Save, Sliders, Sun, TrendingUp, Trophy,
+  Bell, Brain, Calculator, Check, Info, Key, Moon, Save, Sliders, Sun, TrendingUp, Trophy, Crown, Sparkles, ExternalLink, X,
 } from "lucide-react";
 import Toggle from "@/components/ui/AppToggle";
 import Tooltip from "@/components/ui/AppTooltip";
@@ -10,6 +11,7 @@ import { cn, fmtUSD } from "@/lib/utils";
 import { useProfile } from "@/hooks/useProfile";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
+import { useSubscription } from "@/hooks/useSubscription";
 import { usePageTitle } from "@/hooks/usePageTitle";
 import { fetchOdds, SPORTS } from "@/lib/oddsApi";
 
@@ -45,33 +47,41 @@ export default function Settings() {
   const { showToast } = useToast();
   const { saveProfile, saving, saved } = useProfile();
   const { user } = useAuth();
-  const [sub, setSub] = useState<{
-    tier: string;
-    status: string;
-    stripe_subscription_id: string | null;
-    is_beta_tester: boolean;
-  } | null>(null);
+  const nav = useNavigate();
+  const {
+    tier, status, isBeta, loading: subLoading, openBillingPortal, refresh: refreshSub,
+  } = useSubscription();
+  const [portalBusy, setPortalBusy] = useState(false);
+  const [banner, setBanner] = useState<
+    | { kind: "success"; tier: string }
+    | { kind: "cancelled" }
+    | null
+  >(null);
 
   useEffect(() => {
-    if (!user) return;
-    supabase
-      .from("profiles")
-      .select("subscription_tier, subscription_status, stripe_subscription_id, is_beta_tester")
-      .eq("id", user.id)
-      .maybeSingle()
-      .then(({ data }) => {
-        if (!data) return;
-        setSub({
-          tier: data.subscription_tier ?? "free",
-          status: data.subscription_status ?? "inactive",
-          stripe_subscription_id: data.stripe_subscription_id ?? null,
-          is_beta_tester: !!data.is_beta_tester,
-        });
-      });
-  }, [user?.id]);
+    const params = new URLSearchParams(window.location.search);
+    if (params.get("upgraded") === "true") {
+      setBanner({ kind: "success", tier: params.get("tier") ?? "pro" });
+      window.history.replaceState({}, "", "/settings");
+      // Give webhook a moment then refresh subscription state
+      setTimeout(() => { void refreshSub(); }, 1500);
+    } else if (params.get("cancelled") === "true") {
+      setBanner({ kind: "cancelled" });
+      window.history.replaceState({}, "", "/settings");
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
-  const isBetaElite =
-    sub?.tier === "elite" && !sub?.stripe_subscription_id;
+  const onManageBilling = async () => {
+    setPortalBusy(true);
+    try {
+      await openBillingPortal();
+    } catch (e) {
+      console.error(e);
+      showToast("Could not open billing portal.", "error");
+      setPortalBusy(false);
+    }
+  };
 
   const onSave = async () => {
     await saveProfile();
@@ -118,16 +128,41 @@ export default function Settings() {
         </button>
       </div>
 
+      {/* Return-from-Stripe banners */}
+      {banner?.kind === "success" && (
+        <div className="flex items-start justify-between gap-3 rounded-lg border border-success/40 bg-success/10 p-4">
+          <div>
+            <div className="text-sm font-semibold text-success">
+              🎉 Welcome to EdgeHunter {banner.tier === "elite" ? "Elite" : "Pro"}!
+            </div>
+            <p className="text-xs text-success/80 mt-0.5">
+              Your subscription is now active. Enjoy unlimited access.
+            </p>
+          </div>
+          <button onClick={() => setBanner(null)} className="text-success/70 hover:text-success">
+            <X className="h-4 w-4" />
+          </button>
+        </div>
+      )}
+      {banner?.kind === "cancelled" && (
+        <div className="flex items-start justify-between gap-3 rounded-lg border border-border bg-muted/30 p-4">
+          <div className="text-sm text-muted-foreground">
+            No worries — you can upgrade anytime from Settings.
+          </div>
+          <button onClick={() => setBanner(null)} className="text-muted-foreground hover:text-foreground">
+            <X className="h-4 w-4" />
+          </button>
+        </div>
+      )}
+
       {/* Subscription */}
-      {sub && (
+      {!subLoading && (
         <div className="rounded-lg border border-border bg-card p-4">
-          {isBetaElite ? (
+          {isBeta ? (
             <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
               <div>
-                <div className="flex items-center gap-2">
-                  <span className="inline-flex items-center gap-1 rounded-full bg-gradient-to-r from-amber-500 to-yellow-400 px-2.5 py-0.5 text-xs font-bold text-black">
-                    <Trophy className="h-3 w-3" /> EdgeHunter Elite ✓
-                  </span>
+                <div className="flex items-center gap-2 flex-wrap">
+                  <TierBadge tier="elite" />
                   <span className="text-xs font-semibold text-amber-400">
                     Beta Access — Complimentary
                   </span>
@@ -140,16 +175,41 @@ export default function Settings() {
                 Beta tester — no billing required
               </span>
             </div>
-          ) : (
-            <div className="flex items-center justify-between">
+          ) : tier === "pro" || tier === "elite" ? (
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
               <div>
-                <div className="text-sm font-semibold text-foreground">
-                  Plan: <span className="capitalize">{sub.tier}</span>
-                </div>
-                <p className="text-xs text-muted-foreground capitalize">
-                  Status: {sub.status}
+                <TierBadge tier={tier} />
+                <p className="mt-1 text-xs text-muted-foreground">
+                  Active subscription · {tier === "elite" ? "$49" : "$19"}/month
+                  {status && status !== "active" ? ` · ${status}` : ""}
                 </p>
               </div>
+              <button
+                onClick={onManageBilling}
+                disabled={portalBusy}
+                className="inline-flex items-center gap-1.5 rounded-md border border-border bg-background px-3 py-1.5 text-xs font-semibold text-foreground hover:bg-muted disabled:opacity-50"
+              >
+                <ExternalLink className="h-3.5 w-3.5" />
+                {portalBusy ? "Opening…" : "Manage Billing"}
+              </button>
+            </div>
+          ) : (
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+              <div>
+                <span className="inline-flex items-center gap-1 rounded-full bg-muted px-2.5 py-0.5 text-xs font-bold text-muted-foreground">
+                  Free Plan
+                </span>
+                <p className="mt-1 text-xs text-muted-foreground">
+                  Upgrade to unlock unlimited analysis, deeper signals, and priority access.
+                </p>
+              </div>
+              <button
+                onClick={() => nav("/upgrade")}
+                className="inline-flex items-center gap-1.5 rounded-md bg-gradient-to-r from-amber-500 to-yellow-400 px-3 py-1.5 text-xs font-bold text-black hover:opacity-90"
+              >
+                <Sparkles className="h-3.5 w-3.5" />
+                View Plans
+              </button>
             </div>
           )}
         </div>
