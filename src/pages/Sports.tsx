@@ -108,9 +108,10 @@ export default function Sports() {
       leaderboard: golf.leaderboard,
       isLive: golf.isLive,
       loading: golf.loading,
+      error: golf.error,
       onRefresh: () => void golf.fetchCurrent(true),
     }),
-    [golf.tournament, golf.leaderboard, golf.isLive, golf.loading, golf.fetchCurrent],
+    [golf.tournament, golf.leaderboard, golf.isLive, golf.loading, golf.error, golf.fetchCurrent],
   );
   if (import.meta.env.DEV) {
     console.log("[Sports] passing leaderboard rows:",
