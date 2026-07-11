@@ -700,12 +700,21 @@ async function fetchOddsApiAll(client: any, forceRefresh = false): Promise<{ gam
   console.log("Fetching golf with keys:", JSON.stringify(activeGolfKeys));
   const soccerCalls = ODDS_API_SOCCER_SPORTS.map((s) => fetchOddsApiSport(client, s, "h2h,spreads,totals", forceRefresh));
   const golfCalls = activeGolfKeys.map((s) => fetchOddsApiSport(client, s, "outrights", forceRefresh));
-  const results = await Promise.all([...soccerCalls, ...golfCalls]);
+  // MMA/UFC is moneyline only.
+  const mmaCalls = ODDS_API_MMA_SPORTS.map((s) => fetchOddsApiSport(client, s, "h2h", forceRefresh));
+  const results = await Promise.all([...soccerCalls, ...golfCalls, ...mmaCalls]);
   const games: any[] = [];
   let remaining: number | null = null;
   for (const r of results) {
     games.push(...r.games);
     if (typeof r.remaining === "number") remaining = r.remaining;
+  }
+  const mmaCount = games.filter((g) => g?.sport_key === "mma_mixed_martial_arts").length;
+  console.log("[odds-api] MMA events mapped:", mmaCount);
+  if (mmaCount > 0) {
+    const first = games.find((g) => g?.sport_key === "mma_mixed_martial_arts");
+    console.log("[odds-api] MMA first fight:", first?.away_team, "vs", first?.home_team,
+      "at", first?.commence_time, "books:", first?.bookmakers?.length ?? 0);
   }
   // Debug: surface how many outright players & a sample for the first golf
   // event, so we can confirm the leaderboard pipeline is fed.
