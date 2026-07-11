@@ -441,6 +441,14 @@ export default function Sports() {
             ? loadedSports.has("golf") && count > 0
             : s.key === "all" || loadedSports.has(s.key);
           const isWC = s.key === "soccer_fifa_world_cup";
+          const isMMA = s.key === "mma_mixed_martial_arts";
+          const mmaLiveTonight = isMMA && fullGames.some((g) => {
+            if (g.sport !== "mma_mixed_martial_arts") return false;
+            const t = new Date(g.commenceTime).getTime();
+            if (!Number.isFinite(t)) return false;
+            const diff = t - Date.now();
+            return diff > -3 * 3600_000 && diff < 12 * 3600_000;
+          });
           return (
             <button
               key={s.key}
@@ -463,15 +471,25 @@ export default function Sports() {
                   ? active
                     ? "border-amber-400 bg-amber-500 text-amber-950"
                     : "border-amber-400/50 bg-amber-500/10 text-amber-200 hover:bg-amber-500/20"
-                  : active
-                    ? "border-info bg-info text-white"
-                    : "border-border bg-card text-muted-foreground hover:text-foreground",
+                  : isMMA
+                    ? active
+                      ? "border-orange-400 bg-gradient-to-r from-red-500 to-orange-500 text-white"
+                      : "border-orange-400/50 bg-orange-500/10 text-orange-200 hover:bg-orange-500/20"
+                    : active
+                      ? "border-info bg-info text-white"
+                      : "border-border bg-card text-muted-foreground hover:text-foreground",
               )}
             >
-              <span>{s.label}</span>
+              <span>{isMMA ? "🥊 MMA" : s.label}</span>
               {count > 0 && <span className="opacity-70">{count}</span>}
               {isWC && (
                 <span className="inline-flex items-center gap-0.5 rounded-full bg-destructive/20 px-1.5 py-px text-[8px] font-bold uppercase text-destructive">
+                  <span className="h-1 w-1 rounded-full bg-destructive animate-pulse" />
+                  Live
+                </span>
+              )}
+              {mmaLiveTonight && (
+                <span className="inline-flex items-center gap-0.5 rounded-full bg-destructive/25 px-1.5 py-px text-[8px] font-bold uppercase text-destructive-foreground">
                   <span className="h-1 w-1 rounded-full bg-destructive animate-pulse" />
                   Live
                 </span>
