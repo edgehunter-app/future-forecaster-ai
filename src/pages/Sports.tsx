@@ -228,6 +228,16 @@ export default function Sports() {
     console.log("Selected sport:", activeSport);
     console.log("Filtered games:", filteredGames);
     console.log("Unique sport keys:", [...new Set((fullGames ?? []).map((g) => g.sport))]);
+    const mmaGames = (fullGames ?? []).filter((g) => g.sport === "mma_mixed_martial_arts");
+    console.log("[mma] tonight's fights:",
+      mmaGames
+        .filter((g) => {
+          const gameTime = new Date(g.commenceTime).getTime();
+          const hoursUntil = (gameTime - Date.now()) / 3_600_000;
+          return hoursUntil > -3 && hoursUntil < 12;
+        })
+        .map((g) => ({ fight: `${g.awayTeam} vs ${g.homeTeam}`, time: g.commenceTime })),
+    );
   }
 
   const counts = useMemo(() => {
