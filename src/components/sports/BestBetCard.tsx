@@ -8,6 +8,10 @@ import { useAuth } from "@/hooks/useAuth";
 import { toast } from "sonner";
 import { useEffect, useState } from "react";
 import { buildBetHeadline } from "@/lib/betHeadline";
+import DevilsAdvocatePanel from "@/components/analysis/DevilsAdvocatePanel";
+import RiskAIPanel from "@/components/analysis/RiskAIPanel";
+import EliteTeaser from "@/components/analysis/EliteTeaser";
+import { useSubscription } from "@/hooks/useSubscription";
 
 interface Props {
   result: BestBetResult;
@@ -43,6 +47,7 @@ export default function BestBetCard({ result, onClear, onRescan }: Props) {
   const settings = useAppStore((s) => s.settings);
   const { user } = useAuth();
   const { saveSuggestion } = useSuggestionsDB();
+  const { isElite } = useSubscription();
   const [saved, setSaved] = useState(false);
   const [now, setNow] = useState(() => new Date());
 

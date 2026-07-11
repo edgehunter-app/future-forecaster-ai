@@ -4,6 +4,10 @@ import { cn } from "@/lib/utils";
 import LogBetModal from "@/components/tracker/LogBetModal";
 import { useBetTracker } from "@/hooks/useBetTracker";
 import { toast } from "sonner";
+import DevilsAdvocatePanel, { type DevilsAdvocateData } from "@/components/analysis/DevilsAdvocatePanel";
+import RiskAIPanel, { type RiskProfileData } from "@/components/analysis/RiskAIPanel";
+import EliteTeaser from "@/components/analysis/EliteTeaser";
+import { useSubscription } from "@/hooks/useSubscription";
 
 function fmtOdds(v: number | string | undefined | null): string {
   if (v === null || v === undefined || v === "") return "—";
@@ -36,6 +40,8 @@ export interface GolfAnalysisResult {
   warningFlags?: string[];
   noOddsAvailable?: boolean;
   watchList?: Array<{ player?: string; position?: string; total?: string; reason?: string }>;
+  devilsAdvocate?: DevilsAdvocateData;
+  riskProfile?: RiskProfileData;
 }
 
 interface Props {
@@ -47,6 +53,7 @@ interface Props {
 export default function GolfAnalysisPanel({ result, tournamentName, onClear }: Props) {
   const [logOpen, setLogOpen] = useState(false);
   const { logBet } = useBetTracker();
+  const { isElite } = useSubscription();
 
   const player = result.recommendation ?? "Player";
   const betLabel =
@@ -266,6 +273,12 @@ export default function GolfAnalysisPanel({ result, tournamentName, onClear }: P
           </div>
         </div>
       )}
+
+      {isElite && result.riskProfile && <RiskAIPanel data={result.riskProfile} />}
+      {isElite && result.devilsAdvocate && (
+        <DevilsAdvocatePanel data={result.devilsAdvocate} />
+      )}
+      {!isElite && (result.devilsAdvocate || result.riskProfile) && <EliteTeaser />}
 
       {/* Warnings */}
       {Array.isArray(result.warningFlags) && result.warningFlags.length > 0 && (

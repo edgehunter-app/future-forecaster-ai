@@ -9,6 +9,10 @@ import { useSuggestionsDB } from "@/hooks/useSuggestionsDB";
 import { useAuth } from "@/hooks/useAuth";
 import { toast } from "sonner";
 import { buildBetHeadline } from "@/lib/betHeadline";
+import DevilsAdvocatePanel from "@/components/analysis/DevilsAdvocatePanel";
+import RiskAIPanel from "@/components/analysis/RiskAIPanel";
+import EliteTeaser from "@/components/analysis/EliteTeaser";
+import { useSubscription } from "@/hooks/useSubscription";
 
 interface Props {
   result: GameAnalysisResult;
@@ -34,6 +38,7 @@ export default function GameAnalysisPanel({ result, game, onClear }: Props) {
   const settings = useAppStore((s) => s.settings);
   const { user } = useAuth();
   const { saveSuggestion } = useSuggestionsDB();
+  const { isElite } = useSubscription();
   const [showSizing, setShowSizing] = useState(false);
   const [saved, setSaved] = useState(false);
 
@@ -183,6 +188,11 @@ export default function GameAnalysisPanel({ result, game, onClear }: Props) {
         <ConfidenceBar value={result.confidence} />
       </div>
 
+      {/* Risk AI (Elite) */}
+      {isElite && (result as any).riskProfile && (
+        <RiskAIPanel data={(result as any).riskProfile} />
+      )}
+
       {/* Reasoning */}
       <div className="rounded-md bg-background/60 border border-border/60 p-3">
         <div className="flex items-start gap-2">
@@ -190,6 +200,14 @@ export default function GameAnalysisPanel({ result, game, onClear }: Props) {
           <p className="text-xs italic text-foreground/90 leading-relaxed">{result.reasoning}</p>
         </div>
       </div>
+
+      {/* Devil's Advocate (Elite) */}
+      {isElite && (result as any).devilsAdvocate && (
+        <DevilsAdvocatePanel data={(result as any).devilsAdvocate} />
+      )}
+      {!isElite && ((result as any).devilsAdvocate || (result as any).riskProfile) && (
+        <EliteTeaser />
+      )}
 
       {/* Key factors */}
       {result.keyFactors.length > 0 && (
