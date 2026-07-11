@@ -162,11 +162,21 @@ export default function OddsBoard({ games, loading, mispricings = [], onRefresh,
 
       {tab === "games" && (
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          {games.map((g) =>
-            g.isOutright && g.players?.length
-              ? <GolfLeaderboardCard key={g.id} game={g} golf={golfData} />
-              : <GameCard key={g.id} game={g} mispricings={mispricings} />,
-          )}
+          {(() => {
+            if (import.meta.env.DEV) {
+              console.log("[OddsBoard] golf props received:", {
+                tournament: golfData?.tournament?.name,
+                leaderboard: golfData?.leaderboard?.rows?.length ?? 0,
+                isLive: golfData?.isLive,
+                golfGames: games.filter((g) => g.isOutright && g.players?.length).length,
+              });
+            }
+            return games.map((g) =>
+              g.isOutright && g.players?.length
+                ? <GolfLeaderboardCard key={g.id} game={g} golf={golfData} />
+                : <GameCard key={g.id} game={g} mispricings={mispricings} />,
+            );
+          })()}
         </div>
       )}
 
