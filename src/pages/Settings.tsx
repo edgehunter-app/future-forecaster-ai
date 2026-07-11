@@ -9,6 +9,7 @@ import { useAppStore } from "@/store/useAppStore";
 import { cn, fmtUSD } from "@/lib/utils";
 import { useProfile } from "@/hooks/useProfile";
 import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/hooks/useAuth";
 import { usePageTitle } from "@/hooks/usePageTitle";
 import { fetchOdds, SPORTS } from "@/lib/oddsApi";
 
@@ -43,6 +44,34 @@ export default function Settings() {
   const setDarkMode = useAppStore((s) => s.setDarkMode);
   const { showToast } = useToast();
   const { saveProfile, saving, saved } = useProfile();
+  const { user } = useAuth();
+  const [sub, setSub] = useState<{
+    tier: string;
+    status: string;
+    stripe_subscription_id: string | null;
+    is_beta_tester: boolean;
+  } | null>(null);
+
+  useEffect(() => {
+    if (!user) return;
+    supabase
+      .from("profiles")
+      .select("subscription_tier, subscription_status, stripe_subscription_id, is_beta_tester")
+      .eq("id", user.id)
+      .maybeSingle()
+      .then(({ data }) => {
+        if (!data) return;
+        setSub({
+          tier: data.subscription_tier ?? "free",
+          status: data.subscription_status ?? "inactive",
+          stripe_subscription_id: data.stripe_subscription_id ?? null,
+          is_beta_tester: !!data.is_beta_tester,
+        });
+      });
+  }, [user?.id]);
+
+  const isBetaElite =
+    sub?.tier === "elite" && !sub?.stripe_subscription_id;
 
   const onSave = async () => {
     await saveProfile();
@@ -88,6 +117,43 @@ export default function Settings() {
           {saved ? "Saved!" : saving ? "Saving..." : "Save Changes"}
         </button>
       </div>
+
+      {/* Subscription */}
+      {sub && (
+        <div className="rounded-lg border border-border bg-card p-4">
+          {isBetaElite ? (
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
+              <div>
+                <div className="flex items-center gap-2">
+                  <span className="inline-flex items-center gap-1 rounded-full bg-gradient-to-r from-amber-500 to-yellow-400 px-2.5 py-0.5 text-xs font-bold text-black">
+                    <Trophy className="h-3 w-3" /> EdgeHunter Elite ✓
+                  </span>
+                  <span className="text-xs font-semibold text-amber-400">
+                    Beta Access — Complimentary
+                  </span>
+                </div>
+                <p className="mt-1 text-xs text-muted-foreground">
+                  Thanks for helping test EdgeHunter. All Elite features unlocked.
+                </p>
+              </div>
+              <span className="text-xs text-muted-foreground">
+                Beta tester — no billing required
+              </span>
+            </div>
+          ) : (
+            <div className="flex items-center justify-between">
+              <div>
+                <div className="text-sm font-semibold text-foreground">
+                  Plan: <span className="capitalize">{sub.tier}</span>
+                </div>
+                <p className="text-xs text-muted-foreground capitalize">
+                  Status: {sub.status}
+                </p>
+              </div>
+            </div>
+          )}
+        </div>
+      )}
 
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-5">
         {/* LEFT 60% */}
