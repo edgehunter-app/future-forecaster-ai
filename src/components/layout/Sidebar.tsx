@@ -1,7 +1,7 @@
 import { NavLink } from "react-router-dom";
 import {
   House, Zap, Users, TrendingUp, Clock, Settings,
-  ChevronLeft, ChevronRight, Moon, Sun, ArrowLeftRight, Download, Trophy, ShieldCheck, BarChart2,
+  ChevronLeft, ChevronRight, Moon, Sun, ArrowLeftRight, Download, Trophy, ShieldCheck, BarChart2, Star,
 } from "lucide-react";
 import { useAppStore } from "@/store/useAppStore";
 import { usePWA } from "@/hooks/usePWA";
@@ -9,6 +9,7 @@ import { cn } from "@/lib/utils";
 import { EdgeHunterLogo } from "@/components/brand/EdgeHunterLogo";
 import HorseIcon from "@/components/icons/HorseIcon";
 import { useIsAdmin } from "@/hooks/useIsAdmin";
+import { useSubscription } from "@/hooks/useSubscription";
 
 export function Sidebar({ mobileOpen = false, onMobileClose }: { mobileOpen?: boolean; onMobileClose?: () => void } = {}) {
   const open = useAppStore((s) => s.ui.sidebarOpen);
@@ -19,6 +20,8 @@ export function Sidebar({ mobileOpen = false, onMobileClose }: { mobileOpen?: bo
   const xmCount = useAppStore((s) => s.crossMarketOpps.length);
   const { canInstall, isInstalled, install } = usePWA();
   const { isAdmin } = useIsAdmin();
+  const { tier, isBeta, loading: subLoading } = useSubscription();
+  const showUpgrade = !subLoading && !isBeta && tier === "free";
 
   const navItems = [
     { to: "/", label: "Dashboard", icon: House, end: true } as const,
@@ -102,6 +105,23 @@ export function Sidebar({ mobileOpen = false, onMobileClose }: { mobileOpen?: bo
       </nav>
 
       <div className="border-t border-sidebar-border p-2 space-y-1">
+        {showUpgrade && (
+          <NavLink
+            to="/upgrade"
+            className={({ isActive }) =>
+              cn(
+                "flex w-full items-center gap-3 rounded-md px-3 py-2 text-sm font-semibold transition-colors",
+                isActive
+                  ? "bg-amber-500/20 text-amber-400"
+                  : "bg-gradient-to-r from-amber-500/15 to-yellow-400/10 text-amber-400 hover:from-amber-500/25 hover:to-yellow-400/20",
+              )
+            }
+            title={!open ? "Upgrade to Pro" : undefined}
+          >
+            <Star className="h-[18px] w-[18px]" />
+            {open && <span>Upgrade to Pro</span>}
+          </NavLink>
+        )}
         {isAdmin && (
           <NavLink
             to="/admin"
