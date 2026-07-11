@@ -30,7 +30,7 @@ export interface GolfDataProps {
   leaderboard: GolfLeaderboard | null;
   isLive: boolean;
   loading: boolean;
-  onRefresh: () => void;
+  onRefresh: (force?: boolean) => void;
   error?: string | null;
   fetchedAt?: number | null;
   nextRefreshAt?: number | null;
