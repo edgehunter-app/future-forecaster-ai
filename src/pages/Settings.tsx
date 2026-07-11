@@ -498,6 +498,21 @@ export default function Settings() {
   );
 }
 
+function TierBadge({ tier }: { tier: "pro" | "elite" }) {
+  if (tier === "elite") {
+    return (
+      <span className="inline-flex items-center gap-1 rounded-full bg-gradient-to-r from-amber-500 to-yellow-400 px-2.5 py-0.5 text-xs font-bold text-black">
+        <Trophy className="h-3 w-3" /> EdgeHunter Elite ✓
+      </span>
+    );
+  }
+  return (
+    <span className="inline-flex items-center gap-1 rounded-full bg-gradient-to-r from-violet-500 to-fuchsia-500 px-2.5 py-0.5 text-xs font-bold text-white">
+      <Crown className="h-3 w-3" /> EdgeHunter Pro ✓
+    </span>
+  );
+}
+
 type SettingsScanInterval = "15m" | "30m" | "1h" | "manual";
 
 function Card({ children }: { children: React.ReactNode }) {
