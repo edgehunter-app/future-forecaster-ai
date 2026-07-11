@@ -193,6 +193,14 @@ async function rapidFetch(path: string): Promise<any | null> {
     headers: { "x-rapidapi-key": key, "x-rapidapi-host": RAPID_HOST },
   });
   console.log("RapidAPI status:", res.status, path);
+  console.log(
+    "[sportsbook-api] quota remaining=",
+    res.headers.get("x-ratelimit-requests-remaining"),
+    "limit=",
+    res.headers.get("x-ratelimit-requests-limit"),
+    "reset=",
+    res.headers.get("x-ratelimit-requests-reset"),
+  );
   if (!res.ok) {
     const text = await res.text().catch(() => "");
     console.error("RapidAPI error:", text.slice(0, 400));
