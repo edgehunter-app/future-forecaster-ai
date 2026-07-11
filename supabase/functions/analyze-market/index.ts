@@ -356,7 +356,24 @@ IMPORTANT: If the best available line is clearly better than consensus,
 ALWAYS recommend it even if the overall edge is small. Users want to
 know WHERE to bet, not just WHETHER to bet. Only return
 "recommendation": "NO_EDGE" if confidence would be below 35 — otherwise
-always pick a side.`;
+always pick a side.
+
+ALSO include a "riskProfile" object in your JSON response using this schema:
+{
+  "riskProfile": {
+    "level": "LOW" | "MEDIUM" | "HIGH",
+    "score": 1-10,
+    "factors": [
+      { "factor": "short name", "impact": "LOW" | "MEDIUM" | "HIGH", "description": "one sentence" }
+    ],
+    "volatilityType": "LINE_MOVEMENT" | "INJURY_RISK" | "PUBLIC_TRAP" | "SHARP_FADE" | "WEATHER" | "VARIANCE" | "STABLE",
+    "recommendation": "one sentence on risk management (e.g. reduce size, avoid parlay)"
+  }
+}
+Risk level criteria:
+  LOW (1-3): multiple books agree, market stable 24h+, clear consensus, low-variance bet type
+  MEDIUM (4-6): some book disagreement, moderate line movement, moderate variance, some unknowns
+  HIGH (7-10): significant book disagreement, heavy line movement, high variance, key unknowns (injury/weather), props, parlays`;
 }
 
 function buildKalshiPrompt(p: AnalyzeBody): string {
@@ -721,7 +738,21 @@ Respond with ONLY valid JSON, no markdown:
   "keyFactors": ["factor1", "factor2"],
   "riskLevel": "low" | "medium" | "high",
   "warningFlags": ["any concerns"]
-}`;
+},
+"riskProfile": {
+  "level": "LOW" | "MEDIUM" | "HIGH",
+  "score": 1-10,
+  "factors": [
+    { "factor": "short name", "impact": "LOW" | "MEDIUM" | "HIGH", "description": "one sentence" }
+  ],
+  "volatilityType": "LINE_MOVEMENT" | "INJURY_RISK" | "PUBLIC_TRAP" | "SHARP_FADE" | "WEATHER" | "VARIANCE" | "STABLE",
+  "recommendation": "one sentence on risk management"
+}
+
+Risk level criteria for golf outrights:
+  LOW (1-3): stable market, clear favorite fits course, no weather concerns
+  MEDIUM (4-6): moderate variance, some line movement, mixed course fit
+  HIGH (7-10): outright winner bets (inherently high variance), heavy weather, wide-open field, deep-longshot pricing`;
 }
 
 function buildCashoutPrompt(p: AnalyzeBody): string {
