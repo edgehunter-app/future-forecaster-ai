@@ -356,7 +356,24 @@ IMPORTANT: If the best available line is clearly better than consensus,
 ALWAYS recommend it even if the overall edge is small. Users want to
 know WHERE to bet, not just WHETHER to bet. Only return
 "recommendation": "NO_EDGE" if confidence would be below 35 — otherwise
-always pick a side.`;
+always pick a side.
+
+ALSO include a "riskProfile" object in your JSON response using this schema:
+{
+  "riskProfile": {
+    "level": "LOW" | "MEDIUM" | "HIGH",
+    "score": 1-10,
+    "factors": [
+      { "factor": "short name", "impact": "LOW" | "MEDIUM" | "HIGH", "description": "one sentence" }
+    ],
+    "volatilityType": "LINE_MOVEMENT" | "INJURY_RISK" | "PUBLIC_TRAP" | "SHARP_FADE" | "WEATHER" | "VARIANCE" | "STABLE",
+    "recommendation": "one sentence on risk management (e.g. reduce size, avoid parlay)"
+  }
+}
+Risk level criteria:
+  LOW (1-3): multiple books agree, market stable 24h+, clear consensus, low-variance bet type
+  MEDIUM (4-6): some book disagreement, moderate line movement, moderate variance, some unknowns
+  HIGH (7-10): significant book disagreement, heavy line movement, high variance, key unknowns (injury/weather), props, parlays`;
 }
 
 function buildKalshiPrompt(p: AnalyzeBody): string {
@@ -721,7 +738,21 @@ Respond with ONLY valid JSON, no markdown:
   "keyFactors": ["factor1", "factor2"],
   "riskLevel": "low" | "medium" | "high",
   "warningFlags": ["any concerns"]
-}`;
+},
+"riskProfile": {
+  "level": "LOW" | "MEDIUM" | "HIGH",
+  "score": 1-10,
+  "factors": [
+    { "factor": "short name", "impact": "LOW" | "MEDIUM" | "HIGH", "description": "one sentence" }
+  ],
+  "volatilityType": "LINE_MOVEMENT" | "INJURY_RISK" | "PUBLIC_TRAP" | "SHARP_FADE" | "WEATHER" | "VARIANCE" | "STABLE",
+  "recommendation": "one sentence on risk management"
+}
+
+Risk level criteria for golf outrights:
+  LOW (1-3): stable market, clear favorite fits course, no weather concerns
+  MEDIUM (4-6): moderate variance, some line movement, mixed course fit
+  HIGH (7-10): outright winner bets (inherently high variance), heavy weather, wide-open field, deep-longshot pricing`;
 }
 
 function buildCashoutPrompt(p: AnalyzeBody): string {
@@ -916,6 +947,85 @@ Deno.serve(async (req) => {
         code: 'MODEL_PARSE_ERROR',
         raw: text,
       }), { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+    }
+
+    // Devil's Advocate second pass — only for sports & golf recommendations
+    // that actually produced a bet. Failures here degrade silently.
+    const daEligibleTypes = new Set(["sports", "golf"]);
+    const rec = String((parsed as Any).recommendation ?? "").toUpperCase();
+    const hasBet = rec && rec !== "NO_EDGE" && rec !== "NO BET AVAILABLE" && rec !== "N/A";
+    if (daEligibleTypes.has(type) && hasBet) {
+      try {
+        const mainSummary = {
+          recommendedTeam: (parsed as Any).recommendedTeam ?? (parsed as Any).recommendation,
+          betType: (parsed as Any).betType,
+          odds: (parsed as Any).odds,
+          confidence: (parsed as Any).confidence,
+          edge: (parsed as Any).edge,
+          bestBook: (parsed as Any).bestBook,
+          reasoning: (parsed as Any).reasoning,
+        };
+        const context = type === "golf"
+          ? `TOURNAMENT: ${body.tournamentName ?? "?"} — ${body.dates ?? "?"}`
+          : `MATCHUP: ${body.awayTeam ?? "?"} @ ${body.homeTeam ?? "?"} (${body.league ?? "?"})`;
+        const daPrompt = `You are the Devil's Advocate for EdgeHunter. Your ONLY job is to argue AGAINST the following bet recommendation.
+
+RECOMMENDED BET:
+  Pick: ${mainSummary.recommendedTeam}
+  Type: ${mainSummary.betType}
+  Odds: ${mainSummary.odds}
+  Confidence: ${mainSummary.confidence}%
+  Edge: ${mainSummary.edge}
+  Book: ${mainSummary.bestBook}
+  Reasoning: ${mainSummary.reasoning}
+
+${context}
+
+Find the STRONGEST possible arguments AGAINST taking this bet. Be specific, honest, and contrarian. Consider what could go wrong, what the recommender might be missing, historical failure patterns, market efficiency, injury/lineup/weather risks, variance and sample size, liquidity, line movement, correlation, and public money traps.
+
+Respond with ONLY valid JSON, no markdown:
+{
+  "verdict": "PROCEED" | "CAUTION" | "AVOID",
+  "strength": 1-10,
+  "topArguments": ["strongest argument", "second", "third"],
+  "keyRisks": ["risk1", "risk2", "risk3"],
+  "alternativeView": "one sentence on what the market may know",
+  "verdictReason": "one sentence summary of whether to proceed despite risks"
+}
+
+Be genuinely critical. If the bet is truly bad, say so. If risks are minor, say that too. Never simply agree with the main recommendation.`;
+        const daController = new AbortController();
+        const daTimeout = setTimeout(() => daController.abort(), 20000);
+        const daResp = await fetch('https://api.anthropic.com/v1/messages', {
+          method: 'POST',
+          signal: daController.signal,
+          headers: {
+            'x-api-key': apiKey,
+            'anthropic-version': '2023-06-01',
+            'content-type': 'application/json',
+          },
+          body: JSON.stringify({
+            model: 'claude-sonnet-4-5',
+            max_tokens: 800,
+            messages: [{ role: 'user', content: daPrompt }],
+          }),
+        });
+        clearTimeout(daTimeout);
+        if (daResp.ok) {
+          const daData = await daResp.json() as { content?: { type: string; text?: string }[] };
+          const daText = daData.content?.find((b) => b.type === 'text')?.text ?? '';
+          const daCleaned = daText.replace(/```json|```/g, '').trim();
+          try {
+            (parsed as Any).devilsAdvocate = JSON.parse(daCleaned);
+          } catch {
+            console.error('[DA] parse failed:', daText.slice(0, 200));
+          }
+        } else {
+          console.warn('[DA] upstream status', daResp.status);
+        }
+      } catch (daErr) {
+        console.warn('[DA] error', (daErr as Error).message);
+      }
     }
 
     return new Response(JSON.stringify(parsed), {
