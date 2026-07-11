@@ -656,7 +656,7 @@ export function GolfLeaderboardCard({
       <div className="flex items-center justify-between gap-2">
         <div className="text-xs font-bold uppercase text-amber-300">⛳ Golf</div>
         <button
-          onClick={() => fetchCurrent(true)}
+          onClick={() => fetchCurrent()}
           disabled={loading}
           className="inline-flex items-center gap-1 rounded-md border border-border bg-card px-2 py-1 text-[10px] font-semibold text-foreground hover:bg-secondary disabled:opacity-50"
           title="Refresh live golf data"
