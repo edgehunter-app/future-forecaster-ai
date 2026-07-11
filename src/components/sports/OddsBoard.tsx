@@ -666,18 +666,12 @@ export function GolfLeaderboardCard({
 
   return (
     <div className="rounded-lg border border-amber-400/40 bg-gradient-to-br from-amber-500/5 to-card p-4 space-y-3 md:col-span-2">
-      <div className="flex items-center justify-between gap-2">
-        <div className="text-xs font-bold uppercase text-amber-300">⛳ Golf</div>
-        <button
-          onClick={() => fetchCurrent()}
-          disabled={loading}
-          className="inline-flex items-center gap-1 rounded-md border border-border bg-card px-2 py-1 text-[10px] font-semibold text-foreground hover:bg-secondary disabled:opacity-50"
-          title="Refresh live golf data"
-        >
-          <RotateCw className={cn("h-3 w-3", loading && "animate-spin")} />
-          Refresh
-        </button>
-      </div>
+      <GolfCardHeader
+        loading={loading}
+        fetchedAt={golf?.fetchedAt ?? null}
+        nextRefreshAt={golf?.nextRefreshAt ?? null}
+        onRefresh={fetchCurrent}
+      />
 
       {/* ===== Section 1: Live Leaderboard (Live Golf Data API) ===== */}
       {!tournament && golf?.error && (
