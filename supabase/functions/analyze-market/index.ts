@@ -175,6 +175,8 @@ ${wallets.map((w: Any) => `- ${w.label} (Tier ${w.tier}): ${(w.winRate * 100).to
   const leagueStr = String(p.league ?? "");
   const isWorldCup = /world\s*cup/i.test(leagueStr) || /fifa/i.test(leagueStr);
   const isGolf = /golf|pga|masters|open championship|u\.?s\.? open/i.test(leagueStr);
+  const isMMA = /mma|ufc|mixed martial|bellator|pfl/i.test(leagueStr)
+    || String(p.sport ?? "").toLowerCase().includes("mma");
   const worldCupBlock = isWorldCup
     ? `
 FIFA WORLD CUP 2026 CONTEXT:
@@ -202,6 +204,34 @@ This is a golf tournament betting market. Key factors for golf analysis:
 - Each-way betting common in golf (top 5 or top 8 depending on book)
 - Value found in mid-range players (+2000 to +5000) more than favorites
 - Outright winner is very hard to predict — top 10 finish bets often better value
+`
+    : "";
+  const mmaBlock = isMMA
+    ? `
+MMA / UFC FIGHT CONTEXT:
+This is an MMA/UFC fight — moneyline only, no spreads or totals.
+Key factors for MMA betting:
+- Fighting styles and matchup dynamics (striker vs grappler, wrestling base, submission threat)
+- Recent form and finish rate (last 3-5 fights)
+- Reach, height, and physical advantages
+- Venue, altitude, and crowd (home promotion / hometown fighter?)
+- Weight class, weight cut history, and championship implications
+- Betting market movement and sharp action
+- Injury history, layoff length, age, and decline curve
+- Camp changes and training reports
+
+Consider method-of-victory context (KO/TKO, Submission, Decision) when
+choosing between two similarly-priced moneylines even if only h2h is offered.
+MMA fights are high-variance — heavy favorites (-400 or worse) are usually
+poor bets; live dogs at +150 to +250 with a real path to victory are the
+prime line-shopping target.
+
+If this is a heavyweight title fight (Jones vs Aspinall, UFC 317-style),
+weigh Jones' pedigree/ring IQ vs Aspinall's finishing speed, physical
+advantages, and recent form. Championship rounds (4-5) favor the more
+experienced fighter.
+
+betType MUST be "moneyline". Do not recommend a spread or total for MMA.
 `
     : "";
   return `You are EdgeHunter's sports betting analyst.
@@ -247,6 +277,7 @@ ${polymarketBlock}
 ${walletBlock}
 ${worldCupBlock}
 ${golfBlock}
+${mmaBlock}
 USER RISK PROFILE:
   Bankroll: $${bankroll}
   Kelly multiplier: ${kelly}x
