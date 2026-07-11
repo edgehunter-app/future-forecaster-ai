@@ -251,12 +251,17 @@ betType MUST be "moneyline". Do not recommend a spread or total for MMA.
 `
     : "";
   return `You are EdgeHunter's sports betting analyst.
+Current date: ${todayStr}
+This is a live betting market for a game/fight scheduled for today
+or the near future. Odds are live and actively being traded.
+${mmaLiveBlock}
 Your job is to find the BEST BET available given the current lines —
 not just flag large edges. Even a small edge is worth reporting.
 ALWAYS return a specific recommendation. Never return NO_EDGE if there
 are real games with real odds to analyze.
 
 MATCHUP: ${p.awayTeam} (AWAY) @ ${p.homeTeam} (HOME)
+
   HOME team = ${p.homeTeam}
   AWAY team = ${p.awayTeam}
 League: ${p.league}
