@@ -10,7 +10,7 @@ import { getAnalysisCounts } from "@/lib/analysisCounter";
 import { cn } from "@/lib/utils";
 import { useAppStore } from "@/store/useAppStore";
 import Toggle from "@/components/ui/AppToggle";
-const CLAUDE_COST_PER_RUN = 0.003;
+const CLAUDE_COST_PER_RUN = 0.006; // Elite analysis: main + Devil's Advocate second pass
 // 0 = Manual refresh only (no setInterval). Other values are minutes.
 const REFRESH_OPTIONS = [0, 15, 30, 60, 120];
 const RAPID_DAILY_LIMIT = 1000;   // Pro tier hard limit
@@ -295,7 +295,7 @@ export default function Admin() {
           <StatBlock
             label="Est. cost this month"
             value={`$${(stats.suggestionsMonth * CLAUDE_COST_PER_RUN).toFixed(3)}`}
-            hint={`@ $${CLAUDE_COST_PER_RUN.toFixed(3)} per run`}
+            hint={`@ $${CLAUDE_COST_PER_RUN.toFixed(3)} per Elite run (main + Devil's Advocate)`}
           />
         </div>
         <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
