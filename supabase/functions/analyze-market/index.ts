@@ -226,10 +226,13 @@ MMA fights are high-variance — heavy favorites (-400 or worse) are usually
 poor bets; live dogs at +150 to +250 with a real path to victory are the
 prime line-shopping target.
 
-If this is a heavyweight title fight (Jones vs Aspinall, UFC 317-style),
-weigh Jones' pedigree/ring IQ vs Aspinall's finishing speed, physical
-advantages, and recent form. Championship rounds (4-5) favor the more
-experienced fighter.
+Analyze this specific fight based on the fighters, odds, and market data
+provided above. Consider:
+- Each fighter's style, recent record, and matchup-specific advantages
+- Odds movement and sharp money signals
+- Line shopping across books for the best available price
+- Kalshi / Polymarket vs Vegas gaps if prediction market data is available
+- Championship-round experience if this is a title fight (rounds 4-5)
 
 betType MUST be "moneyline". Do not recommend a spread or total for MMA.
 `
