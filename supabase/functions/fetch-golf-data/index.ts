@@ -17,7 +17,15 @@ const GOLF_HOST = "golf-leaderboard-data.p.rapidapi.com";
 const GOLF_BASE = `https://${GOLF_HOST}`;
 const TIMEOUT_MS = 9_000;
 const PROVIDER = "rapidapi-golf-leaderboard";
-const DAILY_LIMIT = 250;
+const MONTHLY_LIMIT = 250;
+
+// Aggressive caching — the free tier only allows 250 requests / MONTH.
+// Leaderboard: 30 min during active tournament (~96 calls / 4-day event).
+// Fixtures:    24 hours (change rarely; 1 call / day covers both tours).
+const LEADERBOARD_CACHE_MINUTES = 30;
+const FIXTURES_CACHE_HOURS = 24;
+const FIXTURES_CACHE_KEY = (year: string) => `golf_fixtures_${year}`;
+const CURRENT_CACHE_KEY = "golf_current_tournament";
 
 // ---- Mongo Extended JSON unwrappers ----
 function num(v: any): number {
@@ -123,6 +131,35 @@ function getServiceClient() {
   try { return createClient(url, key); } catch { return null; }
 }
 
+// ---- golf_cache helpers -------------------------------------------------
+async function readCache(client: any, key: string): Promise<any | null> {
+  if (!client) return null;
+  try {
+    const { data } = await client.from("golf_cache")
+      .select("value, expires_at").eq("key", key).maybeSingle();
+    if (!data) return null;
+    if (new Date(data.expires_at).getTime() <= Date.now()) return null;
+    return data.value;
+  } catch (err) {
+    console.warn("[golf-lb] cache read failed:", String(err));
+    return null;
+  }
+}
+
+async function writeCache(client: any, key: string, value: any, expiresAt: Date): Promise<void> {
+  if (!client) return;
+  try {
+    await client.from("golf_cache").upsert({
+      key,
+      value,
+      created_at: new Date().toISOString(),
+      expires_at: expiresAt.toISOString(),
+    }, { onConflict: "key" });
+  } catch (err) {
+    console.warn("[golf-lb] cache write failed:", String(err));
+  }
+}
+
 async function trackUsage(callsMade: number, remaining: number | null) {
   const client = getServiceClient();
   if (!client) return;
@@ -166,31 +203,61 @@ Deno.serve(async (req) => {
   try { body = await req.json(); } catch { body = {}; }
   const type: string = body?.type ?? "current";
   const year: string = String(body?.year ?? new Date().getFullYear());
-  console.log("[fetch-golf-data] called", JSON.stringify({ type, year }));
+  const forceRefresh: boolean = !!body?.forceRefresh;
+  console.log("[fetch-golf-data] called", JSON.stringify({ type, year, forceRefresh }));
+
+  const client = getServiceClient();
+
+  // ---- CURRENT-TOURNAMENT CACHE (30 min) --------------------------------
+  // Serve the whole "current" response from cache when possible. This is the
+  // hot path — every page load hits it. Skip only when forceRefresh=true.
+  if (type === "current" && !forceRefresh) {
+    const cached = await readCache(client, CURRENT_CACHE_KEY);
+    if (cached) {
+      console.log("[fetch-golf-data] serving CURRENT from golf_cache");
+      return jsonResponse({ ...cached, servedFromCache: true });
+    }
+  }
 
   let callsMade = 0;
   let latestRemaining: number | null = null;
 
   try {
-    // Step 1 — fetch fixtures for both tours in parallel.
-    const [pga, euro] = await Promise.all([
-      golfFetch(`/fixtures/2/${year}`, apiKey),
-      golfFetch(`/fixtures/1/${year}`, apiKey),
-    ]);
-    callsMade += 2;
-    const remHeader = pga.res.headers.get("x-ratelimit-requests-remaining")
-      ?? euro.res.headers.get("x-ratelimit-requests-remaining");
-    if (remHeader) latestRemaining = Number(remHeader);
+    // Step 1 — FIXTURES cache (24 hours). Fixtures rarely change.
+    let schedule: ReturnType<typeof normalizeTournament>[] | null = null;
+    const fixturesKey = FIXTURES_CACHE_KEY(year);
+    if (!forceRefresh) {
+      const cachedFix = await readCache(client, fixturesKey);
+      if (Array.isArray(cachedFix)) {
+        schedule = cachedFix;
+        console.log("[fetch-golf-data] fixtures cache HIT:", schedule.length);
+      }
+    }
+    if (!schedule) {
+      console.log("[fetch-golf-data] fixtures cache MISS — fetching both tours");
+      const [pga, euro] = await Promise.all([
+        golfFetch(`/fixtures/2/${year}`, apiKey),
+        golfFetch(`/fixtures/1/${year}`, apiKey),
+      ]);
+      callsMade += 2;
+      const remHeader = pga.res.headers.get("x-ratelimit-requests-remaining")
+        ?? euro.res.headers.get("x-ratelimit-requests-remaining");
+      if (remHeader) latestRemaining = Number(remHeader);
 
-    const pgaTs = Array.isArray(pga.json?.results) ? pga.json.results : [];
-    const euroTs = Array.isArray(euro.json?.results) ? euro.json.results : [];
-    const allRaw = [...pgaTs, ...euroTs];
-    const schedule = allRaw
-      .map(normalizeTournament)
-      .filter((t) => t.startMs > 0 && t.status !== "can");
-    schedule.sort((a, b) => a.startMs - b.startMs);
-    console.log("[fetch-golf-data] fixtures total:", schedule.length,
-      "pga:", pgaTs.length, "euro:", euroTs.length);
+      const pgaTs = Array.isArray(pga.json?.results) ? pga.json.results : [];
+      const euroTs = Array.isArray(euro.json?.results) ? euro.json.results : [];
+      const allRaw = [...pgaTs, ...euroTs];
+      schedule = allRaw
+        .map(normalizeTournament)
+        .filter((t) => t.startMs > 0 && t.status !== "can");
+      schedule.sort((a, b) => a.startMs - b.startMs);
+      console.log("[fetch-golf-data] fixtures fetched:", schedule.length,
+        "pga:", pgaTs.length, "euro:", euroTs.length);
+
+      const fixExpires = new Date();
+      fixExpires.setHours(fixExpires.getHours() + FIXTURES_CACHE_HOURS);
+      await writeCache(client, fixturesKey, schedule, fixExpires);
+    }
 
     if (type === "schedule") {
       await trackUsage(callsMade, latestRemaining);
@@ -251,7 +318,9 @@ Deno.serve(async (req) => {
 
     await trackUsage(callsMade, latestRemaining);
 
-    return jsonResponse({
+    const now = new Date();
+    const nextRefresh = new Date(now.getTime() + LEADERBOARD_CACHE_MINUTES * 60_000);
+    const responseBody = {
       ok: true,
       year,
       tournament,
@@ -265,7 +334,15 @@ Deno.serve(async (req) => {
       scheduleCount: schedule.length,
       source: "golf-leaderboard-data",
       quotaRemaining: latestRemaining,
-    });
+      cachedAt: now.toISOString(),
+      nextRefreshAt: nextRefresh.toISOString(),
+      cacheMinutes: LEADERBOARD_CACHE_MINUTES,
+    };
+
+    // Cache the full response for 30 minutes.
+    await writeCache(client, CURRENT_CACHE_KEY, responseBody, nextRefresh);
+
+    return jsonResponse(responseBody);
   } catch (err) {
     console.error("[fetch-golf-data] error:", err);
     await trackUsage(callsMade, latestRemaining);
