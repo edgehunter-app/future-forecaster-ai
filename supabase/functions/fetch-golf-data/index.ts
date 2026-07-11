@@ -54,6 +54,18 @@ async function getJson(url: string, key: string): Promise<any> {
     headers: golfHeaders(key),
     signal: AbortSignal.timeout(TIMEOUT_MS),
   });
+  console.log(
+    "[golf-api] quota remaining=",
+    res.headers.get("x-ratelimit-requests-remaining"),
+    "limit=",
+    res.headers.get("x-ratelimit-requests-limit"),
+    "monthly-remaining=",
+    res.headers.get("x-ratelimit-monthly-requests-remaining"),
+    "monthly-limit=",
+    res.headers.get("x-ratelimit-monthly-requests-limit"),
+    "url=",
+    url,
+  );
   if (!res.ok) {
     const body = await res.text().catch(() => "");
     throw new Error(`HTTP ${res.status}: ${body.slice(0, 160)}`);
