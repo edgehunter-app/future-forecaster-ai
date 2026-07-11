@@ -506,9 +506,14 @@ export function GolfLeaderboardCard({
   const fetchCurrent = golf?.onRefresh ?? (() => {});
   const players = game?.players ?? [];
   const settings = useAppStore((s) => s.settings);
-  const [analyzing, setAnalyzing] = useState(false);
-  const [analysisError, setAnalysisError] = useState<string | null>(null);
-  const [analysis, setAnalysis] = useState<GolfAnalysisResult | null>(null);
+  // Separate state per section so analyses render anchored below their source
+  // and both can be open simultaneously.
+  const [liveAnalyzing, setLiveAnalyzing] = useState(false);
+  const [liveAnalysisError, setLiveAnalysisError] = useState<string | null>(null);
+  const [liveAnalysis, setLiveAnalysis] = useState<GolfAnalysisResult | null>(null);
+  const [oddsAnalyzing, setOddsAnalyzing] = useState(false);
+  const [oddsAnalysisError, setOddsAnalysisError] = useState<string | null>(null);
+  const [oddsAnalysis, setOddsAnalysis] = useState<GolfAnalysisResult | null>(null);
 
 
   if (!game && !tournament) return null;
@@ -574,14 +579,17 @@ export function GolfLeaderboardCard({
     }));
   };
 
-  const [analyzedTournamentName, setAnalyzedTournamentName] = useState<string>("");
-
   const handleAnalyze = async (mode: "leaderboard" | "odds") => {
-    if (analyzing) return;
-    setAnalyzing(true);
-    setAnalysisError(null);
+    const isOddsMode = mode === "odds";
+    if (isOddsMode ? oddsAnalyzing : liveAnalyzing) return;
+    if (isOddsMode) {
+      setOddsAnalyzing(true);
+      setOddsAnalysisError(null);
+    } else {
+      setLiveAnalyzing(true);
+      setLiveAnalysisError(null);
+    }
     try {
-      const isOddsMode = mode === "odds";
       const targetName = isOddsMode ? oddsName : analyzeTournamentName;
       const targetDates = isOddsMode
         ? (oddsMajor ? oddsMajor.range : "TBD")
@@ -623,12 +631,15 @@ export function GolfLeaderboardCard({
       const d = data as Record<string, unknown> | null;
       if (!d) throw new Error("Empty response");
       if (typeof d.error === "string") throw new Error(d.error);
-      setAnalyzedTournamentName(targetName);
-      setAnalysis(d as GolfAnalysisResult);
+      if (isOddsMode) setOddsAnalysis(d as GolfAnalysisResult);
+      else setLiveAnalysis(d as GolfAnalysisResult);
     } catch (err) {
-      setAnalysisError(err instanceof Error ? err.message : "Analysis failed");
+      const msg = err instanceof Error ? err.message : "Analysis failed";
+      if (isOddsMode) setOddsAnalysisError(msg);
+      else setLiveAnalysisError(msg);
     } finally {
-      setAnalyzing(false);
+      if (isOddsMode) setOddsAnalyzing(false);
+      else setLiveAnalyzing(false);
     }
   };
 
@@ -754,10 +765,10 @@ export function GolfLeaderboardCard({
           {liveRows.length > 0 && (
             <button
               onClick={() => handleAnalyze("leaderboard")}
-              disabled={analyzing}
+              disabled={liveAnalyzing}
               className="w-full flex items-center justify-center gap-2 py-3 px-4 rounded-xl font-semibold text-sm bg-gradient-to-r from-purple-600 to-purple-700 text-white hover:from-purple-500 hover:to-purple-600 transition disabled:opacity-60"
             >
-              {analyzing ? (
+              {liveAnalyzing ? (
                 <>
                   <Loader2 className="h-4 w-4 animate-spin" />
                   <span className="text-sm">Analyzing field…</span>
@@ -771,6 +782,27 @@ export function GolfLeaderboardCard({
                 </>
               )}
             </button>
+          )}
+          {liveAnalysis && (
+            <GolfAnalysisPanel
+              result={liveAnalysis}
+              tournamentName={tournament?.name ?? analyzeTournamentName}
+              onClear={() => setLiveAnalysis(null)}
+            />
+          )}
+          {liveAnalysisError && !liveAnalysis && (
+            <div className="rounded-md border border-destructive/40 bg-destructive/10 p-2.5 flex items-start gap-2">
+              <AlertCircle className="h-3.5 w-3.5 mt-0.5 text-destructive shrink-0" />
+              <div className="flex-1">
+                <p className="text-[11px] text-destructive">{liveAnalysisError}</p>
+                <button
+                  onClick={() => handleAnalyze("leaderboard")}
+                  className="mt-1.5 rounded-md border border-destructive/40 bg-background px-2 py-0.5 text-[10px] font-semibold text-destructive hover:bg-destructive/10"
+                >
+                  Try Again
+                </button>
+              </div>
+            </div>
           )}
         </section>
       )}
@@ -843,10 +875,10 @@ export function GolfLeaderboardCard({
           {players.length > 0 && (
             <button
               onClick={() => handleAnalyze("odds")}
-              disabled={analyzing}
+              disabled={oddsAnalyzing}
               className="w-full flex items-center justify-center gap-2 py-3 px-4 rounded-xl font-semibold text-sm bg-gradient-to-r from-purple-600 to-purple-700 text-white hover:from-purple-500 hover:to-purple-600 transition disabled:opacity-60"
             >
-              {analyzing ? (
+              {oddsAnalyzing ? (
                 <>
                   <Loader2 className="h-4 w-4 animate-spin" />
                   <span className="text-sm">Analyzing field…</span>
@@ -861,6 +893,27 @@ export function GolfLeaderboardCard({
               )}
             </button>
           )}
+          {oddsAnalysis && (
+            <GolfAnalysisPanel
+              result={oddsAnalysis}
+              tournamentName={oddsName || analyzeTournamentName}
+              onClear={() => setOddsAnalysis(null)}
+            />
+          )}
+          {oddsAnalysisError && !oddsAnalysis && (
+            <div className="rounded-md border border-destructive/40 bg-destructive/10 p-2.5 flex items-start gap-2">
+              <AlertCircle className="h-3.5 w-3.5 mt-0.5 text-destructive shrink-0" />
+              <div className="flex-1">
+                <p className="text-[11px] text-destructive">{oddsAnalysisError}</p>
+                <button
+                  onClick={() => handleAnalyze("odds")}
+                  className="mt-1.5 rounded-md border border-destructive/40 bg-background px-2 py-0.5 text-[10px] font-semibold text-destructive hover:bg-destructive/10"
+                >
+                  Try Again
+                </button>
+              </div>
+            </div>
+          )}
         </section>
       )}
 
@@ -868,29 +921,6 @@ export function GolfLeaderboardCard({
       {!tournament && players.length === 0 && (
         <div className="rounded-md border border-border/60 bg-background/40 p-4 text-center text-[11px] text-muted-foreground">
           No golf data available right now.
-        </div>
-      )}
-
-      {/* Claude AI Analysis result panel */}
-      {analysis && (
-        <GolfAnalysisPanel
-          result={analysis}
-          tournamentName={analyzedTournamentName || analyzeTournamentName}
-          onClear={() => setAnalysis(null)}
-        />
-      )}
-      {analysisError && !analysis && (
-        <div className="rounded-md border border-destructive/40 bg-destructive/10 p-2.5 flex items-start gap-2">
-          <AlertCircle className="h-3.5 w-3.5 mt-0.5 text-destructive shrink-0" />
-          <div className="flex-1">
-            <p className="text-[11px] text-destructive">{analysisError}</p>
-            <button
-              onClick={() => handleAnalyze("leaderboard")}
-              className="mt-1.5 rounded-md border border-destructive/40 bg-background px-2 py-0.5 text-[10px] font-semibold text-destructive hover:bg-destructive/10"
-            >
-              Try Again
-            </button>
-          </div>
         </div>
       )}
 
