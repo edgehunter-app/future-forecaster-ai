@@ -3,20 +3,32 @@ import { cn } from "@/lib/utils";
 import { supabase } from "@/integrations/supabase/client";
 
 const RAPID_DAILY_LIMIT = 1000;
-const GOLF_LB_DAILY_LIMIT = 250;
+const GOLF_LB_MONTHLY_LIMIT = 250;
+
+function monthStartIso(): string {
+  const d = new Date();
+  return new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), 1))
+    .toISOString().slice(0, 10);
+}
+function nextMonthResetLabel(): string {
+  const d = new Date();
+  const next = new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth() + 1, 1));
+  return next.toLocaleDateString(undefined, { month: "long", day: "numeric" });
+}
 
 export default function UsagePanel() {
   const [usedToday, setUsedToday] = useState<number>(0);
   const [oddsApiUsedToday, setOddsApiUsedToday] = useState<number>(0);
   const [oddsApiRemaining, setOddsApiRemaining] = useState<number | null>(null);
-  const [golfLbUsedToday, setGolfLbUsedToday] = useState<number>(0);
+  const [golfLbUsedMonth, setGolfLbUsedMonth] = useState<number>(0);
   const [golfLbRemaining, setGolfLbRemaining] = useState<number | null>(null);
 
   useEffect(() => {
     let cancelled = false;
     const load = async () => {
       const today = new Date().toISOString().slice(0, 10);
-      const [rapid, oddsToday, oddsRem, golfToday, golfRem] = await Promise.all([
+      const monthStart = monthStartIso();
+      const [rapid, oddsToday, oddsRem, golfMonth, golfRem] = await Promise.all([
         supabase.from("api_usage").select("request_count")
           .eq("provider", "rapidapi-sportsbook").eq("used_at", today).maybeSingle(),
         supabase.from("api_usage").select("request_count")
@@ -24,7 +36,8 @@ export default function UsagePanel() {
         supabase.from("api_usage").select("request_count")
           .eq("provider", "the-odds-api").eq("used_at", "9999-12-31").maybeSingle(),
         supabase.from("api_usage").select("request_count")
-          .eq("provider", "rapidapi-golf-leaderboard").eq("used_at", today).maybeSingle(),
+          .eq("provider", "rapidapi-golf-leaderboard").gte("used_at", monthStart)
+          .lt("used_at", "9999-12-31"),
         supabase.from("api_usage").select("request_count")
           .eq("provider", "rapidapi-golf-leaderboard").eq("used_at", "9999-12-31").maybeSingle(),
       ]);
@@ -34,7 +47,10 @@ export default function UsagePanel() {
       setOddsApiRemaining(
         typeof oddsRem.data?.request_count === "number" ? oddsRem.data.request_count : null,
       );
-      setGolfLbUsedToday(golfToday.data?.request_count ?? 0);
+      const monthSum = Array.isArray(golfMonth.data)
+        ? golfMonth.data.reduce((s: number, r: any) => s + (r?.request_count ?? 0), 0)
+        : 0;
+      setGolfLbUsedMonth(monthSum);
       setGolfLbRemaining(
         typeof golfRem.data?.request_count === "number" ? golfRem.data.request_count : null,
       );
@@ -52,10 +68,11 @@ export default function UsagePanel() {
   const colorBar = ratio >= 0.8 ? "bg-destructive" : ratio >= 0.5 ? "bg-warning" : "bg-success";
   const colorText = ratio >= 0.8 ? "text-destructive" : ratio >= 0.5 ? "text-warning" : "text-success";
 
-  const golfPct = Math.min(100, Math.round((golfLbUsedToday / GOLF_LB_DAILY_LIMIT) * 100));
-  const golfRatio = golfLbUsedToday / GOLF_LB_DAILY_LIMIT;
+  const golfPct = Math.min(100, Math.round((golfLbUsedMonth / GOLF_LB_MONTHLY_LIMIT) * 100));
+  const golfRatio = golfLbUsedMonth / GOLF_LB_MONTHLY_LIMIT;
   const golfBar = golfRatio >= 0.8 ? "bg-destructive" : golfRatio >= 0.5 ? "bg-warning" : "bg-success";
   const golfText = golfRatio >= 0.8 ? "text-destructive" : golfRatio >= 0.5 ? "text-warning" : "text-success";
+  const golfResetLabel = nextMonthResetLabel();
 
   return (
     <div className="space-y-3">
@@ -113,10 +130,10 @@ export default function UsagePanel() {
       <div className="space-y-1.5 md:col-span-2">
         <div className="flex items-center justify-between">
           <span className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
-            Golf Leaderboard Data API · PGA + European Tour live scores
+            Golf Leaderboard Data API · PGA + European Tour · Free plan (250/mo)
           </span>
           <span className="text-[11px] font-mono text-muted-foreground">
-            {golfLbUsedToday.toLocaleString()} / {GOLF_LB_DAILY_LIMIT.toLocaleString()} used today
+            {golfLbUsedMonth.toLocaleString()} / {GOLF_LB_MONTHLY_LIMIT.toLocaleString()} this month
           </span>
         </div>
         <div className="h-2 w-full rounded-full bg-background/60 overflow-hidden">
@@ -124,13 +141,13 @@ export default function UsagePanel() {
         </div>
         <div className="text-[11px] text-muted-foreground">
           {golfLbRemaining !== null
-            ? <>Requests remaining: <span className="text-foreground font-semibold">{golfLbRemaining.toLocaleString()}</span> · Resets daily</>
-            : <>Remaining updates after first refresh · Resets daily</>}
+            ? <>API remaining: <span className="text-foreground font-semibold">{golfLbRemaining.toLocaleString()}</span> · Resets {golfResetLabel}</>
+            : <>Remaining updates after first refresh · Resets {golfResetLabel}</>}
         </div>
       </div>
       <div className="text-right space-y-0.5">
         <div className={cn("text-sm font-bold", golfText)}>{golfPct}% used</div>
-        <div className="text-[11px] text-muted-foreground">Golf leaderboard</div>
+        <div className="text-[11px] text-muted-foreground">30-min cache</div>
       </div>
     </div>
     </div>
