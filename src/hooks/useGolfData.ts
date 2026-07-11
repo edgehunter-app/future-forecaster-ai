@@ -124,11 +124,18 @@ export function useGolfData() {
           "rows=", data.leaderboard?.rows?.length ?? 0,
           "isLive=", data.isLive,
           "ok=", data.ok);
-        setTournament(data.tournament);
-        setLeaderboard(data.leaderboard);
-        setIsLive(!!data.isLive);
+        // Only overwrite state when we actually got real data back.
+        // Upstream 429s / transient errors return nulls — keep the
+        // previously-rendered leaderboard visible instead of blanking it.
+        if (data.tournament) setTournament(data.tournament);
+        if (data.leaderboard && (data.leaderboard.rows?.length ?? 0) > 0) {
+          setLeaderboard(data.leaderboard);
+        }
+        if (data.ok && data.isLive !== undefined) setIsLive(!!data.isLive);
         if (data.ok) writeCache(data);
         if (!data.ok && data.error) setError(data.error);
+        console.log("[useGolfData] SET leaderboard rows:",
+          data.leaderboard?.rows?.length ?? "kept-previous");
       } catch (err) {
         console.warn("[useGolfData] fetch failed:", err);
         setError(err instanceof Error ? err.message : String(err));
