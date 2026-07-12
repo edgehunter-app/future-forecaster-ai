@@ -370,9 +370,9 @@ function GameCard({ game, mispricings }: { game: FullGame; mispricings: SportsMi
             <div className="mt-1.5 rounded-md border border-info/30 bg-info/5 px-2 py-1.5 space-y-0.5">
               <div className="flex items-center justify-between gap-2">
                 <span className="text-[10px] font-mono text-foreground">
-                  Kalshi: {game.awayTeam.split(" ").pop()} {formatOdds(kalshiBook.awayMoneyline)}
+                  Kalshi: {displayTeamName(game, "away")} {formatOdds(kalshiBook.awayMoneyline)}
                   {" · "}
-                  {game.homeTeam.split(" ").pop()} {formatOdds(kalshiBook.homeMoneyline)}
+                  {displayTeamName(game, "home")} {formatOdds(kalshiBook.homeMoneyline)}
                 </span>
                 <span className="rounded-sm border border-info/40 bg-info/10 px-1 py-px text-[8px] font-bold text-info whitespace-nowrap">
                   Prediction market only
