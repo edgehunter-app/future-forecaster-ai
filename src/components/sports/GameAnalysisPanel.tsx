@@ -119,7 +119,7 @@ export default function GameAnalysisPanel({ result, game, onClear }: Props) {
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-1.5 text-purple">
           <Brain className="h-3.5 w-3.5" />
-          <span className="text-[11px] font-bold uppercase tracking-wide">Claude AI Analysis</span>
+          <span className="text-[11px] font-bold uppercase tracking-wide">Edge Analysis</span>
         </div>
         <div className="flex items-center gap-2">
           <span className="text-[10px] font-mono text-muted-foreground">Just now</span>

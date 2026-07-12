@@ -110,7 +110,7 @@ export default function GolfAnalysisPanel({ result, tournamentName, onClear }: P
         <div className="flex items-center gap-1.5 text-purple">
           <Brain className="h-3.5 w-3.5" />
           <span className="text-[11px] font-bold uppercase tracking-wide">
-            {noOdds ? "🤖 Claude Tournament Analysis" : "🤖 Claude Golf Analysis"}
+            {noOdds ? "🎯 Tournament Edge Analysis" : "🎯 Golf Edge Analysis"}
           </span>
         </div>
         <div className="flex items-center gap-2">

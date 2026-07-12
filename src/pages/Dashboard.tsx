@@ -213,7 +213,7 @@ export default function Dashboard() {
         </button>
       </div>
 
-      {/* Claude AI Analysis */}
+      {/* Edge Analysis */}
       <div className="order-3 md:order-none rounded-lg border border-border bg-card p-5 shadow-card">
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
           <div className="flex items-center gap-2">
