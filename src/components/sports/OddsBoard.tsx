@@ -294,7 +294,7 @@ function GameCard({ game, mispricings }: { game: FullGame; mispricings: SportsMi
       {/* Matchup row */}
       <div className="grid grid-cols-[1fr_auto_1fr] items-center gap-3">
         <div className="text-center">
-          <div className="text-sm font-bold text-foreground line-clamp-1">{game.awayTeam}</div>
+          <div className="text-sm font-bold text-foreground">{displayTeamName(game, "away")}</div>
           <div className={cn("text-xl font-extrabold mt-1", oddsClass(awayOdds))}>
             {formatOdds(awayOdds)}
           </div>
@@ -306,13 +306,13 @@ function GameCard({ game, mispricings }: { game: FullGame; mispricings: SportsMi
           <div className="text-[10px] uppercase text-muted-foreground">vs</div>
           {game.spread && (
             <div className="mt-1 text-[10px] font-mono text-foreground">
-              {game.spread.homeSpread < 0 ? game.homeTeam.split(" ").pop() : game.awayTeam.split(" ").pop()}{" "}
+              {displayTeamName(game, game.spread.homeSpread < 0 ? "home" : "away")}{" "}
               {formatSpread(game.spread.homeSpread < 0 ? game.spread.homeSpread : game.spread.awaySpread)}
             </div>
           )}
         </div>
         <div className="text-center">
-          <div className="text-sm font-bold text-foreground line-clamp-1">{game.homeTeam}</div>
+          <div className="text-sm font-bold text-foreground">{displayTeamName(game, "home")}</div>
           <div className={cn("text-xl font-extrabold mt-1", oddsClass(homeOdds))}>
             {formatOdds(homeOdds)}
           </div>
