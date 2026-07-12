@@ -175,7 +175,7 @@ export default function SportsMispricingCard({ mispricing: m }: Props) {
         className="w-full inline-flex items-center justify-center gap-1.5 rounded-md border border-purple/40 bg-purple/10 px-3 py-2 text-xs font-semibold text-purple hover:bg-purple/20 transition-colors disabled:opacity-50"
       >
         {analyzing ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Brain className="h-3.5 w-3.5" />}
-        {analyzing ? "Analyzing..." : "Analyze with Claude"}
+        {analyzing ? "Analyzing..." : "Find the Edge"}
       </button>
 
       {aiError && (

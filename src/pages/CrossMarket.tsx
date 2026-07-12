@@ -202,7 +202,7 @@ function OpportunityCard({ opp }: { opp: CrossMarketOpp }) {
         <button onClick={analyze} disabled={loading}
           className="ml-auto inline-flex items-center gap-1.5 rounded-md border border-purple/40 bg-purple/10 px-3 py-1.5 text-xs font-semibold text-purple hover:bg-purple/20 transition-colors disabled:opacity-50">
           {loading ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Brain className="h-3.5 w-3.5" />}
-          {loading ? "Analyzing..." : "Analyze with Claude"}
+          {loading ? "Analyzing..." : "Find the Edge"}
         </button>
       </div>
 

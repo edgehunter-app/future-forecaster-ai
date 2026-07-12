@@ -116,7 +116,7 @@ export default function AnalysisResultPanel({ result, type, title, onClear, onSa
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-1.5 text-purple">
           <Brain className="h-3.5 w-3.5" />
-          <span className="text-[11px] font-bold uppercase tracking-wide">{title ?? "Claude AI Analysis"}</span>
+          <span className="text-[11px] font-bold uppercase tracking-wide">{title ?? "Edge Analysis"}</span>
         </div>
         <button onClick={onClear} className="inline-flex items-center justify-center min-w-[44px] min-h-[44px] rounded-md text-muted-foreground hover:bg-muted hover:text-foreground" aria-label="Clear">
           <X className="h-3.5 w-3.5" />

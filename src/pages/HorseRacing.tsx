@@ -183,7 +183,7 @@ function RaceCard({ race }: { race: Race }) {
       <section className="mt-4 rounded-xl border border-info/30 bg-info/5 p-3">
         <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wide text-info">
           <Sparkles className="h-3.5 w-3.5" />
-          Claude AI Analysis
+          Edge Analysis
         </div>
         <div className="mt-2 grid gap-2 sm:grid-cols-2">
           <div>

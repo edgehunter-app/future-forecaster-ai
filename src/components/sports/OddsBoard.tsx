@@ -420,7 +420,7 @@ function GameCard({ game, mispricings }: { game: FullGame; mispricings: SportsMi
       </div>
       )}
 
-      {/* Claude AI Analysis */}
+      {/* Edge Analysis */}
       {result ? (
         <GameAnalysisPanel result={result} game={game} onClear={() => clearResult(game.id)} />
       ) : linesPending ? (
@@ -448,12 +448,12 @@ function GameCard({ game, mispricings }: { game: FullGame; mispricings: SportsMi
                 <Brain className="h-4 w-4" />
                 <div>
                   <div className="text-sm leading-tight">
-                    Analyze with Claude
+                    Find the Edge
                   </div>
                   <div className="text-[10px] opacity-80 leading-tight">
                     {vegasBookCount < 2
                       ? "Fetches full sportsbook lines on demand"
-                      : "AI edge detection for this game"}
+                      : "AI-powered edge detection"}
                   </div>
                 </div>
               </div>
