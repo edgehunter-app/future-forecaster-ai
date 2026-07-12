@@ -4,6 +4,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAppStore } from "@/store/useAppStore";
 import GolfAnalysisPanel, { type GolfAnalysisResult } from "./GolfAnalysisPanel";
 import { cn } from "@/lib/utils";
+import { teamNickname } from "@/lib/betHeadline";
 import {
   formatOdds,
   formatSpread,
@@ -24,6 +25,12 @@ import { useGameOdds } from "@/hooks/useGameOdds";
 import GameAnalysisPanel from "./GameAnalysisPanel";
 import { hasPropsSupport } from "@/lib/oddsApi";
 import type { GolfTournament, GolfLeaderboard, GolfLeaderboardRow } from "@/hooks/useGolfData";
+
+function displayTeamName(game: FullGame, side: "home" | "away"): string {
+  const short = side === "home" ? game.homeTeamShort : game.awayTeamShort;
+  if (short) return short;
+  return teamNickname(side === "home" ? game.homeTeam : game.awayTeam);
+}
 
 export interface GolfDataProps {
   tournament: GolfTournament | null;
