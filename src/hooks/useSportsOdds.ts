@@ -43,11 +43,19 @@ function isGolfGame(game: FullGame): boolean {
 function isWorldCupGame(game: FullGame): boolean {
   const sport = (game.sport ?? "").toLowerCase();
   const league = (game.league ?? "").toLowerCase();
+  const sportRaw = game.sport ?? "";
+  const leagueRaw = game.league ?? "";
   return (
     sport.includes("world_cup") ||
     sport.includes("fifa") ||
+    sport.includes("fifa_wc") ||
+    sport.includes("wc") && sport.length <= 8 ||
     league.includes("world cup") ||
-    league.includes("fifa")
+    league.includes("fifa") ||
+    leagueRaw === "FIFA_WC" ||
+    sportRaw === "FIFA_WC" ||
+    sportRaw.toUpperCase() === "FIFA_WC" ||
+    leagueRaw.toUpperCase() === "FIFA_WC"
   );
 }
 
