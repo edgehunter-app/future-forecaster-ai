@@ -433,9 +433,7 @@ export default function Sports() {
                   setSelectedSports([...selectedSports, "soccer_fifa_world_cup"]);
                 }
                 setCurrentSport("soccer_fifa_world_cup");
-                if (!loadedSports.has("soccer_fifa_world_cup")) {
-                  void loadGamesForSport("soccer_fifa_world_cup");
-                }
+                void loadGamesForSport("soccer_fifa_world_cup", true);
               }}
               className="inline-flex items-center gap-1.5 self-start sm:self-auto rounded-md bg-amber-500 px-3 py-1.5 text-xs font-bold text-amber-950 hover:bg-amber-400"
             >
@@ -475,6 +473,10 @@ export default function Sports() {
                 }
                 if (s.key !== "all" && !isLoaded) {
                   void loadGamesForSport(s.key);
+                }
+                if (s.key === "soccer_fifa_world_cup") {
+                  // Force fresh fetch for WC so pre-7-day-filter cache is bypassed.
+                  void loadGamesForSport(s.key, true);
                 }
               }}
               disabled={loading && s.key !== activeSport}

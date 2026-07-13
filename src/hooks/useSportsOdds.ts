@@ -23,7 +23,7 @@ import { getDailyCount, DAILY_CAP } from "@/lib/oddsDailyCap";
 
 const DEFAULT_SPORT = "americanfootball_nfl";
 const GOLF_CACHE_VERSION_KEY = "eh.sportsOddsCacheVersion";
-const GOLF_CACHE_VERSION = "golf-winner-keys-v1";
+const GOLF_CACHE_VERSION = "wc-7day-filter-v2";
 const GOLF_CACHE_KEYS = [
   "golf",
   "golf_pga_tour",
@@ -281,10 +281,21 @@ export function useSportsOdds(polymarkets: Market[]) {
       setSportsLoading(true);
       try {
         if (force && sportKey === "golf") clearGolfCache();
-        const raw = await fetchOneSport(sportKey, force ? "force-golf-reload" : "tab-click", force);
+        const raw = await fetchOneSport(sportKey, force ? "force-reload" : "tab-click", force);
+        const isWC = sportKey === "soccer_fifa_world_cup";
+        if (isWC) {
+          console.log("[WC] games fetched:", raw?.length);
+          console.log("[WC] first game:", JSON.stringify(raw?.[0])?.slice(0, 200));
+          console.log("[WC] game dates:", raw?.map((g) => ({
+            teams: `${g.awayTeam} vs ${g.homeTeam}`,
+            time: g.commenceTime,
+            daysOut: Math.round((new Date(g.commenceTime).getTime() - Date.now()) / 86400000),
+          })));
+        }
         const got = filterRelevantGames(raw);
         const gotForSport = sportKey === "golf" ? got.filter(isGolfGame) : got;
-        if (gotForSport.length) {
+        if (isWC) console.log("[WC] after filter:", gotForSport.length);
+        if (gotForSport.length || force) {
           const current = useAppStore.getState().fullGames ?? [];
           const base = sportKey === "golf" || force
             ? current.filter((game) => sportKey === "golf" ? !isGolfGame(game) : game.sport !== sportKey)
