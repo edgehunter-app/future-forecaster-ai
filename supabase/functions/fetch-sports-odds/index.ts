@@ -787,11 +787,16 @@ Deno.serve(async (req) => {
         }
       };
 
-      await hit("MLB_events", "/v1/competitions/MLB/events");
+      const from = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
+      const to = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString();
+      const qs = `?startTimeFrom=${encodeURIComponent(from)}&startTimeTo=${encodeURIComponent(to)}`;
+      await hit("MLB_events", `/v1/competitions/MLB/events${qs}`);
+      await hit("MLB_events_includeOdds", `/v1/competitions/MLB/events${qs}&includeOdds=true`);
       await hit("odds_baseball", "/v1/odds?sport=BASEBALL");
-      await hit("MLB_events_includeOdds", "/v1/competitions/MLB/events?includeOdds=true");
+      await hit("odds_MLB", "/v1/odds?competition=MLB");
+      await hit("events_root", `/v1/events${qs}`);
       for (const sport of ["NBA", "NHL", "NFL"]) {
-        await hit(`${sport}_events`, `/v1/competitions/${sport}/events`);
+        await hit(`${sport}_events`, `/v1/competitions/${sport}/events${qs}`);
       }
 
       return new Response(JSON.stringify({ results }, null, 2), {
