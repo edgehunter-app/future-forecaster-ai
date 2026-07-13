@@ -759,13 +759,24 @@ async function fetchOddsApiAll(client: any, forceRefresh = false): Promise<{ gam
   const golfCalls = activeGolfKeys.map((s) => fetchOddsApiSport(client, s, "outrights", forceRefresh));
   // MMA/UFC is moneyline only.
   const mmaCalls = ODDS_API_MMA_SPORTS.map((s) => fetchOddsApiSport(client, s, "h2h", forceRefresh));
-  const results = await Promise.all([...soccerCalls, ...golfCalls, ...mmaCalls]);
+  // Full game slates for major leagues (MLB/NBA/NHL/NFL/EPL/MLS).
+  const gameCalls = ODDS_API_GAME_SPORTS.map(({ sport, markets }) =>
+    fetchOddsApiSport(client, sport, markets, forceRefresh),
+  );
+  const results = await Promise.all([...soccerCalls, ...golfCalls, ...mmaCalls, ...gameCalls]);
   const games: any[] = [];
   let remaining: number | null = null;
   for (const r of results) {
     games.push(...r.games);
     if (typeof r.remaining === "number") remaining = r.remaining;
   }
+  // Per-sport breakdown
+  const breakdown: Record<string, number> = {};
+  for (const g of games) {
+    const k = g?.sport_key ?? "unknown";
+    breakdown[k] = (breakdown[k] ?? 0) + 1;
+  }
+  console.log("[odds-api] by sport:", JSON.stringify(breakdown));
   const mmaCount = games.filter((g) => g?.sport_key === "mma_mixed_martial_arts").length;
   console.log("[odds-api] MMA events mapped:", mmaCount);
   if (mmaCount > 0) {
