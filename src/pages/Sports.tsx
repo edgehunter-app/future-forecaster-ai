@@ -221,6 +221,12 @@ export default function Sports() {
         return s.startsWith("golf") || l.includes("golf");
       });
     }
+    if (activeSport === "tennis") {
+      return list.filter((g) => {
+        const s = (g.sport ?? "").toLowerCase();
+        return s.startsWith("tennis") || g.isTennis === true;
+      });
+    }
     const sportLabel = SPORTS.find((s) => s.key === activeSport)?.label.toLowerCase() ?? "";
     return list.filter(
       (g) =>
@@ -266,6 +272,11 @@ export default function Sports() {
             || lg.includes("world") || lg.includes("fifa")
             || spRaw.toUpperCase() === "FIFA_WC"
             || lgRaw.toUpperCase() === "FIFA_WC";
+        }).length;
+      } else if (s.key === "tennis") {
+        out[s.key] = fullGames.filter((g) => {
+          const sp = (g.sport ?? "").toLowerCase();
+          return sp.startsWith("tennis") || g.isTennis === true;
         }).length;
       } else {
         out[s.key] = fullGames.filter((g) => g.sport === s.key).length;
