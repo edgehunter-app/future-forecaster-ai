@@ -1,4 +1,4 @@
-import { useCallback, useState } from "react";
+import { useCallback, useMemo, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAppStore } from "@/store/useAppStore";
 import type { FullGame } from "@/lib/oddsApi";
@@ -13,6 +13,8 @@ import type {
 import { bumpSportsAnalyses } from "@/lib/analysisCounter";
 
 type ScanStage = "idle" | "sports" | "prediction_markets" | "wallet_signals" | "ranking";
+
+export type BestBetAvailability = "within_12h" | "within_24h" | "none";
 
 interface Candidate {
   source: "sports" | "prediction_market" | "wallet_signal";
@@ -47,6 +49,23 @@ export function useBestBet() {
   const crossMarketOpps = useAppStore((s) => s.crossMarketOpps ?? []);
   const setLastBestBet = useAppStore((s) => s.setLastBestBet);
 
+  const availability: BestBetAvailability = useMemo(() => {
+    const now = Date.now();
+    let has12 = false;
+    let has24 = false;
+    for (const g of fullGames ?? []) {
+      const t = new Date(g.commenceTime).getTime();
+      if (!Number.isFinite(t)) continue;
+      const h = (t - now) / 3600000;
+      if (h <= 12 && h >= -0.5) has12 = true;
+      else if (h <= 24 && h >= -0.5) has24 = true;
+      if (has12) break;
+    }
+    if (has12) return "within_12h";
+    if (has24) return "within_24h";
+    return "none";
+  }, [fullGames]);
+
   const findBestBet = useCallback(async () => {
     if (!fullGames || fullGames.length === 0) {
       setError("No games loaded. Hit Refresh first.");
@@ -60,13 +79,28 @@ export function useBestBet() {
     setScanProgress({ current: 0, total: 0, stage: "sports" });
 
     try {
-      // Filter out games that have already started (plus a 10 min buffer).
+      // Best Bet must be actionable RIGHT NOW. Only consider games starting in
+      // the next 12 hours (or up to 30 minutes ago for live value). If nothing
+      // qualifies, expand once to 24 hours. Never go beyond 24 hours — a game
+      // two days out is not a "bet today".
       const now = Date.now();
-      const buffer = 10 * 60 * 1000;
-      const upcomingGames = fullGames.filter((g) => {
+      const withinHours = (g: FullGame, maxH: number) => {
         const t = new Date(g.commenceTime).getTime();
-        return Number.isFinite(t) && t > now + buffer;
-      });
+        if (!Number.isFinite(t)) return false;
+        const h = (t - now) / 3600000;
+        return h <= maxH && h >= -0.5;
+      };
+      let upcomingGames = fullGames.filter((g) => withinHours(g, 12));
+      if (upcomingGames.length === 0) {
+        upcomingGames = fullGames.filter((g) => withinHours(g, 24));
+      }
+      if (upcomingGames.length === 0) {
+        setError(
+          "No games with live odds right now. Check back later today or tonight for the best available bet.",
+        );
+        setLoading(false);
+        return;
+      }
 
       const isWorldCup = (g: FullGame) =>
         (g.sport ?? "").toLowerCase().includes("world_cup") ||
@@ -199,7 +233,7 @@ export function useBestBet() {
     setLastBestBet(null);
   }, [setLastBestBet]);
 
-  return { findBestBet, loading, scannedSoFar, scanProgress, result, error, clear };
+  return { findBestBet, loading, scannedSoFar, scanProgress, result, error, clear, availability };
 }
 
 // ============================================================================
