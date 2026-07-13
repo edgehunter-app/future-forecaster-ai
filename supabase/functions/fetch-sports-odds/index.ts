@@ -795,7 +795,15 @@ Deno.serve(async (req) => {
           const outcomesCount = Array.isArray(outs) ? outs.length
             : (outs && typeof outs === "object") ? Object.keys(outs).length : null;
           console.log(`[probe] ${label} status=${status} count=${count} markets=${marketsCount} outcomes=${outcomesCount}`);
-          results[label] = { status, count, marketsCount, outcomesCount, firstMarketKey: firstMarket?.key ?? null, firstMarketType: firstMarket?.type ?? null, preview: bodyText };
+          results[label] = {
+            status, count, marketsCount, outcomesCount,
+            firstMarketKey: firstMarket?.key ?? null,
+            firstMarketType: firstMarket?.type ?? null,
+            firstMarketKeys: firstMarket ? Object.keys(firstMarket) : null,
+            firstMarketDump: firstMarket ? JSON.stringify(firstMarket).slice(0, 1200) : null,
+            firstEventKeys: firstEv ? Object.keys(firstEv) : null,
+            preview: bodyText,
+          };
         } catch (e) {
           console.log(`[probe] ${label} threw ${(e as Error).message}`);
           results[label] = { status: 0, error: (e as Error).message };
