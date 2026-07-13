@@ -94,11 +94,10 @@ let activeGolfCache: { expires: number; keys: string[] } | null = null;
 async function getActiveGolfSports(forceRefresh = false): Promise<string[]> {
   const now = Date.now();
   if (!forceRefresh && activeGolfCache && activeGolfCache.expires > now) return activeGolfCache.keys;
-  const apiKey = Deno.env.get("ODDS_API_KEY");
-  if (!apiKey) return [];
+  if (oddsApiKeys().length === 0) return [];
   try {
-    const res = await fetch(`${ODDS_API_BASE}/sports?apiKey=${apiKey}&all=true`);
-    if (!res.ok) {
+    const { res } = await oddsApiFetch(`/sports?all=true`);
+    if (!res || !res.ok) {
       console.warn("[odds-api/discovery] /sports status=", res.status);
       return activeGolfCache?.keys ?? [];
     }
