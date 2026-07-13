@@ -32,6 +32,17 @@ function displayTeamName(game: FullGame, side: "home" | "away"): string {
   return teamNickname(side === "home" ? game.homeTeam : game.awayTeam);
 }
 
+function displayLeague(game: FullGame): string {
+  if (
+    game.sport?.includes("world_cup") ||
+    game.sport?.includes("FIFA_WC") ||
+    game.league === "FIFA_WC"
+  ) {
+    return "🌍 World Cup";
+  }
+  return game.league ?? "";
+}
+
 export interface GolfDataProps {
   tournament: GolfTournament | null;
   leaderboard: GolfLeaderboard | null;
