@@ -49,7 +49,7 @@ export const SPORTS = [
   { key: "soccer_fifa_world_cup", label: "🌍 World Cup", icon: "trophy" },
   { key: "golf", label: "⛳ Golf", icon: "trophy" },
   { key: "mma_mixed_martial_arts", label: "MMA", icon: "zap" },
-  { key: "tennis_atp_french_open", label: "Tennis", icon: "circle" },
+  { key: "tennis", label: "🎾 Tennis", icon: "circle" },
 ] as const;
 
 export function toImplied(odds: number): number {
