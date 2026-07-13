@@ -1113,8 +1113,46 @@ Deno.serve(async (req) => {
 
     // Merge in The Odds API games (WC + golf). The relevancy filter above
     // is sport-tab driven on the client; here we just append.
-    const mergedGames = [...games, ...(oddsApiResult?.games ?? [])];
-    console.log(`[merge] sportsbook=${games.length} oddsApi=${oddsApiResult?.games?.length ?? 0} total=${mergedGames.length}`);
+    const rawMerged = [...games, ...(oddsApiResult?.games ?? [])];
+    console.log(`[merge] sportsbook=${games.length} oddsApi=${oddsApiResult?.games?.length ?? 0} total=${rawMerged.length}`);
+
+    // Dedupe: same teams + same day. Prefer version with more bookmakers
+    // (Odds API has full books), preserve cross-market fields from Sportsbook.
+    const norm = (s: any) => String(s ?? "").toLowerCase().trim();
+    const dayKey = (t: any) => {
+      const d = new Date(t);
+      return isNaN(d.getTime()) ? "" : d.toDateString();
+    };
+    const teamsMatch = (a: string, b: string) =>
+      !!a && !!b && (a.includes(b) || b.includes(a));
+    const mergedGames = rawMerged.reduce((acc: any[], game: any) => {
+      const gHome = norm(game?.home_team);
+      const gAway = norm(game?.away_team);
+      const gDay = dayKey(game?.commence_time);
+      const idx = acc.findIndex((existing: any) => {
+        const eHome = norm(existing?.home_team);
+        const eAway = norm(existing?.away_team);
+        const eDay = dayKey(existing?.commence_time);
+        return eDay && gDay && eDay === gDay
+          && teamsMatch(eHome, gHome) && teamsMatch(eAway, gAway);
+      });
+      if (idx === -1) {
+        acc.push(game);
+        return acc;
+      }
+      const existing = acc[idx];
+      const existingBooks = existing?.bookmakers?.length ?? 0;
+      const newBooks = game?.bookmakers?.length ?? 0;
+      const base = newBooks > existingBooks ? game : existing;
+      acc[idx] = {
+        ...base,
+        mispricings: (existing?.mispricings?.length ? existing.mispricings : game?.mispricings)
+          ?? base.mispricings,
+        crossMarket: existing?.crossMarket ?? game?.crossMarket ?? base.crossMarket,
+      };
+      return acc;
+    }, [] as any[]);
+    console.log(`[dedup] before=${rawMerged.length} after=${mergedGames.length} removed=${rawMerged.length - mergedGames.length}`);
     const mlbCount = mergedGames.filter((g: any) => g?.sport_key === "baseball_mlb").length;
     const finalBreakdown: Record<string, number> = {};
     for (const g of mergedGames) {
