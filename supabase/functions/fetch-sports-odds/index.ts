@@ -1086,6 +1086,15 @@ Deno.serve(async (req) => {
     // is sport-tab driven on the client; here we just append.
     const mergedGames = [...games, ...(oddsApiResult?.games ?? [])];
     console.log(`[merge] sportsbook=${games.length} oddsApi=${oddsApiResult?.games?.length ?? 0} total=${mergedGames.length}`);
+    const mlbCount = mergedGames.filter((g: any) => g?.sport_key === "baseball_mlb").length;
+    const finalBreakdown: Record<string, number> = {};
+    for (const g of mergedGames) {
+      const k = (g as any)?.sport_key ?? "unknown";
+      finalBreakdown[k] = (finalBreakdown[k] ?? 0) + 1;
+    }
+    console.log("[fetch] Odds API MLB:", mlbCount);
+    console.log("[fetch] Total games:", mergedGames.length);
+    console.log("[fetch] By sport:", JSON.stringify(finalBreakdown));
 
     // Snapshot to outcomes_log for research (everything we saw, not just
     // the filtered slice).
