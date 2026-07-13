@@ -292,7 +292,7 @@ export function useSportsOdds(polymarkets: Market[]) {
             ? current.filter((game) => sportKey === "golf" ? !isGolfGame(game) : game.sport !== sportKey)
             : current;
           const merged = [...base, ...gotForSport];
-          setFullGames(merged);
+          setFullGames(sortGamesForDisplay(merged));
         }
         setLoadedSports((prev) => {
           const next = new Set(prev);
