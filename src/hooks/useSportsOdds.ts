@@ -49,11 +49,8 @@ function isWorldCupGame(game: FullGame): boolean {
     sport.includes("world_cup") ||
     sport.includes("fifa") ||
     sport.includes("fifa_wc") ||
-    sport.includes("wc") && sport.length <= 8 ||
     league.includes("world cup") ||
     league.includes("fifa") ||
-    leagueRaw === "FIFA_WC" ||
-    sportRaw === "FIFA_WC" ||
     sportRaw.toUpperCase() === "FIFA_WC" ||
     leagueRaw.toUpperCase() === "FIFA_WC"
   );
