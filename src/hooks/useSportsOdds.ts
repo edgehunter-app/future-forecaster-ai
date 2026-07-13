@@ -40,6 +40,23 @@ function isGolfGame(game: FullGame): boolean {
   return sport.startsWith("golf") || league.includes("golf") || game.isOutright === true;
 }
 
+function isWorldCupGame(game: FullGame): boolean {
+  const sport = (game.sport ?? "").toLowerCase();
+  const league = (game.league ?? "").toLowerCase();
+  return (
+    sport.includes("world_cup") ||
+    sport.includes("fifa") ||
+    league.includes("world cup") ||
+    league.includes("fifa")
+  );
+}
+
+function isMMAGame(game: FullGame): boolean {
+  const sport = (game.sport ?? "").toLowerCase();
+  const league = (game.league ?? "").toLowerCase();
+  return sport.includes("mma") || sport.includes("ufc") || league.includes("ufc") || league.includes("mma");
+}
+
 export function useSportsOdds(polymarkets: Market[]) {
   const settings = useAppStore((s) => s.settings);
   const threshold = settings.sportsGapThreshold ?? 0.02;
@@ -80,25 +97,21 @@ export function useSportsOdds(polymarkets: Market[]) {
 
   const filterRelevantGames = useCallback((games: FullGame[]): FullGame[] => {
     const now = new Date();
+    const sevenDaysOut = new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000);
+    const threeHoursAgo = new Date(now.getTime() - 3 * 60 * 60 * 1000);
     const tomorrow = new Date(now);
     tomorrow.setDate(tomorrow.getDate() + 1);
     tomorrow.setHours(6, 0, 0, 0);
 
     return games.filter((game) => {
-      // Golf outrights are future tournament leaderboards, not same-day games.
-      // Keep them when player odds are present so major-winner feeds don't get
-      // filtered out by the daily slate window.
+      // Golf outrights — always show when player odds exist.
       if (game.isOutright === true) {
         return (game.players?.length ?? 0) > 0;
       }
 
       const gameTime = new Date(game.commenceTime);
 
-      // Must start before tomorrow 6am
-      if (gameTime > tomorrow) return false;
-
       // Must not have started more than 3 hours ago
-      const threeHoursAgo = new Date(now.getTime() - 3 * 60 * 60 * 1000);
       if (gameTime < threeHoursAgo) return false;
 
       // Must have at least 1 book with odds
@@ -107,7 +120,33 @@ export function useSportsOdds(polymarkets: Market[]) {
       );
       if (!hasOdds) return false;
 
+      // World Cup — betting markets open days in advance. Show up to 7 days out.
+      if (isWorldCupGame(game)) return gameTime <= sevenDaysOut;
+
+      // MMA / UFC — cards are posted days ahead. Show up to 7 days out.
+      if (isMMAGame(game)) return gameTime <= sevenDaysOut;
+
+      // Regular sports — today plus tomorrow morning only.
+      if (gameTime > tomorrow) return false;
+
       return true;
+    });
+  }, []);
+
+  const sortGamesForDisplay = useCallback((games: FullGame[]): FullGame[] => {
+    const rank = (g: FullGame) => {
+      if (isWorldCupGame(g)) return 0; // World Cup pinned to top
+      const t = new Date(g.commenceTime).getTime();
+      const now = Date.now();
+      const endOfToday = new Date();
+      endOfToday.setHours(23, 59, 59, 999);
+      if (t <= endOfToday.getTime() && t >= now - 3 * 60 * 60 * 1000) return 1;
+      return 2;
+    };
+    return [...games].sort((a, b) => {
+      const r = rank(a) - rank(b);
+      if (r !== 0) return r;
+      return new Date(a.commenceTime).getTime() - new Date(b.commenceTime).getTime();
     });
   }, []);
 
@@ -187,7 +226,7 @@ export function useSportsOdds(polymarkets: Market[]) {
       let allFull: FullGame[] = [];
       try {
         const rawGames = await fetchOneSport(currentSportRef.current, trigger);
-        allFull = filterRelevantGames(rawGames);
+        allFull = sortGamesForDisplay(filterRelevantGames(rawGames));
         console.log("Relevant games today:", allFull.length, "of", rawGames.length);
       } catch (e) {
         console.warn("fetchFullOdds failed", e);
@@ -230,6 +269,7 @@ export function useSportsOdds(polymarkets: Market[]) {
     threshold,
     fetchOneSport,
     filterRelevantGames,
+    sortGamesForDisplay,
     setFullGames,
     setMispricings,
     setSportsError,
@@ -253,7 +293,7 @@ export function useSportsOdds(polymarkets: Market[]) {
             ? current.filter((game) => sportKey === "golf" ? !isGolfGame(game) : game.sport !== sportKey)
             : current;
           const merged = [...base, ...gotForSport];
-          setFullGames(merged);
+          setFullGames(sortGamesForDisplay(merged));
         }
         setLoadedSports((prev) => {
           const next = new Set(prev);
@@ -269,7 +309,7 @@ export function useSportsOdds(polymarkets: Market[]) {
         setSportsLoading(false);
       }
     },
-    [loadedSports, fetchOneSport, filterRelevantGames, setFullGames, setSportsLoading, clearGolfCache],
+    [loadedSports, fetchOneSport, filterRelevantGames, sortGamesForDisplay, setFullGames, setSportsLoading, clearGolfCache],
   );
 
   // Mount-only fetch: fire ONCE per mount, only if store is empty AND last

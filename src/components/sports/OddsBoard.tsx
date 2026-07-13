@@ -136,8 +136,11 @@ export default function OddsBoard({ games, loading, mispricings = [], onRefresh,
   if (games.length === 0) {
     return (
       <div className="rounded-lg border border-dashed border-border bg-card/40 p-8 text-center space-y-3">
-        <p className="text-sm font-semibold text-foreground">No games with live odds right now</p>
-        <p className="text-sm text-muted-foreground">Check back later today for tonight's slate</p>
+        <p className="text-sm font-semibold text-foreground">No games today</p>
+        <p className="text-sm text-muted-foreground">
+          Try the World Cup or MMA tab — those slates run up to 7 days out. Otherwise check
+          back later today for tonight's odds.
+        </p>
         {onRefresh && (
           <button
             onClick={onRefresh}
