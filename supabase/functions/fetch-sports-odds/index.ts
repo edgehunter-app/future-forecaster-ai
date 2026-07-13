@@ -30,6 +30,17 @@ const ODDS_API_REMAINING_SENTINEL = "9999-12-31"; // used_at row that stores lat
 const ODDS_API_SOCCER_SPORTS = ["soccer_fifa_world_cup"];
 // MMA has one global feed on The Odds API — covers UFC, PFL, Bellator, etc.
 const ODDS_API_MMA_SPORTS = ["mma_mixed_martial_arts"];
+// Full game slates on The Odds API (20k/month plan). Sportsbook API's
+// competition-events endpoint returns market definitions with no per-book
+// outcomes, so The Odds API is the practical source for straight bets.
+const ODDS_API_GAME_SPORTS: Array<{ sport: string; markets: string }> = [
+  { sport: "baseball_mlb", markets: "h2h,spreads,totals" },
+  { sport: "basketball_nba", markets: "h2h,spreads,totals" },
+  { sport: "icehockey_nhl", markets: "h2h,spreads,totals" },
+  { sport: "americanfootball_nfl", markets: "h2h,spreads,totals" },
+  { sport: "soccer_epl", markets: "h2h,spreads,totals" },
+  { sport: "soccer_usa_mls", markets: "h2h,spreads,totals" },
+];
 // The Odds API only carries major-winner outrights on the current plan —
 // no weekly PGA Tour or LIV feed. Real keys all use the `_winner` suffix.
 // We probe /sports first and only call the ones flagged active=true to
@@ -41,6 +52,41 @@ const ODDS_API_GOLF_SPORTS = [
   "golf_us_open_winner",
 ];
 const oddsApiCache = new Map<string, { expires: number; payload: any[] }>();
+
+// Key rotation — try ODDS_API_KEY, fall back to ODDS_API_KEY_2 on 401/429.
+function oddsApiKeys(): Array<{ name: string; key: string }> {
+  const out: Array<{ name: string; key: string }> = [];
+  const k1 = Deno.env.get("ODDS_API_KEY");
+  const k2 = Deno.env.get("ODDS_API_KEY_2");
+  if (k1) out.push({ name: "primary", key: k1 });
+  if (k2) out.push({ name: "secondary", key: k2 });
+  return out;
+}
+
+async function oddsApiFetch(pathAndQuery: string): Promise<{ res: Response | null; keyName: string | null; remaining: string | null }> {
+  const keys = oddsApiKeys();
+  if (keys.length === 0) return { res: null, keyName: null, remaining: null };
+  let lastRes: Response | null = null;
+  let lastKeyName: string | null = null;
+  for (const { name, key } of keys) {
+    const sep = pathAndQuery.includes("?") ? "&" : "?";
+    const url = `${ODDS_API_BASE}${pathAndQuery}${sep}apiKey=${key}`;
+    try {
+      const res = await fetch(url, { signal: AbortSignal.timeout(10000) });
+      lastRes = res;
+      lastKeyName = name;
+      const remaining = res.headers.get("x-requests-remaining");
+      if (res.status === 401 || res.status === 429) {
+        console.warn(`[odds-api] key=${name} status=${res.status} — rotating`);
+        continue;
+      }
+      return { res, keyName: name, remaining };
+    } catch (e) {
+      console.warn(`[odds-api] key=${name} threw ${(e as Error).message}`);
+    }
+  }
+  return { res: lastRes, keyName: lastKeyName, remaining: lastRes?.headers.get("x-requests-remaining") ?? null };
+}
 
 // Probe /sports to find which golf majors are currently active. Cached for
 // 10 minutes per cold start; /sports doesn't count against the daily quota.
