@@ -43,11 +43,16 @@ function isGolfGame(game: FullGame): boolean {
 function isWorldCupGame(game: FullGame): boolean {
   const sport = (game.sport ?? "").toLowerCase();
   const league = (game.league ?? "").toLowerCase();
+  const sportRaw = game.sport ?? "";
+  const leagueRaw = game.league ?? "";
   return (
     sport.includes("world_cup") ||
     sport.includes("fifa") ||
+    sport.includes("fifa_wc") ||
     league.includes("world cup") ||
-    league.includes("fifa")
+    league.includes("fifa") ||
+    sportRaw.toUpperCase() === "FIFA_WC" ||
+    leagueRaw.toUpperCase() === "FIFA_WC"
   );
 }
 
@@ -112,6 +117,9 @@ export function useSportsOdds(polymarkets: Market[]) {
       // Must not have started more than 3 hours ago
       if (gameTime < threeHoursAgo) return false;
 
+      // World Cup: keep games even without posted odds — lines populate later.
+      if (isWorldCupGame(game)) return gameTime <= daysOut(7);
+
       // Must have at least 1 book with odds
       const hasOdds = game.bookmakers?.some(
         (b) => b.homeMoneyline !== 0 || b.awayMoneyline !== 0,
@@ -121,7 +129,6 @@ export function useSportsOdds(polymarkets: Market[]) {
       const sport = (game.sport ?? "").toLowerCase();
 
       // 7-day window: World Cup, MMA/UFC, NFL (lines posted early week).
-      if (isWorldCupGame(game)) return gameTime <= daysOut(7);
       if (isMMAGame(game)) return gameTime <= daysOut(7);
       if (sport.includes("americanfootball")) return gameTime <= daysOut(7);
 
@@ -285,7 +292,15 @@ export function useSportsOdds(polymarkets: Market[]) {
         const isWC = sportKey === "soccer_fifa_world_cup";
         if (isWC) {
           console.log("[WC] games fetched:", raw?.length);
-          console.log("[WC] first game:", JSON.stringify(raw?.[0])?.slice(0, 200));
+          console.log("[WC] raw game fields:", raw?.map((g) => ({
+            sport: g.sport,
+            league: g.league,
+            homeTeam: g.homeTeam,
+            awayTeam: g.awayTeam,
+            commenceTime: g.commenceTime,
+            bookmakerCount: g.bookmakers?.length ?? 0,
+            hasOdds: g.bookmakers?.some((b) => b.homeMoneyline !== 0 || b.awayMoneyline !== 0) ?? false,
+          })));
           console.log("[WC] game dates:", raw?.map((g) => ({
             teams: `${g.awayTeam} vs ${g.homeTeam}`,
             time: g.commenceTime,
