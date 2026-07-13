@@ -13,6 +13,11 @@ const MULTI_WORD_NICKNAMES = [
 /** Returns the team nickname (last word, or known multi-word nickname). */
 export function teamNickname(fullName: string): string {
   if (!fullName) return "";
+  // MLB All-Star Game: keep "American League" / "National League" intact
+  // (otherwise last-word extraction returns the generic word "League").
+  if (/\b(American|National)\s+League$/i.test(fullName.trim())) {
+    return fullName.trim();
+  }
   for (const nick of MULTI_WORD_NICKNAMES) {
     if (fullName.endsWith(nick)) return nick;
   }
