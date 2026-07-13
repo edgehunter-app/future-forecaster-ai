@@ -155,6 +155,7 @@ export default function Sports() {
     result: bestBetResult,
     error: bestBetError,
     clear: clearBestBet,
+    availability: bestBetAvailability,
   } = useBestBet();
 
   const handleBestBet = async () => {
