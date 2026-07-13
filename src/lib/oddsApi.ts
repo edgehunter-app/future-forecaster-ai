@@ -392,6 +392,7 @@ export async function fetchFullOdds(
       polymarketMatch: null,
       polymarketImplied: null,
       mispricingGap: null,
+      isTennis: g.isTennis === true || String(g.sport_key ?? "").startsWith("tennis_"),
     };
   });
   if (mapped[0]) {
