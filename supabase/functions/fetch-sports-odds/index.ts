@@ -750,6 +750,60 @@ Deno.serve(async (req) => {
       });
     }
 
+    // One-off discovery probe: tests whether the Sportsbook API exposes
+    // full-slate endpoints (not just /v0/advantages arbitrage).
+    if (body.probeSportsbook) {
+      const key = apiKey;
+      if (!key) {
+        return new Response(JSON.stringify({ error: "NO_KEY" }), {
+          status: 503, headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+      const headers = { "x-rapidapi-key": key, "x-rapidapi-host": RAPID_HOST };
+      const results: Record<string, any> = {};
+
+      const hit = async (label: string, path: string) => {
+        const url = `${RAPID_BASE}${path}`;
+        try {
+          const res = await fetch(url, { headers });
+          const status = res.status;
+          let bodyText = "";
+          let json: any = null;
+          if (res.ok) {
+            const t = await res.text();
+            bodyText = t.slice(0, 400);
+            try { json = JSON.parse(t); } catch { /* not json */ }
+          } else {
+            bodyText = (await res.text().catch(() => "")).slice(0, 200);
+          }
+          const count = Array.isArray(json?.events) ? json.events.length
+            : Array.isArray(json?.data) ? json.data.length
+            : Array.isArray(json) ? json.length : null;
+          console.log(`[probe] ${label} status=${status} count=${count} preview=${bodyText.slice(0, 300)}`);
+          results[label] = { status, count, preview: bodyText };
+        } catch (e) {
+          console.log(`[probe] ${label} threw ${(e as Error).message}`);
+          results[label] = { status: 0, error: (e as Error).message };
+        }
+      };
+
+      const from = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
+      const to = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString();
+      const qs = `?startTimeFrom=${encodeURIComponent(from)}&startTimeTo=${encodeURIComponent(to)}`;
+      await hit("MLB_events", `/v1/competitions/MLB/events${qs}`);
+      await hit("MLB_events_includeOdds", `/v1/competitions/MLB/events${qs}&includeOdds=true`);
+      await hit("odds_baseball", "/v1/odds?sport=BASEBALL");
+      await hit("odds_MLB", "/v1/odds?competition=MLB");
+      await hit("events_root", `/v1/events${qs}`);
+      for (const sport of ["NBA", "NHL", "NFL"]) {
+        await hit(`${sport}_events`, `/v1/competitions/${sport}/events${qs}`);
+      }
+
+      return new Response(JSON.stringify({ results }, null, 2), {
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
     // Player props: not supported by this provider — keep stub so the UI
     // gets a clean "not supported" instead of crashing.
     if (body.eventId) {
