@@ -698,9 +698,8 @@ async function fetchOddsApiSport(
   markets: string,
   forceRefresh = false,
 ): Promise<{ games: any[]; remaining: number | null }> {
-  const apiKey = Deno.env.get("ODDS_API_KEY");
-  if (!apiKey) {
-    console.warn("[odds-api] ODDS_API_KEY not set; skipping", sport);
+  if (oddsApiKeys().length === 0) {
+    console.warn("[odds-api] no keys configured; skipping", sport);
     return { games: [], remaining: null };
   }
   const cacheKey = sport.startsWith("golf_")
@@ -710,17 +709,21 @@ async function fetchOddsApiSport(
   const cached = oddsApiCache.get(cacheKey);
   if (!forceRefresh && cached && cached.expires > now) return { games: cached.payload, remaining: null };
 
-  const url = `${ODDS_API_BASE}/sports/${sport}/odds?apiKey=${apiKey}&regions=us&markets=${markets}&oddsFormat=american`;
-  const redactedUrl = `${ODDS_API_BASE}/sports/${sport}/odds?apiKey=***&regions=us&markets=${markets}&oddsFormat=american`;
+  const path = `/sports/${sport}/odds?regions=us&markets=${markets}&oddsFormat=american`;
+  const redactedUrl = `${ODDS_API_BASE}${path}&apiKey=***`;
   const isTheOpen = sport === "golf_the_open_championship_winner";
   if (isTheOpen) {
     console.log("The Open API call URL:", redactedUrl);
   }
   try {
-    const res = await fetch(url);
+    const { res, keyName } = await oddsApiFetch(path);
+    if (!res) {
+      console.warn(`[odds-api] ${sport} no response`);
+      return { games: [], remaining: null };
+    }
     const remainingHdr = res.headers.get("x-requests-remaining");
     const remaining = remainingHdr ? Number(remainingHdr) : null;
-    console.log(`[odds-api] ${sport} status=${res.status} remaining=${remainingHdr ?? "n/a"}`);
+    console.log(`[odds-api] ${sport} status=${res.status} key=${keyName ?? "?"} remaining=${remainingHdr ?? "n/a"}`);
     if (isTheOpen) console.log("The Open status:", res.status);
     if (!res.ok) {
       const txt = await res.text().catch(() => "");
