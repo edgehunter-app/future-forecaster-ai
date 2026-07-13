@@ -30,6 +30,20 @@ const ODDS_API_REMAINING_SENTINEL = "9999-12-31"; // used_at row that stores lat
 const ODDS_API_SOCCER_SPORTS = ["soccer_fifa_world_cup"];
 // MMA has one global feed on The Odds API — covers UFC, PFL, Bellator, etc.
 const ODDS_API_MMA_SPORTS = ["mma_mixed_martial_arts"];
+// Tennis: The Odds API exposes ATP/WTA feeds keyed by tournament. We try
+// each candidate key and keep the ones that return events. Grand Slams and
+// tour-level events rotate throughout the year, so a probe-and-keep approach
+// is simpler than tracking the calendar.
+const ODDS_API_TENNIS_SPORTS = [
+  "tennis_atp_wimbledon",
+  "tennis_wta_wimbledon",
+  "tennis_atp_french_open",
+  "tennis_wta_french_open",
+  "tennis_atp_us_open",
+  "tennis_wta_us_open",
+  "tennis_atp_aus_open",
+  "tennis_wta_aus_open",
+];
 // Full game slates on The Odds API (20k/month plan). Sportsbook API's
 // competition-events endpoint returns market definitions with no per-book
 // outcomes, so The Odds API is the practical source for straight bets.
