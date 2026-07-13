@@ -827,6 +827,80 @@ Deno.serve(async (req) => {
       });
     }
 
+    // Probe for per-event odds/outcomes endpoints.
+    if (body.probeEventOutcomes) {
+      const key = apiKey;
+      if (!key) {
+        return new Response(JSON.stringify({ error: "NO_KEY" }), {
+          status: 503, headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+      const headers = { "x-rapidapi-key": key, "x-rapidapi-host": RAPID_HOST };
+
+      // Discover a live MLB event key
+      const from = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
+      const to = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString();
+      const listRes = await fetch(
+        `${RAPID_BASE}/v1/competitions/MLB/events?startTimeFrom=${encodeURIComponent(from)}&startTimeTo=${encodeURIComponent(to)}&includeOdds=true`,
+        { headers },
+      );
+      const listJson = await listRes.json().catch(() => ({}));
+      const evKey: string | undefined = body.eventKey ?? listJson?.events?.[0]?.key;
+      const firstMarketKey: string | undefined = listJson?.events?.[0]?.markets?.[0]?.key;
+      const results: Record<string, any> = { _eventKey: evKey, _firstMarketKey: firstMarketKey };
+
+      if (!evKey) {
+        return new Response(JSON.stringify({ error: "NO_EVENT_KEY", listStatus: listRes.status }, null, 2), {
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+
+      const urls = [
+        `/v1/events/${evKey}/outcomes`,
+        `/v1/events/${evKey}/odds`,
+        `/v1/events/${evKey}`,
+        `/v1/events/${evKey}?includeOdds=true`,
+        `/v0/events/${evKey}/outcomes`,
+        `/v0/events/${evKey}/odds`,
+        `/v0/events/${evKey}`,
+        `/v1/markets/${evKey}/outcomes`,
+        firstMarketKey ? `/v1/markets/${firstMarketKey}/outcomes` : null,
+        firstMarketKey ? `/v1/markets/${firstMarketKey}` : null,
+        `/v0/outcomes?eventKey=${evKey}`,
+        `/v1/outcomes?eventKey=${evKey}`,
+        `/v0/odds?eventKey=${evKey}`,
+        `/v0/advantages/?type=ARBITRAGE&sport=BASEBALL`,
+        `/v0/advantages/?sport=BASEBALL`,
+        `/v0/advantages/?competition=MLB`,
+      ].filter(Boolean) as string[];
+
+      for (const path of urls) {
+        try {
+          const res = await fetch(`${RAPID_BASE}${path}`, { headers, signal: AbortSignal.timeout(6000) });
+          const status = res.status;
+          const text = await res.text().catch(() => "");
+          let json: any = null;
+          try { json = JSON.parse(text); } catch { /* not json */ }
+          const advCount = Array.isArray(json?.advantages) ? json.advantages.length : null;
+          results[path] = {
+            status,
+            ok: res.ok,
+            keys: json && typeof json === "object" ? Object.keys(json).slice(0, 20) : null,
+            advCount,
+            preview: text.slice(0, 800),
+          };
+          console.log(`[probeEv] ${path} -> ${status}`);
+        } catch (e) {
+          results[path] = { error: (e as Error).message };
+        }
+        await new Promise((r) => setTimeout(r, 250));
+      }
+
+      return new Response(JSON.stringify(results, null, 2), {
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
     // Player props: not supported by this provider — keep stub so the UI
     // gets a clean "not supported" instead of crashing.
     if (body.eventId) {
