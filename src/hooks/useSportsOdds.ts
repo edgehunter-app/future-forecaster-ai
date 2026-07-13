@@ -269,6 +269,7 @@ export function useSportsOdds(polymarkets: Market[]) {
     threshold,
     fetchOneSport,
     filterRelevantGames,
+    sortGamesForDisplay,
     setFullGames,
     setMispricings,
     setSportsError,
@@ -308,7 +309,7 @@ export function useSportsOdds(polymarkets: Market[]) {
         setSportsLoading(false);
       }
     },
-    [loadedSports, fetchOneSport, filterRelevantGames, setFullGames, setSportsLoading, clearGolfCache],
+    [loadedSports, fetchOneSport, filterRelevantGames, sortGamesForDisplay, setFullGames, setSportsLoading, clearGolfCache],
   );
 
   // Mount-only fetch: fire ONCE per mount, only if store is empty AND last
