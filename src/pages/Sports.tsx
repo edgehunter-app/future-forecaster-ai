@@ -203,8 +203,14 @@ export default function Sports() {
       return list.filter((g) => {
         const s = (g.sport ?? "").toLowerCase();
         const l = (g.league ?? "").toLowerCase();
+        const sRaw = g.sport ?? "";
+        const lRaw = g.league ?? "";
         return s.includes("world") || s.includes("fifa")
-          || l.includes("world") || l.includes("fifa");
+          || l.includes("world") || l.includes("fifa")
+          || sRaw.toUpperCase() === "FIFA_WC"
+          || lRaw.toUpperCase() === "FIFA_WC"
+          || sRaw.toUpperCase().includes("FIFA")
+          || lRaw.toUpperCase().includes("FIFA");
       });
     }
     if (activeSport === "golf") {
@@ -253,7 +259,12 @@ export default function Sports() {
         out[s.key] = fullGames.filter((g) => {
           const sp = (g.sport ?? "").toLowerCase();
           const lg = (g.league ?? "").toLowerCase();
-          return sp.includes("world") || sp.includes("fifa") || lg.includes("world") || lg.includes("fifa");
+          const spRaw = g.sport ?? "";
+          const lgRaw = g.league ?? "";
+          return sp.includes("world") || sp.includes("fifa")
+            || lg.includes("world") || lg.includes("fifa")
+            || spRaw.toUpperCase() === "FIFA_WC"
+            || lgRaw.toUpperCase() === "FIFA_WC";
         }).length;
       } else {
         out[s.key] = fullGames.filter((g) => g.sport === s.key).length;
