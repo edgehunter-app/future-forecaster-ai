@@ -292,7 +292,15 @@ export function useSportsOdds(polymarkets: Market[]) {
         const isWC = sportKey === "soccer_fifa_world_cup";
         if (isWC) {
           console.log("[WC] games fetched:", raw?.length);
-          console.log("[WC] first game:", JSON.stringify(raw?.[0])?.slice(0, 200));
+          console.log("[WC] raw game fields:", raw?.map((g) => ({
+            sport: g.sport,
+            league: g.league,
+            homeTeam: g.homeTeam,
+            awayTeam: g.awayTeam,
+            commenceTime: g.commenceTime,
+            bookmakerCount: g.bookmakers?.length ?? 0,
+            hasOdds: g.bookmakers?.some((b) => b.homeMoneyline !== 0 || b.awayMoneyline !== 0) ?? false,
+          })));
           console.log("[WC] game dates:", raw?.map((g) => ({
             teams: `${g.awayTeam} vs ${g.homeTeam}`,
             time: g.commenceTime,
