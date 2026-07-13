@@ -189,6 +189,8 @@ ${wallets.map((w: Any) => `- ${w.label} (Tier ${w.tier}): ${(w.winRate * 100).to
     : "No smart wallet data available for this game.";
   const isWorldCup = /world\s*cup/i.test(leagueStr) || /fifa/i.test(leagueStr);
   const isGolf = /golf|pga|masters|open championship|u\.?s\.? open/i.test(leagueStr);
+  const isTennis = /tennis|atp|wta|wimbledon|roland garros|french open|us open|australian open/i.test(leagueStr)
+    || String(p.sport ?? "").toLowerCase().includes("tennis");
 
   const worldCupBlock = isWorldCup
     ? `
@@ -248,6 +250,30 @@ provided above. Consider:
 - Championship-round experience if this is a title fight (rounds 4-5)
 
 betType MUST be "moneyline". Do not recommend a spread or total for MMA.
+`
+    : "";
+  const tennisBlock = isTennis
+    ? `
+TENNIS MATCH CONTEXT:
+This is a tennis match analysis.
+Tournament: ${p.league}
+Key factors for tennis betting:
+- Player world ranking and current form
+- Head-to-head record on this surface
+- Surface specialty:
+  Clay: baseline rallies, topspin (French Open)
+  Grass: big servers, net play (Wimbledon)
+  Hard: balanced game (US Open, Australian Open)
+- Tournament stage (fatigue from earlier rounds)
+- Recent tournament results (last 4 weeks)
+- Serving stats and break point conversion
+- Physical condition and injury history
+
+Tennis is moneyline only — match winner. No spreads. Sets over/under
+sometimes available but not in this data.
+
+betType MUST be "moneyline". recommendedTeam MUST be the exact player
+name (home_team or away_team) to back.
 `
     : "";
   return `You are EdgeHunter's sports betting analyst.
