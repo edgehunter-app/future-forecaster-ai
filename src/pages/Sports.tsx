@@ -476,6 +476,10 @@ export default function Sports() {
                 if (s.key !== "all" && !isLoaded) {
                   void loadGamesForSport(s.key);
                 }
+                if (s.key === "soccer_fifa_world_cup") {
+                  // Force fresh fetch for WC so pre-7-day-filter cache is bypassed.
+                  void loadGamesForSport(s.key, true);
+                }
               }}
               disabled={loading && s.key !== activeSport}
               className={cn(
