@@ -274,8 +274,8 @@ export default function Admin() {
         </div>
 
         <div className="rounded-md border border-info/30 bg-info/5 px-3 py-2 text-[11px] text-info/90 leading-snug">
-          <span className="font-semibold">Note:</span> Board shows today's games with live odds only.
-          Games 2+ days out are excluded until lines post.
+          <span className="font-semibold">Games shown:</span> World Cup + MMA + NFL up to 7 days ·
+          MLB / NBA / NHL / Soccer up to 3 days · Golf always visible.
         </div>
       </section>
 
