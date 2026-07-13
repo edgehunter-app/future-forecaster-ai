@@ -818,6 +818,30 @@ Deno.serve(async (req) => {
       });
     }
 
+    // Odds API self-test: hits MLB h2h and reports quota + first game.
+    if (body.oddsApiTest) {
+      const path = `/sports/baseball_mlb/odds?regions=us&markets=h2h&oddsFormat=american`;
+      const { res, keyName, remaining } = await oddsApiFetch(path);
+      const status = res?.status ?? 0;
+      console.log("[odds-api] MLB test status:", status);
+      console.log("[odds-api] key used:", keyName);
+      console.log("[odds-api] remaining:", remaining);
+      let games: any = null;
+      let firstPreview: string | null = null;
+      if (res && res.ok) {
+        const json = await res.json();
+        games = Array.isArray(json) ? json.length : null;
+        console.log("[odds-api] MLB games:", games);
+        firstPreview = JSON.stringify(Array.isArray(json) ? json[0] : null).slice(0, 300);
+        console.log("[odds-api] first game:", firstPreview);
+      } else if (res) {
+        firstPreview = (await res.text().catch(() => "")).slice(0, 300);
+      }
+      return new Response(JSON.stringify({
+        status, keyUsed: keyName, remaining, mlbGames: games, firstPreview,
+      }, null, 2), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
+    }
+
     // One-off discovery probe: tests whether the Sportsbook API exposes
     // full-slate endpoints (not just /v0/advantages arbitrage).
     if (body.probeSportsbook) {
