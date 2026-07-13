@@ -433,9 +433,7 @@ export default function Sports() {
                   setSelectedSports([...selectedSports, "soccer_fifa_world_cup"]);
                 }
                 setCurrentSport("soccer_fifa_world_cup");
-                if (!loadedSports.has("soccer_fifa_world_cup")) {
-                  void loadGamesForSport("soccer_fifa_world_cup");
-                }
+                void loadGamesForSport("soccer_fifa_world_cup", true);
               }}
               className="inline-flex items-center gap-1.5 self-start sm:self-auto rounded-md bg-amber-500 px-3 py-1.5 text-xs font-bold text-amber-950 hover:bg-amber-400"
             >
