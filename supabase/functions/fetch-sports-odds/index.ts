@@ -233,11 +233,20 @@ async function getCompetitionEvents(client: any, short: string): Promise<any[]> 
   // with "If a startTimeTo is provided a startTimeFrom is required" otherwise.
   const from = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
   const to = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString();
-  const qs = `?startTimeFrom=${encodeURIComponent(from)}&startTimeTo=${encodeURIComponent(to)}`;
+  const qs = `?startTimeFrom=${encodeURIComponent(from)}&startTimeTo=${encodeURIComponent(to)}&includeOdds=true`;
   const json = await rapidFetch(`/v1/competitions/${encodeURIComponent(short)}/events${qs}`);
   if (!json) return cached?.payload ?? [];
   await bumpCounter(client);
   const events: any[] = Array.isArray(json?.events) ? json.events : [];
+  if (short === "MLB") {
+    const first = events?.[0];
+    const firstMarket = first?.markets?.[0];
+    const outs = firstMarket?.outcomes;
+    const outCount = Array.isArray(outs)
+      ? outs.length
+      : (outs && typeof outs === "object" ? Object.keys(outs).length : 0);
+    console.log("[competitions] MLB with odds:", outCount, "outcomes on first game");
+  }
   competitionEventsCache.set(short, { expires: now + ADVANTAGES_TTL_MS, payload: events });
   return events;
 }
