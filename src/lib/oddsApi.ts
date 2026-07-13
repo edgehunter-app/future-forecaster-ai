@@ -167,6 +167,7 @@ export interface FullGame {
   // Set when this "game" is actually a golf outright tournament.
   // homeTeam holds the tournament name; players[] holds the leaderboard.
   isOutright?: boolean;
+  isTennis?: boolean;
   players?: Array<{
     name: string;
     lines: Array<{ book: string; odds: number }>;
