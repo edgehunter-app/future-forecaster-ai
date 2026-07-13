@@ -32,6 +32,17 @@ function displayTeamName(game: FullGame, side: "home" | "away"): string {
   return teamNickname(side === "home" ? game.homeTeam : game.awayTeam);
 }
 
+function displayLeague(game: FullGame): string {
+  if (
+    game.sport?.includes("world_cup") ||
+    game.sport?.includes("FIFA_WC") ||
+    game.league === "FIFA_WC"
+  ) {
+    return "🌍 World Cup";
+  }
+  return game.league ?? "";
+}
+
 export interface GolfDataProps {
   tournament: GolfTournament | null;
   leaderboard: GolfLeaderboard | null;
@@ -269,7 +280,7 @@ function GameCard({ game, mispricings }: { game: FullGame; mispricings: SportsMi
       {/* Top row */}
       <div className="flex items-center justify-between gap-2">
         <span className="rounded-full border border-border bg-background/40 px-2 py-0.5 text-[10px] font-semibold uppercase text-muted-foreground">
-          {game.league}
+          {displayLeague(game)}
         </span>
         <div className="flex items-center gap-2">
           {game.isLive && (
