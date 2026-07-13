@@ -49,7 +49,7 @@ export const SPORTS = [
   { key: "soccer_fifa_world_cup", label: "🌍 World Cup", icon: "trophy" },
   { key: "golf", label: "⛳ Golf", icon: "trophy" },
   { key: "mma_mixed_martial_arts", label: "MMA", icon: "zap" },
-  { key: "tennis_atp_french_open", label: "Tennis", icon: "circle" },
+  { key: "tennis", label: "🎾 Tennis", icon: "circle" },
 ] as const;
 
 export function toImplied(odds: number): number {
@@ -167,6 +167,7 @@ export interface FullGame {
   // Set when this "game" is actually a golf outright tournament.
   // homeTeam holds the tournament name; players[] holds the leaderboard.
   isOutright?: boolean;
+  isTennis?: boolean;
   players?: Array<{
     name: string;
     lines: Array<{ book: string; odds: number }>;
@@ -391,6 +392,7 @@ export async function fetchFullOdds(
       polymarketMatch: null,
       polymarketImplied: null,
       mispricingGap: null,
+      isTennis: g.isTennis === true || String(g.sport_key ?? "").startsWith("tennis_"),
     };
   });
   if (mapped[0]) {

@@ -221,6 +221,12 @@ export default function Sports() {
         return s.startsWith("golf") || l.includes("golf");
       });
     }
+    if (activeSport === "tennis") {
+      return list.filter((g) => {
+        const s = (g.sport ?? "").toLowerCase();
+        return s.startsWith("tennis") || g.isTennis === true;
+      });
+    }
     const sportLabel = SPORTS.find((s) => s.key === activeSport)?.label.toLowerCase() ?? "";
     return list.filter(
       (g) =>
@@ -266,6 +272,11 @@ export default function Sports() {
             || lg.includes("world") || lg.includes("fifa")
             || spRaw.toUpperCase() === "FIFA_WC"
             || lgRaw.toUpperCase() === "FIFA_WC";
+        }).length;
+      } else if (s.key === "tennis") {
+        out[s.key] = fullGames.filter((g) => {
+          const sp = (g.sport ?? "").toLowerCase();
+          return sp.startsWith("tennis") || g.isTennis === true;
         }).length;
       } else {
         out[s.key] = fullGames.filter((g) => g.sport === s.key).length;
@@ -477,6 +488,7 @@ export default function Sports() {
             : s.key === "all" || loadedSports.has(s.key);
           const isWC = s.key === "soccer_fifa_world_cup";
           const isMMA = s.key === "mma_mixed_martial_arts";
+          const isTennis = s.key === "tennis";
           const mmaLiveTonight = isMMA && fullGames.some((g) => {
             if (g.sport !== "mma_mixed_martial_arts") return false;
             const t = new Date(g.commenceTime).getTime();
@@ -514,9 +526,13 @@ export default function Sports() {
                     ? active
                       ? "border-orange-400 bg-gradient-to-r from-red-500 to-orange-500 text-white"
                       : "border-orange-400/50 bg-orange-500/10 text-orange-200 hover:bg-orange-500/20"
-                    : active
-                      ? "border-info bg-info text-white"
-                      : "border-border bg-card text-muted-foreground hover:text-foreground",
+                    : isTennis
+                      ? active
+                        ? "border-green-400 bg-green-600 text-white"
+                        : "border-green-500/50 bg-green-500/10 text-green-300 hover:bg-green-500/20"
+                      : active
+                        ? "border-info bg-info text-white"
+                        : "border-border bg-card text-muted-foreground hover:text-foreground",
               )}
             >
               <span>{isMMA ? "🥊 MMA" : s.label}</span>

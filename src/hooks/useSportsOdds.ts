@@ -62,6 +62,14 @@ function isMMAGame(game: FullGame): boolean {
   return sport.includes("mma") || sport.includes("ufc") || league.includes("ufc") || league.includes("mma");
 }
 
+function isTennisGame(game: FullGame): boolean {
+  if (game.isTennis === true) return true;
+  const sport = (game.sport ?? "").toLowerCase();
+  const league = (game.league ?? "").toLowerCase();
+  return sport.includes("tennis") || league.includes("atp") || league.includes("wta")
+    || league.includes("wimbledon") || league.includes("open");
+}
+
 export function useSportsOdds(polymarkets: Market[]) {
   const settings = useAppStore((s) => s.settings);
   const threshold = settings.sportsGapThreshold ?? 0.02;
@@ -130,6 +138,7 @@ export function useSportsOdds(polymarkets: Market[]) {
 
       // 7-day window: World Cup, MMA/UFC, NFL (lines posted early week).
       if (isMMAGame(game)) return gameTime <= daysOut(7);
+      if (isTennisGame(game)) return gameTime <= daysOut(7);
       if (sport.includes("americanfootball")) return gameTime <= daysOut(7);
 
       // 3-day window: MLB, NBA, NHL, Soccer, and everything else.

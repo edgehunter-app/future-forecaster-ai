@@ -30,6 +30,20 @@ const ODDS_API_REMAINING_SENTINEL = "9999-12-31"; // used_at row that stores lat
 const ODDS_API_SOCCER_SPORTS = ["soccer_fifa_world_cup"];
 // MMA has one global feed on The Odds API — covers UFC, PFL, Bellator, etc.
 const ODDS_API_MMA_SPORTS = ["mma_mixed_martial_arts"];
+// Tennis: The Odds API exposes ATP/WTA feeds keyed by tournament. We try
+// each candidate key and keep the ones that return events. Grand Slams and
+// tour-level events rotate throughout the year, so a probe-and-keep approach
+// is simpler than tracking the calendar.
+const ODDS_API_TENNIS_SPORTS = [
+  "tennis_atp_wimbledon",
+  "tennis_wta_wimbledon",
+  "tennis_atp_french_open",
+  "tennis_wta_french_open",
+  "tennis_atp_us_open",
+  "tennis_wta_us_open",
+  "tennis_atp_aus_open",
+  "tennis_wta_aus_open",
+];
 // Full game slates on The Odds API (20k/month plan). Sportsbook API's
 // competition-events endpoint returns market definitions with no per-book
 // outcomes, so The Odds API is the practical source for straight bets.
@@ -739,7 +753,13 @@ async function fetchOddsApiSport(
     await bumpOddsApiCounter(client, 1);
     if (remaining !== null) await storeOddsApiRemaining(client, remaining);
     const isGolf = sport.startsWith("golf_");
-    const mapped = json.map((g: any) => (isGolf ? oddsApiGolfEventToGame(g) : oddsApiEventToGame(g)));
+    const isTennis = sport.startsWith("tennis_");
+    const mapped = json.map((g: any) => {
+      if (isGolf) return oddsApiGolfEventToGame(g);
+      const ev = oddsApiEventToGame(g);
+      if (isTennis) (ev as any).isTennis = true;
+      return ev;
+    });
     console.log(`[odds-api] ${sport} games=${mapped.length}`);
     oddsApiCache.set(cacheKey, { expires: now + ODDS_TTL_MS, payload: mapped });
     return { games: mapped, remaining };
@@ -759,11 +779,13 @@ async function fetchOddsApiAll(client: any, forceRefresh = false): Promise<{ gam
   const golfCalls = activeGolfKeys.map((s) => fetchOddsApiSport(client, s, "outrights", forceRefresh));
   // MMA/UFC is moneyline only.
   const mmaCalls = ODDS_API_MMA_SPORTS.map((s) => fetchOddsApiSport(client, s, "h2h", forceRefresh));
+  // Tennis: moneyline (h2h) only.
+  const tennisCalls = ODDS_API_TENNIS_SPORTS.map((s) => fetchOddsApiSport(client, s, "h2h", forceRefresh));
   // Full game slates for major leagues (MLB/NBA/NHL/NFL/EPL/MLS).
   const gameCalls = ODDS_API_GAME_SPORTS.map(({ sport, markets }) =>
     fetchOddsApiSport(client, sport, markets, forceRefresh),
   );
-  const results = await Promise.all([...soccerCalls, ...golfCalls, ...mmaCalls, ...gameCalls]);
+  const results = await Promise.all([...soccerCalls, ...golfCalls, ...mmaCalls, ...tennisCalls, ...gameCalls]);
   const games: any[] = [];
   let remaining: number | null = null;
   for (const r of results) {
@@ -779,6 +801,13 @@ async function fetchOddsApiAll(client: any, forceRefresh = false): Promise<{ gam
   console.log("[odds-api] by sport:", JSON.stringify(breakdown));
   const mmaCount = games.filter((g) => g?.sport_key === "mma_mixed_martial_arts").length;
   console.log("[odds-api] MMA events mapped:", mmaCount);
+  const tennisCount = games.filter((g) => g?.isTennis).length;
+  console.log("[odds-api] tennis events mapped:", tennisCount);
+  if (tennisCount > 0) {
+    const first = games.find((g) => g?.isTennis);
+    console.log("[odds-api] tennis first match:", first?.away_team, "vs", first?.home_team,
+      "sport=", first?.sport_key, "at", first?.commence_time);
+  }
   if (mmaCount > 0) {
     const first = games.find((g) => g?.sport_key === "mma_mixed_martial_arts");
     console.log("[odds-api] MMA first fight:", first?.away_team, "vs", first?.home_team,
