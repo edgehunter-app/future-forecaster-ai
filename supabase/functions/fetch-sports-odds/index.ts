@@ -753,7 +753,13 @@ async function fetchOddsApiSport(
     await bumpOddsApiCounter(client, 1);
     if (remaining !== null) await storeOddsApiRemaining(client, remaining);
     const isGolf = sport.startsWith("golf_");
-    const mapped = json.map((g: any) => (isGolf ? oddsApiGolfEventToGame(g) : oddsApiEventToGame(g)));
+    const isTennis = sport.startsWith("tennis_");
+    const mapped = json.map((g: any) => {
+      if (isGolf) return oddsApiGolfEventToGame(g);
+      const ev = oddsApiEventToGame(g);
+      if (isTennis) (ev as any).isTennis = true;
+      return ev;
+    });
     console.log(`[odds-api] ${sport} games=${mapped.length}`);
     oddsApiCache.set(cacheKey, { expires: now + ODDS_TTL_MS, payload: mapped });
     return { games: mapped, remaining };
