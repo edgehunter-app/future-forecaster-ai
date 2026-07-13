@@ -97,11 +97,9 @@ export function useSportsOdds(polymarkets: Market[]) {
 
   const filterRelevantGames = useCallback((games: FullGame[]): FullGame[] => {
     const now = new Date();
-    const sevenDaysOut = new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000);
     const threeHoursAgo = new Date(now.getTime() - 3 * 60 * 60 * 1000);
-    const tomorrow = new Date(now);
-    tomorrow.setDate(tomorrow.getDate() + 1);
-    tomorrow.setHours(6, 0, 0, 0);
+    const daysOut = (days: number) =>
+      new Date(now.getTime() + days * 24 * 60 * 60 * 1000);
 
     return games.filter((game) => {
       // Golf outrights — always show when player odds exist.
@@ -120,16 +118,15 @@ export function useSportsOdds(polymarkets: Market[]) {
       );
       if (!hasOdds) return false;
 
-      // World Cup — betting markets open days in advance. Show up to 7 days out.
-      if (isWorldCupGame(game)) return gameTime <= sevenDaysOut;
+      const sport = (game.sport ?? "").toLowerCase();
 
-      // MMA / UFC — cards are posted days ahead. Show up to 7 days out.
-      if (isMMAGame(game)) return gameTime <= sevenDaysOut;
+      // 7-day window: World Cup, MMA/UFC, NFL (lines posted early week).
+      if (isWorldCupGame(game)) return gameTime <= daysOut(7);
+      if (isMMAGame(game)) return gameTime <= daysOut(7);
+      if (sport.includes("americanfootball")) return gameTime <= daysOut(7);
 
-      // Regular sports — today plus tomorrow morning only.
-      if (gameTime > tomorrow) return false;
-
-      return true;
+      // 3-day window: MLB, NBA, NHL, Soccer, and everything else.
+      return gameTime <= daysOut(3);
     });
   }, []);
 
