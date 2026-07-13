@@ -315,7 +315,11 @@ export default function Sports() {
           </span>
           <button
             onClick={handleBestBet}
-            disabled={bestBetLoading || (fullGames?.length ?? 0) === 0}
+            disabled={
+              bestBetLoading ||
+              (fullGames?.length ?? 0) === 0 ||
+              bestBetAvailability === "none"
+            }
             className={cn(
               "inline-flex items-center gap-2 rounded-xl px-4 text-sm font-bold text-white shadow-md transition-opacity disabled:opacity-60",
               "bg-gradient-to-r from-purple to-purple/70 hover:opacity-90",
@@ -344,8 +348,16 @@ export default function Sports() {
               <>
                 <Zap className="h-4 w-4" />
                 <span className="flex flex-col items-start leading-tight">
-                  <span>Best Bet Today</span>
-                  <span className="text-[10px] font-normal opacity-80">AI scans all games</span>
+                  <span>
+                    {bestBetAvailability === "within_12h" && "Best Bet Today"}
+                    {bestBetAvailability === "within_24h" && "Best Bet Tonight"}
+                    {bestBetAvailability === "none" && "No Games Today"}
+                  </span>
+                  <span className="text-[10px] font-normal opacity-80">
+                    {bestBetAvailability === "none"
+                      ? "Check back later"
+                      : "AI scans next 24h"}
+                  </span>
                 </span>
               </>
             )}
