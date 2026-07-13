@@ -337,28 +337,37 @@ function GameCard({ game, mispricings }: { game: FullGame; mispricings: SportsMi
       </div>
 
       {/* Markets row */}
-      <div className="grid grid-cols-3 gap-2 text-[11px]">
-        <Market label="Moneyline">
-          <div className={oddsClass(awayOdds)}>A {formatOdds(awayOdds)}</div>
-          <div className={oddsClass(homeOdds)}>H {formatOdds(homeOdds)}</div>
-        </Market>
-        <Market label="Spread">
-          {game.spread ? (
-            <>
-              <div>A {formatSpread(game.spread.awaySpread)} ({formatOdds(game.spread.awayOdds)})</div>
-              <div>H {formatSpread(game.spread.homeSpread)} ({formatOdds(game.spread.homeOdds)})</div>
-            </>
-          ) : <div className="text-muted-foreground">—</div>}
-        </Market>
-        <Market label="O/U">
-          {game.total ? (
-            <>
-              <div>O {game.total.line} ({formatOdds(game.total.overOdds)})</div>
-              <div>U {game.total.line} ({formatOdds(game.total.underOdds)})</div>
-            </>
-          ) : <div className="text-muted-foreground">—</div>}
-        </Market>
-      </div>
+      {game.isTennis ? (
+        <div className="grid grid-cols-1 gap-2 text-[11px]">
+          <Market label="Match Winner">
+            <div className={oddsClass(awayOdds)}>{displayTeamName(game, "away")} {formatOdds(awayOdds)}</div>
+            <div className={oddsClass(homeOdds)}>{displayTeamName(game, "home")} {formatOdds(homeOdds)}</div>
+          </Market>
+        </div>
+      ) : (
+        <div className="grid grid-cols-3 gap-2 text-[11px]">
+          <Market label="Moneyline">
+            <div className={oddsClass(awayOdds)}>A {formatOdds(awayOdds)}</div>
+            <div className={oddsClass(homeOdds)}>H {formatOdds(homeOdds)}</div>
+          </Market>
+          <Market label="Spread">
+            {game.spread ? (
+              <>
+                <div>A {formatSpread(game.spread.awaySpread)} ({formatOdds(game.spread.awayOdds)})</div>
+                <div>H {formatSpread(game.spread.homeSpread)} ({formatOdds(game.spread.homeOdds)})</div>
+              </>
+            ) : <div className="text-muted-foreground">—</div>}
+          </Market>
+          <Market label="O/U">
+            {game.total ? (
+              <>
+                <div>O {game.total.line} ({formatOdds(game.total.overOdds)})</div>
+                <div>U {game.total.line} ({formatOdds(game.total.underOdds)})</div>
+              </>
+            ) : <div className="text-muted-foreground">—</div>}
+          </Market>
+        </div>
+      )}
 
       {/* Polymarket row */}
       {game.polymarketMatch && game.polymarketImplied !== null && game.mispricingGap !== null && (
