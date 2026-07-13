@@ -325,6 +325,7 @@ ${walletBlock}
 ${worldCupBlock}
 ${golfBlock}
 ${mmaBlock}
+${tennisBlock}
 USER RISK PROFILE:
   Bankroll: $${bankroll}
   Kelly multiplier: ${kelly}x
