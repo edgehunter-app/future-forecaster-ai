@@ -117,6 +117,9 @@ export function useSportsOdds(polymarkets: Market[]) {
       // Must not have started more than 3 hours ago
       if (gameTime < threeHoursAgo) return false;
 
+      // World Cup: keep games even without posted odds — lines populate later.
+      if (isWorldCupGame(game)) return gameTime <= daysOut(7);
+
       // Must have at least 1 book with odds
       const hasOdds = game.bookmakers?.some(
         (b) => b.homeMoneyline !== 0 || b.awayMoneyline !== 0,
@@ -126,7 +129,6 @@ export function useSportsOdds(polymarkets: Market[]) {
       const sport = (game.sport ?? "").toLowerCase();
 
       // 7-day window: World Cup, MMA/UFC, NFL (lines posted early week).
-      if (isWorldCupGame(game)) return gameTime <= daysOut(7);
       if (isMMAGame(game)) return gameTime <= daysOut(7);
       if (sport.includes("americanfootball")) return gameTime <= daysOut(7);
 
