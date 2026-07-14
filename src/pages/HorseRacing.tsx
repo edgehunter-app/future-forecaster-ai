@@ -295,7 +295,7 @@ function RaceCard({ card, state }: { card: RaceCardData; state: AnalysisState })
             </tbody>
           </table>
         </div>
-      )}
+
 
       {scratches.length > 0 && (
         <div className="mt-3 flex items-center gap-2 text-xs text-muted-foreground">
