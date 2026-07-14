@@ -13,8 +13,9 @@ import { useLineMonitor } from "@/hooks/useLineMonitor";
 import { useSubscription } from "@/hooks/useSubscription";
 
 const MORE_ITEMS = [
-  { to: "/suggestions", label: "Signals", icon: Zap },
   { to: "/tracker", label: "Bet Tracker", icon: BarChart2 },
+  { to: "/wallets", label: "Wallets", icon: Users },
+  { to: "/horse-racing", label: "Horse Racing", icon: HorseIcon },
   { to: "/cross-market", label: "Cross-Market", icon: ArrowLeftRight },
   { to: "/history", label: "History", icon: Clock },
   { to: "/settings", label: "Settings", icon: SettingsIcon },
@@ -46,10 +47,9 @@ export default function BottomTabBar() {
 
   const tabs = [
     { to: "/", label: "Home", icon: House, end: true, badge: 0 },
+    { to: "/suggestions", label: "Signals", icon: Zap, end: false, badge: 0 },
     { to: "/sports", label: "Sports", icon: Trophy, end: false, badge: strongMispricings, badgeColor: "success" as const },
     { to: "/markets", label: "Markets", icon: TrendingUp, end: false, badge: 0 },
-    { to: "/wallets", label: "Wallets", icon: Users, end: false, badge: 0 },
-    { to: "/horse-racing", label: "Racing", icon: HorseIcon, end: false, badge: 0, isNew: Date.now() < new Date("2026-08-13").getTime() },
   ];
 
   return (
