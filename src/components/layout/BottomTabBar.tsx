@@ -25,7 +25,6 @@ export default function BottomTabBar() {
   const [moreOpen, setMoreOpen] = useState(false);
   const navigate = useNavigate();
   const { pathname } = useLocation();
-  const suggestionsCount = useAppStore((s) => s.suggestions.length);
   const { isAdmin } = useIsAdmin();
   const { tier, isBeta, loading: subLoading } = useSubscription();
   const showUpgrade = !subLoading && !isBeta && tier === "free";
