@@ -116,58 +116,14 @@ function surfaceFromCondition(condition?: string): string {
   return "";
 }
 
-function useRaceAnalysis(card: RaceCardData) {
-  const [analysis, setAnalysis] = useState<RaceAnalysis | null>(null);
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+type AnalysisState = { status: "pending" | "loading" | "done" | "error"; data?: RaceAnalysis; error?: string };
 
-  useEffect(() => {
-    let cancelled = false;
-    setLoading(true);
-    setError(null);
-    setAnalysis(null);
-    supabase.functions
-      .invoke("analyze-market", {
-        body: {
-          type: "horse-racing",
-          trackName: card.trackName,
-          race: card.race,
-        },
-      })
-      .then(({ data, error: err }) => {
-        if (cancelled) return;
-        if (err) {
-          setError(err.message);
-          setLoading(false);
-          return;
-        }
-        const raw = data as Any;
-        const text: string =
-          typeof raw?.analysis === "string" ? raw.analysis :
-          typeof raw?.text === "string" ? raw.text :
-          typeof raw?.raw === "string" ? raw.raw :
-          typeof raw === "string" ? raw :
-          JSON.stringify(raw ?? {});
-        try {
-          const jsonStr = text.match(/\{[\s\S]*\}/)?.[0] ?? text;
-          setAnalysis(JSON.parse(jsonStr) as RaceAnalysis);
-        } catch {
-          setError("Failed to parse analysis");
-        }
-        setLoading(false);
-      });
-    return () => {
-      cancelled = true;
-    };
-  }, [card.id]);
-
-  return { analysis, loading, error };
-}
-
-function RaceCard({ card }: { card: RaceCardData }) {
+function RaceCard({ card, state }: { card: RaceCardData; state: AnalysisState }) {
   const { race, trackName } = card;
   const [open, setOpen] = useState(false);
-  const { analysis, loading, error } = useRaceAnalysis(card);
+  const analysis = state.data ?? null;
+  const loading = state.status === "loading" || state.status === "pending";
+  const error = state.status === "error" ? state.error ?? "error" : null;
   const style = analysis ? RATING_STYLES[analysis.rating] : RATING_STYLES.yellow;
   const liveRunners = race.runners.filter((r) => !r.scratched);
   const scratches = race.runners.filter((r) => r.scratched);
@@ -290,10 +246,10 @@ function RaceCard({ card }: { card: RaceCardData }) {
   );
 }
 
-function BestBetBanner({ cards, analyses }: { cards: RaceCardData[]; analyses: Record<string, RaceAnalysis | null> }) {
+function BestBetBanner({ cards, analyses }: { cards: RaceCardData[]; analyses: Record<string, AnalysisState> }) {
   const best = useMemo(() => {
     const withA = cards
-      .map((c) => ({ card: c, a: analyses[c.id] }))
+      .map((c) => ({ card: c, a: analyses[c.id]?.data }))
       .filter((x): x is { card: RaceCardData; a: RaceAnalysis } => !!x.a);
     return (
       withA.find((x) => x.a.rating === "green") ??
@@ -338,37 +294,42 @@ function BestBetBanner({ cards, analyses }: { cards: RaceCardData[]; analyses: R
   );
 }
 
-// Watches all cards' analyses via a shared state map.
 function HorseRacingBody({ cards }: { cards: RaceCardData[] }) {
-  const [analyses, setAnalyses] = useState<Record<string, RaceAnalysis | null>>({});
+  const [analyses, setAnalyses] = useState<Record<string, AnalysisState>>({});
 
   useEffect(() => {
     let cancelled = false;
-    setAnalyses({});
+    const initial: Record<string, AnalysisState> = {};
+    cards.forEach((c) => (initial[c.id] = { status: "pending" }));
+    setAnalyses(initial);
     (async () => {
       for (const card of cards) {
         if (cancelled) return;
+        setAnalyses((prev) => ({ ...prev, [card.id]: { status: "loading" } }));
         try {
           const { data, error } = await supabase.functions.invoke("analyze-market", {
             body: { type: "horse-racing", trackName: card.trackName, race: card.race },
           });
           if (cancelled) return;
           if (error) {
-            setAnalyses((prev) => ({ ...prev, [card.id]: null }));
+            setAnalyses((prev) => ({ ...prev, [card.id]: { status: "error", error: error.message } }));
             continue;
           }
           const raw = data as Any;
-          const text: string =
-            typeof raw?.analysis === "string" ? raw.analysis :
-            typeof raw?.text === "string" ? raw.text :
-            typeof raw?.raw === "string" ? raw.raw :
-            typeof raw === "string" ? raw :
-            JSON.stringify(raw ?? {});
-          const jsonStr = text.match(/\{[\s\S]*\}/)?.[0] ?? text;
-          const parsed = JSON.parse(jsonStr) as RaceAnalysis;
-          setAnalyses((prev) => ({ ...prev, [card.id]: parsed }));
-        } catch {
-          setAnalyses((prev) => ({ ...prev, [card.id]: null }));
+          let parsed: RaceAnalysis | null = null;
+          if (raw && typeof raw === "object" && raw.rating) {
+            parsed = raw as RaceAnalysis;
+          } else if (typeof raw?.raw === "string") {
+            const m = raw.raw.match(/\{[\s\S]*\}/);
+            if (m) parsed = JSON.parse(m[0]);
+          }
+          if (parsed) {
+            setAnalyses((prev) => ({ ...prev, [card.id]: { status: "done", data: parsed! } }));
+          } else {
+            setAnalyses((prev) => ({ ...prev, [card.id]: { status: "error", error: raw?.error ?? "no analysis" } }));
+          }
+        } catch (e) {
+          setAnalyses((prev) => ({ ...prev, [card.id]: { status: "error", error: (e as Error).message } }));
         }
       }
     })();
@@ -382,7 +343,7 @@ function HorseRacingBody({ cards }: { cards: RaceCardData[] }) {
       <BestBetBanner cards={cards} analyses={analyses} />
       <div className="space-y-4">
         {cards.map((card) => (
-          <RaceCard key={card.id} card={card} />
+          <RaceCard key={card.id} card={card} state={analyses[card.id] ?? { status: "pending" }} />
         ))}
       </div>
     </>
