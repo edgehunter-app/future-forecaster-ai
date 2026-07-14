@@ -508,9 +508,18 @@ export default function HorseRacing() {
       )}
 
       {!loading && cards.length === 0 && !error && (
-        <div className="rounded-2xl border border-border bg-card p-8 text-center text-sm text-muted-foreground">
-          No US racing found for today.
-        </div>
+        <section className="flex flex-col items-center justify-center rounded-2xl border border-border bg-card p-10 text-center">
+          <div className="flex h-20 w-20 items-center justify-center rounded-full bg-info/10 text-info">
+            <HorseIcon className="h-10 w-10" />
+          </div>
+          <h2 className="mt-5 text-lg font-semibold text-foreground">No races posted yet for today</h2>
+          <p className="mt-2 max-w-xs text-sm text-muted-foreground">
+            Check back later — race cards are typically posted the morning of race day
+          </p>
+          <div className="mt-4 rounded-xl border border-success/20 bg-success/5 px-4 py-3 text-sm text-success">
+            Saratoga and Del Mar open Friday July 17 — big cards coming!
+          </div>
+        </section>
       )}
 
       {cards.length > 0 && <HorseRacingBody cards={cards} />}
