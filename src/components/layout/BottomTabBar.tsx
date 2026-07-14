@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { NavLink, useNavigate, useLocation } from "react-router-dom";
 import {
-  House, Zap, Trophy, TrendingUp, LayoutGrid,
+  House, Trophy, TrendingUp, LayoutGrid,
   Users, Clock, ArrowLeftRight, Settings as SettingsIcon, ChevronRight, BarChart2, Shield, Star,
 } from "lucide-react";
 import BottomSheet from "@/components/ui/BottomSheet";
@@ -14,7 +14,6 @@ import { useSubscription } from "@/hooks/useSubscription";
 
 const MORE_ITEMS = [
   { to: "/tracker", label: "Bet Tracker", icon: BarChart2 },
-  { to: "/wallets", label: "Wallets", icon: Users },
   { to: "/cross-market", label: "Cross-Market", icon: ArrowLeftRight },
   { to: "/history", label: "History", icon: Clock },
   { to: "/settings", label: "Settings", icon: SettingsIcon },
@@ -26,7 +25,6 @@ export default function BottomTabBar() {
   const [moreOpen, setMoreOpen] = useState(false);
   const navigate = useNavigate();
   const { pathname } = useLocation();
-  const suggestionsCount = useAppStore((s) => s.suggestions.length);
   const { isAdmin } = useIsAdmin();
   const { tier, isBeta, loading: subLoading } = useSubscription();
   const showUpgrade = !subLoading && !isBeta && tier === "free";
@@ -47,10 +45,10 @@ export default function BottomTabBar() {
 
   const tabs = [
     { to: "/", label: "Home", icon: House, end: true, badge: 0 },
-    { to: "/suggestions", label: "Signals", icon: Zap, end: false, badge: suggestionsCount, badgeColor: "destructive" as const },
     { to: "/sports", label: "Sports", icon: Trophy, end: false, badge: strongMispricings, badgeColor: "success" as const },
-    { to: "/horse-racing", label: "Racing", icon: HorseIcon, end: false, badge: 0, isNew: Date.now() < new Date("2026-08-13").getTime() },
     { to: "/markets", label: "Markets", icon: TrendingUp, end: false, badge: 0 },
+    { to: "/wallets", label: "Wallets", icon: Users, end: false, badge: 0 },
+    { to: "/horse-racing", label: "Racing", icon: HorseIcon, end: false, badge: 0, isNew: Date.now() < new Date("2026-08-13").getTime() },
   ];
 
   return (
