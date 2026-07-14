@@ -480,7 +480,17 @@ export default function Sports() {
 
       {/* Sport selector */}
       <div className="flex gap-1.5 overflow-x-auto scrollbar-thin pb-1">
-        {[{ key: "all", label: "All" }, ...SPORTS].map((s) => {
+        {(() => {
+          const nhlIdx = SPORTS.findIndex((sp) => sp.key === "icehockey_nhl");
+          const sportsWithRacing = nhlIdx >= 0
+            ? [
+                ...SPORTS.slice(0, nhlIdx + 1),
+                { key: "horse_racing", label: "🐎 Racing", icon: "trophy" } as const,
+                ...SPORTS.slice(nhlIdx + 1),
+              ]
+            : [...SPORTS, { key: "horse_racing", label: "🐎 Racing", icon: "trophy" } as const];
+          return [{ key: "all", label: "All" }, ...sportsWithRacing];
+        })().map((s) => {
           const active = activeSport === s.key;
           const count = counts[s.key] ?? 0;
           const isLoaded = s.key === "golf"
@@ -500,6 +510,10 @@ export default function Sports() {
             <button
               key={s.key}
               onClick={() => {
+                if (s.key === "horse_racing") {
+                  navigate("/horse-racing");
+                  return;
+                }
                 setActiveSport(s.key);
                 if (s.key !== "all" && !selectedSports.includes(s.key)) {
                   setSelectedSports([...selectedSports, s.key]);
