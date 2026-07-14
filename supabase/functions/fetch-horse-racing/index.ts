@@ -86,62 +86,55 @@ async function scanDate(date: string): Promise<ScanResult> {
   const meetings: ScanResult["meetings"] = [];
   let shapeSample: ScanResult["shapeSample"];
 
-  for (const track of US_TRACKS) {
-    const trackRaces: Array<{ race: number; data: unknown }> = [];
-
-    for (let race = 1; race <= 10; race++) {
-      const url = `${FORMFAV_BASE}/form?date=${date}&track=${track}&race=${race}&country=us`;
-      try {
-        const res = await fetch(url, { headers, signal: AbortSignal.timeout(5000) });
-
-        if (res.ok) {
-          const json = await res.json();
-          trackRaces.push({ race, data: json });
-          console.log(
-            `[horse-racing] ${track} R${race}: FOUND`,
-            JSON.stringify(json).slice(0, 200),
-          );
-          if (!shapeSample && json && typeof json === "object") {
-            const obj = json as Record<string, unknown>;
-            const keys = Object.keys(obj);
-            // Try to identify a runners/entries list to log its keys too.
-            const runnersKey = ["runners", "entries", "horses", "starters"].find((k) => Array.isArray(obj[k]));
-            const runnerKeys = runnersKey
-              ? Object.keys(((obj[runnersKey] as unknown[])[0] ?? {}) as Record<string, unknown>)
-              : undefined;
-            shapeSample = { track, race, keys, runnerKeys };
-            console.log(`[horse-racing] shape sample keys:`, keys.join(","));
-            if (runnerKeys) console.log(`[horse-racing] runner keys:`, runnerKeys.join(","));
-            console.log(`[horse-racing] full first race payload:`, JSON.stringify(json).slice(0, 2000));
+  // Probe all tracks in parallel. For each track probe all race numbers
+  // 1..12 in parallel and keep the ones that return 200. Sequential probing
+  // was blowing past the edge function timeout.
+  const trackResults = await Promise.all(
+    US_TRACKS.map(async (track) => {
+      const races = await Promise.all(
+        Array.from({ length: 12 }, (_, i) => i + 1).map(async (race) => {
+          const url = `${FORMFAV_BASE}/form?date=${date}&track=${track}&race=${race}&country=us`;
+          try {
+            const res = await fetch(url, { headers, signal: AbortSignal.timeout(8000) });
+            if (res.ok) {
+              const json = await res.json();
+              return { race, data: json };
+            }
+            await res.body?.cancel();
+            return null;
+          } catch {
+            return null;
           }
-        } else if (res.status === 404 || res.status === 400) {
-          await res.body?.cancel();
-          console.log(`[horse-racing] ${track} R${race}: not found, stopping track`);
-          break;
-        } else {
-          const text = await res.text();
-          console.log(`[horse-racing] ${track} R${race}: ${res.status}`, text.slice(0, 120));
-          break;
-        }
-      } catch (err) {
-        const msg = err instanceof Error ? err.message : String(err);
-        console.log(`[horse-racing] ${track} R${race}: timeout/error`, msg);
-        break;
-      }
+        }),
+      );
+      // FormFav sometimes returns the most recent card even when the date
+      // param is future — filter races whose payload `date` doesn't match
+      // what we requested so we never surface yesterday's races as today's.
+      const trackRaces = races
+        .filter((r): r is { race: number; data: unknown } => !!r)
+        .filter(({ data }) => {
+          const d = (data as Record<string, unknown>)?.date;
+          return typeof d !== "string" || d === date;
+        });
+      return { track, trackRaces };
+    }),
+  );
 
-      await new Promise((r) => setTimeout(r, 200));
+  for (const { track, trackRaces } of trackResults) {
+    if (trackRaces.length === 0) continue;
+    trackRaces.sort((a, b) => a.race - b.race);
+    if (!shapeSample) {
+      const first = trackRaces[0].data as Record<string, unknown>;
+      shapeSample = { track, race: trackRaces[0].race, keys: Object.keys(first) };
     }
-
-    if (trackRaces.length > 0) {
-      meetings.push({
-        track,
-        trackName: formatTrackName(track),
-        date,
-        races: trackRaces,
-        raceCount: trackRaces.length,
-      });
-      console.log(`[horse-racing] ${track}: ${trackRaces.length} races found`);
-    }
+    meetings.push({
+      track,
+      trackName: formatTrackName(track),
+      date,
+      races: trackRaces,
+      raceCount: trackRaces.length,
+    });
+    console.log(`[horse-racing] ${track}: ${trackRaces.length} races`);
   }
 
   console.log("[horse-racing] meetings found:", meetings.length);

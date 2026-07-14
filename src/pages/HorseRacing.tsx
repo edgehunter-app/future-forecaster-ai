@@ -415,21 +415,29 @@ export default function HorseRacing() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  const load = () => {
+  const load = async () => {
     setLoading(true);
     setError(null);
     const today = todayLocalISO();
+    const tomorrow = (() => {
+      const d = new Date(`${today}T12:00:00Z`);
+      d.setUTCDate(d.getUTCDate() + 1);
+      return d.toISOString().split("T")[0];
+    })();
     console.log("[horse-racing] requesting date:", today);
-    supabase.functions
-      .invoke("fetch-horse-racing", { body: { date: today } })
-      .then(({ data, error }) => {
-        if (error) setError(error.message);
-        else {
-          const resp = data as FetchResponse;
-          setData({ ...resp, date: today });
-        }
-        setLoading(false);
-      });
+    try {
+      const first = await supabase.functions.invoke("fetch-horse-racing", { body: { date: today } });
+      if (first.error) { setError(first.error.message); setLoading(false); return; }
+      let resp = first.data as FetchResponse;
+      if (!resp || resp.meetingCount === 0) {
+        console.log("[horse-racing] today empty, trying tomorrow:", tomorrow);
+        const second = await supabase.functions.invoke("fetch-horse-racing", { body: { date: tomorrow } });
+        if (!second.error && second.data) resp = second.data as FetchResponse;
+      }
+      setData({ ...resp, date: resp.date ?? today });
+    } finally {
+      setLoading(false);
+    }
   };
 
   useEffect(() => {
