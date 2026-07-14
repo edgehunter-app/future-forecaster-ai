@@ -479,7 +479,7 @@ export default function Sports() {
       )}
 
       {/* Sport selector */}
-      <div className="flex gap-1.5 overflow-x-auto scrollbar-thin pb-1">
+      <div className="flex gap-1 overflow-x-auto scrollbar-thin pb-1 sm:gap-1.5">
         {(() => {
           const nhlIdx = SPORTS.findIndex((sp) => sp.key === "icehockey_nhl");
           const sportsWithRacing = nhlIdx >= 0
@@ -531,7 +531,7 @@ export default function Sports() {
               }}
               disabled={loading && s.key !== activeSport}
               className={cn(
-                "shrink-0 inline-flex items-center gap-1.5 rounded-full border px-3 py-1 text-xs font-semibold transition-colors disabled:opacity-50",
+                "text-keep shrink-0 inline-flex items-center gap-1.5 rounded-full border px-2 py-1 text-xs font-semibold transition-colors disabled:opacity-50 sm:px-3",
                 isWC
                   ? active
                     ? "border-amber-400 bg-amber-500 text-amber-950"
