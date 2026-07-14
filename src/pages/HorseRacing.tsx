@@ -1,7 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
 import { Sparkles, Trophy, AlertTriangle, Clock, MapPin, Loader2, RefreshCw } from "lucide-react";
-import HorseIcon from "@/components/icons/HorseIcon";
-import EdgeHunterLogo from "@/components/brand/EdgeHunterLogo";
 import { cn } from "@/lib/utils";
 import { supabase } from "@/integrations/supabase/client";
 
@@ -470,8 +468,8 @@ export default function HorseRacing() {
     <div className="mx-auto w-full max-w-4xl space-y-5 p-4 pb-24 sm:p-6">
       <header className="flex items-center justify-between gap-3">
         <div className="flex items-center gap-3">
-          <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-info/15 text-info">
-            <HorseIcon className="h-6 w-6" />
+          <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-info/15 text-info text-2xl">
+            <span aria-hidden>🐎</span>
           </div>
           <div>
             <h1 className="text-2xl font-bold text-foreground">Horse Racing</h1>
