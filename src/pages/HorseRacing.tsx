@@ -85,7 +85,7 @@ const RATING_STYLES: Record<Rating, { dot: string; chip: string; ring: string }>
 
 function TrafficLight({ rating }: { rating: Rating }) {
   const dot = RATING_STYLES[rating].dot;
-  return <span className={cn("inline-block h-4 w-4 rounded-full ring-2 ring-background", dot)} aria-label={`${rating} rating`} />;
+  return <span className={cn("inline-block h-5 w-5 rounded-full ring-2 ring-background", dot)} aria-label={`${rating} rating`} />;
 }
 
 function formatDistance(d?: string | number): string {
@@ -419,11 +419,15 @@ export default function HorseRacing() {
     setLoading(true);
     setError(null);
     const today = todayLocalISO();
+    console.log("[horse-racing] requesting date:", today);
     supabase.functions
       .invoke("fetch-horse-racing", { body: { date: today } })
       .then(({ data, error }) => {
         if (error) setError(error.message);
-        else setData(data as FetchResponse);
+        else {
+          const resp = data as FetchResponse;
+          setData({ ...resp, date: today });
+        }
         setLoading(false);
       });
   };
@@ -437,6 +441,11 @@ export default function HorseRacing() {
     const out: RaceCardData[] = [];
     for (const m of data.meetings) {
       for (const { race, data: rd } of m.races) {
+        const liveRunners = (rd.runners ?? []).filter((r) => !r.scratched);
+        if (liveRunners.length < 4) continue;
+        const hasDistance = !!rd.distance && String(rd.distance).trim() !== "";
+        const hasSurface = !!surfaceFromCondition(rd.condition);
+        if (!hasDistance && !hasSurface) continue;
         out.push({
           id: `${m.track}-r${rd.raceNumber ?? race}`,
           trackName: m.trackName,
