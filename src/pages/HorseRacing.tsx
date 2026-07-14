@@ -62,6 +62,7 @@ interface RaceCardData {
   id: string;
   trackName: string;
   race: RaceData;
+  meetingDate: string;
 }
 
 const RATING_STYLES: Record<Rating, { dot: string; chip: string; ring: string }> = {
@@ -107,6 +108,36 @@ function formatPostTime(iso?: string, tz?: string): string {
   }
 }
 
+function formatRaceDate(iso?: string, tz?: string, fallback?: string): string {
+  const src = iso ?? (fallback ? `${fallback}T12:00:00Z` : undefined);
+  if (!src) return "";
+  try {
+    const d = new Date(src);
+    return d.toLocaleDateString("en-US", {
+      weekday: "short",
+      month: "short",
+      day: "numeric",
+      timeZone: tz || undefined,
+    });
+  } catch {
+    return fallback ?? "";
+  }
+}
+
+function formatHeaderDate(iso: string): string {
+  try {
+    const d = new Date(`${iso}T12:00:00Z`);
+    return d.toLocaleDateString("en-US", {
+      weekday: "long",
+      month: "long",
+      day: "numeric",
+      year: "numeric",
+    });
+  } catch {
+    return iso;
+  }
+}
+
 function surfaceFromCondition(condition?: string): string {
   if (!condition) return "";
   const c = condition.toLowerCase();
@@ -138,7 +169,9 @@ function RaceCard({ card, state }: { card: RaceCardData; state: AnalysisState })
             <span>{trackName}</span>
             <span>·</span>
             <Clock className="h-3.5 w-3.5" />
-            <span>{formatPostTime(race.startTime, race.timezone)}</span>
+            <span>
+              {formatRaceDate(race.startTime, race.timezone, card.meetingDate)} · {formatPostTime(race.startTime, race.timezone)}
+            </span>
           </div>
           <h3 className="mt-1 text-lg font-semibold text-foreground">
             Race {race.raceNumber} · {race.distance ?? ""} {surface}
@@ -279,7 +312,7 @@ function BestBetBanner({ cards, analyses }: { cards: RaceCardData[]; analyses: R
         {card.trackName} · Race {card.race.raceNumber}
       </h2>
       <p className="mt-1 text-sm text-muted-foreground">
-        {card.race.distance ?? ""} {surfaceFromCondition(card.race.condition)} · Post {formatPostTime(card.race.startTime, card.race.timezone)}
+        {card.race.distance ?? ""} {surfaceFromCondition(card.race.condition)} · {formatRaceDate(card.race.startTime, card.race.timezone, card.meetingDate)} · Post {formatPostTime(card.race.startTime, card.race.timezone)}
       </p>
       <div className="mt-3 flex flex-wrap items-center gap-2">
         <span className="rounded-full border border-success/40 bg-success/15 px-3 py-1 text-xs font-semibold text-success">
@@ -381,6 +414,7 @@ export default function HorseRacing() {
           id: `${m.track}-r${rd.raceNumber ?? race}`,
           trackName: m.trackName,
           race: rd,
+          meetingDate: m.date,
         });
       }
     }
@@ -399,6 +433,11 @@ export default function HorseRacing() {
             <p className="text-sm text-muted-foreground">
               AI-graded race cards from major North American tracks
             </p>
+            {data?.date && (
+              <p className="mt-0.5 text-xs font-semibold text-info">
+                Card date: {formatHeaderDate(data.date)}
+              </p>
+            )}
           </div>
         </div>
         <button
