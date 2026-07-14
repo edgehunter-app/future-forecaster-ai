@@ -419,11 +419,15 @@ export default function HorseRacing() {
     setLoading(true);
     setError(null);
     const today = todayLocalISO();
+    console.log("[horse-racing] requesting date:", today);
     supabase.functions
       .invoke("fetch-horse-racing", { body: { date: today } })
       .then(({ data, error }) => {
         if (error) setError(error.message);
-        else setData(data as FetchResponse);
+        else {
+          const resp = data as FetchResponse;
+          setData({ ...resp, date: today });
+        }
         setLoading(false);
       });
   };
