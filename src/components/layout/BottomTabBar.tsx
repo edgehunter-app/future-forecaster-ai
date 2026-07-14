@@ -16,6 +16,7 @@ function HorseEmojiIcon({ className }: { className?: string }) {
 }
 
 const MORE_ITEMS = [
+  { to: "/suggestions", label: "Signals", icon: Zap },
   { to: "/tracker", label: "Bet Tracker", icon: BarChart2 },
   { to: "/wallets", label: "Wallets", icon: Users },
   { to: "/markets", label: "Markets", icon: TrendingUp },
