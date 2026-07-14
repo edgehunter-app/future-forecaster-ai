@@ -155,7 +155,13 @@ Deno.serve(async (req) => {
 
   try {
     const url = new URL(req.url);
-    const requested = url.searchParams.get("date");
+    let requested = url.searchParams.get("date");
+    if (!requested && (req.method === "POST" || req.method === "PUT")) {
+      try {
+        const body = await req.json();
+        if (body && typeof body.date === "string") requested = body.date;
+      } catch { /* ignore */ }
+    }
     const alsoScanSaturday = url.searchParams.get("probeSaturday") === "1";
     const probeUK = url.searchParams.get("probeUK") === "1";
 
