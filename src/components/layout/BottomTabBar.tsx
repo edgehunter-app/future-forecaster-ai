@@ -15,7 +15,7 @@ import { useSubscription } from "@/hooks/useSubscription";
 const MORE_ITEMS = [
   { to: "/tracker", label: "Bet Tracker", icon: BarChart2 },
   { to: "/wallets", label: "Wallets", icon: Users },
-  { to: "/horse-racing", label: "Horse Racing", icon: HorseIcon },
+  { to: "/markets", label: "Markets", icon: TrendingUp },
   { to: "/cross-market", label: "Cross-Market", icon: ArrowLeftRight },
   { to: "/history", label: "History", icon: Clock },
   { to: "/settings", label: "Settings", icon: SettingsIcon },
@@ -49,7 +49,7 @@ export default function BottomTabBar() {
     { to: "/", label: "Home", icon: House, end: true, badge: 0 },
     { to: "/suggestions", label: "Signals", icon: Zap, end: false, badge: 0 },
     { to: "/sports", label: "Sports", icon: Trophy, end: false, badge: strongMispricings, badgeColor: "success" as const },
-    { to: "/markets", label: "Markets", icon: TrendingUp, end: false, badge: 0 },
+    { to: "/horse-racing", label: "Racing", icon: HorseIcon, end: false, badge: 0, isNew: true },
   ];
 
   return (
