@@ -1,6 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
 import { Sparkles, Trophy, AlertTriangle, Clock, MapPin, Loader2, RefreshCw } from "lucide-react";
-import HorseIcon from "@/components/icons/HorseIcon";
 import EdgeHunterLogo from "@/components/brand/EdgeHunterLogo";
 import { cn } from "@/lib/utils";
 import { supabase } from "@/integrations/supabase/client";
