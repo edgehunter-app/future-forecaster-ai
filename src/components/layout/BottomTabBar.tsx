@@ -14,7 +14,6 @@ import { useSubscription } from "@/hooks/useSubscription";
 
 const MORE_ITEMS = [
   { to: "/tracker", label: "Bet Tracker", icon: BarChart2 },
-  { to: "/horse-racing", label: "Horse Racing", icon: HorseIcon },
   { to: "/wallets", label: "Wallets", icon: Users },
   { to: "/cross-market", label: "Cross-Market", icon: ArrowLeftRight },
   { to: "/history", label: "History", icon: Clock },
@@ -50,6 +49,7 @@ export default function BottomTabBar() {
     { to: "/", label: "Home", icon: House, end: true, badge: 0 },
     { to: "/suggestions", label: "Signals", icon: Zap, end: false, badge: suggestionsCount, badgeColor: "destructive" as const },
     { to: "/sports", label: "Sports", icon: Trophy, end: false, badge: strongMispricings, badgeColor: "success" as const },
+    { to: "/horse-racing", label: "Racing", icon: HorseIcon, end: false, badge: 0, isNew: Date.now() < new Date("2026-08-13").getTime() },
     { to: "/markets", label: "Markets", icon: TrendingUp, end: false, badge: 0 },
   ];
 
@@ -84,6 +84,9 @@ export default function BottomTabBar() {
                           "absolute -right-1.5 -top-1 h-2 w-2 rounded-full",
                           tab.badgeColor === "success" ? "bg-success" : "bg-destructive",
                         )} />
+                      )}
+                      {("isNew" in tab && tab.isNew) && (
+                        <span className="absolute -right-1.5 -top-1 h-2 w-2 rounded-full bg-success ring-2 ring-card animate-pulse" aria-label="New" />
                       )}
                     </div>
                     <span className="text-[11px] font-semibold leading-none">{tab.label}</span>
