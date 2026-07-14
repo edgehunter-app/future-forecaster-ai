@@ -107,7 +107,15 @@ async function scanDate(date: string): Promise<ScanResult> {
           }
         }),
       );
-      const trackRaces = races.filter((r): r is { race: number; data: unknown } => !!r);
+      // FormFav sometimes returns the most recent card even when the date
+      // param is future — filter races whose payload `date` doesn't match
+      // what we requested so we never surface yesterday's races as today's.
+      const trackRaces = races
+        .filter((r): r is { race: number; data: unknown } => !!r)
+        .filter(({ data }) => {
+          const d = (data as Record<string, unknown>)?.date;
+          return typeof d !== "string" || d === date;
+        });
       return { track, trackRaces };
     }),
   );
