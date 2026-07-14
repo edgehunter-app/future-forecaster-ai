@@ -14,7 +14,6 @@ import { useSubscription } from "@/hooks/useSubscription";
 
 const MORE_ITEMS = [
   { to: "/tracker", label: "Bet Tracker", icon: BarChart2 },
-  { to: "/wallets", label: "Wallets", icon: Users },
   { to: "/cross-market", label: "Cross-Market", icon: ArrowLeftRight },
   { to: "/history", label: "History", icon: Clock },
   { to: "/settings", label: "Settings", icon: SettingsIcon },
