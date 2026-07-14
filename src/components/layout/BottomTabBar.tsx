@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { NavLink, useNavigate, useLocation } from "react-router-dom";
 import {
-  House, Trophy, TrendingUp, LayoutGrid,
+  House, Trophy, TrendingUp, LayoutGrid, Zap,
   Users, Clock, ArrowLeftRight, Settings as SettingsIcon, ChevronRight, BarChart2, Shield, Star,
 } from "lucide-react";
 import BottomSheet from "@/components/ui/BottomSheet";
@@ -13,6 +13,7 @@ import { useLineMonitor } from "@/hooks/useLineMonitor";
 import { useSubscription } from "@/hooks/useSubscription";
 
 const MORE_ITEMS = [
+  { to: "/suggestions", label: "Signals", icon: Zap },
   { to: "/tracker", label: "Bet Tracker", icon: BarChart2 },
   { to: "/cross-market", label: "Cross-Market", icon: ArrowLeftRight },
   { to: "/history", label: "History", icon: Clock },
