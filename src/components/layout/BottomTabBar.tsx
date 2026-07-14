@@ -16,6 +16,7 @@ function HorseEmojiIcon({ className }: { className?: string }) {
 }
 
 const MORE_ITEMS = [
+  { to: "/suggestions", label: "Signals", icon: Zap },
   { to: "/tracker", label: "Bet Tracker", icon: BarChart2 },
   { to: "/wallets", label: "Wallets", icon: Users },
   { to: "/markets", label: "Markets", icon: TrendingUp },
@@ -50,7 +51,6 @@ export default function BottomTabBar() {
 
   const tabs = [
     { to: "/", label: "Home", icon: House, end: true, badge: 0 },
-    { to: "/suggestions", label: "Signals", icon: Zap, end: false, badge: 0 },
     { to: "/sports", label: "Sports", icon: Trophy, end: false, badge: strongMispricings, badgeColor: "success" as const },
     { to: "/horse-racing", label: "Racing", icon: HorseEmojiIcon, end: false, badge: 0, isNew: true },
   ];
