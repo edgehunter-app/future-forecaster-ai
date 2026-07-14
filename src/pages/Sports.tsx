@@ -485,10 +485,10 @@ export default function Sports() {
           const sportsWithRacing = nhlIdx >= 0
             ? [
                 ...SPORTS.slice(0, nhlIdx + 1),
-                { key: "horse_racing", label: "🐎 Racing", icon: "trophy" } as const,
+                { key: "horse_racing", label: "🐎 Racing" } as const,
                 ...SPORTS.slice(nhlIdx + 1),
               ]
-            : [...SPORTS, { key: "horse_racing", label: "🐎 Racing", icon: "trophy" } as const];
+            : [...SPORTS, { key: "horse_racing", label: "🐎 Racing" } as const];
           return [{ key: "all", label: "All" }, ...sportsWithRacing];
         })().map((s) => {
           const active = activeSport === s.key;

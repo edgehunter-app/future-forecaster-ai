@@ -510,9 +510,7 @@ export default function HorseRacing() {
 
       {!loading && cards.length === 0 && !error && (
         <section className="flex flex-col items-center justify-center rounded-2xl border border-border bg-card p-10 text-center">
-          <div className="flex h-20 w-20 items-center justify-center rounded-full bg-info/10">
-            <EdgeHunterLogo size={72} variant="icon" />
-          </div>
+          <div className="text-[64px] leading-none" aria-hidden>🐎</div>
           <h2 className="mt-5 text-lg font-semibold text-foreground">No races posted yet for today</h2>
           <p className="mt-2 max-w-xs text-sm text-muted-foreground">
             Check back later — race cards are typically posted the morning of race day

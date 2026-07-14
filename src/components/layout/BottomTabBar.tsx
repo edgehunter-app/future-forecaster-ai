@@ -5,12 +5,15 @@ import {
   Users, Clock, ArrowLeftRight, Settings as SettingsIcon, ChevronRight, BarChart2, Shield, Star,
 } from "lucide-react";
 import BottomSheet from "@/components/ui/BottomSheet";
-import HorseIcon from "@/components/icons/HorseIcon";
 import { useAppStore } from "@/store/useAppStore";
 import { cn } from "@/lib/utils";
 import { useIsAdmin } from "@/hooks/useIsAdmin";
 import { useLineMonitor } from "@/hooks/useLineMonitor";
 import { useSubscription } from "@/hooks/useSubscription";
+
+function HorseEmojiIcon({ className }: { className?: string }) {
+  return <span className={cn("text-[20px] leading-none", className)} aria-hidden>🐎</span>;
+}
 
 const MORE_ITEMS = [
   { to: "/tracker", label: "Bet Tracker", icon: BarChart2 },
@@ -49,7 +52,7 @@ export default function BottomTabBar() {
     { to: "/", label: "Home", icon: House, end: true, badge: 0 },
     { to: "/suggestions", label: "Signals", icon: Zap, end: false, badge: 0 },
     { to: "/sports", label: "Sports", icon: Trophy, end: false, badge: strongMispricings, badgeColor: "success" as const },
-    { to: "/horse-racing", label: "Racing", icon: HorseIcon, end: false, badge: 0, isNew: true },
+    { to: "/horse-racing", label: "Racing", icon: HorseEmojiIcon, end: false, badge: 0, isNew: true },
   ];
 
   return (
