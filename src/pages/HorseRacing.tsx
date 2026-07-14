@@ -85,7 +85,7 @@ const RATING_STYLES: Record<Rating, { dot: string; chip: string; ring: string }>
 
 function TrafficLight({ rating }: { rating: Rating }) {
   const dot = RATING_STYLES[rating].dot;
-  return <span className={cn("inline-block h-4 w-4 rounded-full ring-2 ring-background", dot)} aria-label={`${rating} rating`} />;
+  return <span className={cn("inline-block h-5 w-5 rounded-full ring-2 ring-background", dot)} aria-label={`${rating} rating`} />;
 }
 
 function formatDistance(d?: string | number): string {
