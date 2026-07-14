@@ -843,6 +843,44 @@ MONITOR if: Edge reduced but still positive, worth watching for more movement.
 CONSIDER_EXIT if: Significant movement against position, edge now negative or minimal, or major shift in market consensus.`;
 }
 
+function buildHorseRacingPrompt(b: AnalyzeBody): string {
+  const race = b.race ?? {};
+  const trackName = b.trackName ?? race.track ?? "Unknown Track";
+  const runners = (race.runners ?? []).filter((r: Any) => !r?.scratched);
+  const scratched = (race.runners ?? []).filter((r: Any) => r?.scratched);
+  const runnerLines = runners.map((r: Any) => {
+    const decos = (r.decorators ?? []).map((d: Any) => d.shortLabel ?? d.label).filter(Boolean).join(", ");
+    const ov = r.stats?.overall;
+    const record = ov ? `${ov.wins ?? 0}-${ov.seconds ?? 0}-${ov.thirds ?? 0} in ${ov.starts ?? 0}` : "n/a";
+    return `#${r.number} ${r.name} (${r.age}yo ${r.sex ?? ""}, barrier ${r.barrier}, wt ${r.weight}) — form ${r.form ?? r.last20Starts ?? "-"} | career ${record} | prize ${r.careerPrizeMoney ?? "n/a"} | angles: ${decos || "none"}`;
+  }).join("\n");
+  return `You are a professional horse racing handicapper. Analyze this race and return ONLY valid JSON (no markdown, no prose).
+
+RACE: ${trackName} R${race.raceNumber ?? "?"} — ${race.raceName ?? "Race"}
+Distance: ${race.distance ?? "n/a"} | Surface/Condition: ${race.condition ?? "n/a"} | Weather: ${race.weather ?? "n/a"}
+Post: ${race.startTime ?? "n/a"} (${race.timezone ?? "local"})
+Field size: ${runners.length} (${scratched.length} scratched)
+
+RUNNERS:
+${runnerLines}
+
+Return this exact JSON shape:
+{
+  "rating": "green" | "yellow" | "red",
+  "ratingLabel": short label like "Strong Play" | "Use With Caution" | "Pass / Toss-Up",
+  "topPick": "#N Horse Name",
+  "exacta": "N / A,B,C" or similar,
+  "keyAngles": [ { "horse": "#N Name", "angle": "one short phrase" }, ... up to 4 ],
+  "analysis": "3-4 sentences of handicapping reasoning covering pace, class, form, and value"
+}
+
+Rating rubric:
+- green: a clear standout with value at expected price
+- yellow: playable but chalky or with real question marks — use with caution
+- red: chaotic, wide-open, or heavy favorite with no value — pass or toss-up
+Always return a pick even in a red race. Never refuse.`;
+}
+
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
@@ -884,6 +922,7 @@ Deno.serve(async (req) => {
       case "sentiment": prompt = buildSentimentPrompt(body); break;
       case "wallet-strategy": prompt = buildWalletStrategyPrompt(body); break;
       case "golf": prompt = buildGolfPrompt(body); break;
+      case "horse-racing": prompt = buildHorseRacingPrompt(body); break;
       case "cashout": prompt = buildCashoutPrompt(body); break;
       case "market":
       default:
