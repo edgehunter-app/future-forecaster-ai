@@ -437,6 +437,11 @@ export default function HorseRacing() {
     const out: RaceCardData[] = [];
     for (const m of data.meetings) {
       for (const { race, data: rd } of m.races) {
+        const liveRunners = (rd.runners ?? []).filter((r) => !r.scratched);
+        if (liveRunners.length < 4) continue;
+        const hasDistance = !!rd.distance && String(rd.distance).trim() !== "";
+        const hasSurface = !!surfaceFromCondition(rd.condition);
+        if (!hasDistance && !hasSurface) continue;
         out.push({
           id: `${m.track}-r${rd.raceNumber ?? race}`,
           trackName: m.trackName,
