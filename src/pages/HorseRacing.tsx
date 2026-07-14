@@ -84,13 +84,46 @@ const RATING_STYLES: Record<Rating, { dot: string; chip: string; ring: string }>
 };
 
 function TrafficLight({ rating }: { rating: Rating }) {
-  return (
-    <div className="flex items-center gap-1.5">
-      <span className={cn("h-2.5 w-2.5 rounded-full", rating === "green" ? RATING_STYLES.green.dot : "bg-muted")} />
-      <span className={cn("h-2.5 w-2.5 rounded-full", rating === "yellow" ? RATING_STYLES.yellow.dot : "bg-muted")} />
-      <span className={cn("h-2.5 w-2.5 rounded-full", rating === "red" ? RATING_STYLES.red.dot : "bg-muted")} />
-    </div>
-  );
+  const dot = RATING_STYLES[rating].dot;
+  return <span className={cn("inline-block h-4 w-4 rounded-full ring-2 ring-background", dot)} aria-label={`${rating} rating`} />;
+}
+
+function formatDistance(d?: string | number): string {
+  if (d == null || d === "") return "";
+  const raw = String(d);
+  const m = /(\d+(?:\.\d+)?)\s*m/i.exec(raw);
+  const meters = m ? parseFloat(m[1]) : Number.isFinite(+raw) ? +raw : NaN;
+  if (!Number.isFinite(meters)) return raw;
+  const map: Array<[number, string]> = [
+    [1000, "5 Furlongs"],
+    [1100, "5.5 Furlongs"],
+    [1207, "6 Furlongs"],
+    [1300, "6.5 Furlongs"],
+    [1400, "7 Furlongs"],
+    [1500, "7.5 Furlongs"],
+    [1609, "1 Mile"],
+    [1670, "1 1/16 Miles"],
+    [1700, "1 1/16 Miles"],
+    [1800, "1 1/8 Miles"],
+    [1900, "1 3/16 Miles"],
+    [2000, "1 1/4 Miles"],
+    [2200, "1 3/8 Miles"],
+    [2400, "1 1/2 Miles"],
+    [2600, "1 5/8 Miles"],
+    [2800, "1 3/4 Miles"],
+  ];
+  let best = map[0];
+  let bestDiff = Infinity;
+  for (const entry of map) {
+    const diff = Math.abs(entry[0] - meters);
+    if (diff < bestDiff) { bestDiff = diff; best = entry; }
+  }
+  return bestDiff <= 60 ? best[1] : `${Math.round(meters)}m`;
+}
+
+function todayLocalISO(): string {
+  const n = new Date();
+  return `${n.getFullYear()}-${String(n.getMonth() + 1).padStart(2, "0")}-${String(n.getDate()).padStart(2, "0")}`;
 }
 
 function formatPostTime(iso?: string, tz?: string): string {
@@ -174,7 +207,7 @@ function RaceCard({ card, state }: { card: RaceCardData; state: AnalysisState })
             </span>
           </div>
           <h3 className="mt-1 text-lg font-semibold text-foreground">
-            Race {race.raceNumber} · {race.distance ?? ""} {surface}
+            Race {race.raceNumber} · {formatDistance(race.distance)} {surface}
           </h3>
           <p className="text-xs text-muted-foreground">
             {race.raceName ?? "Race"} · {race.condition ?? "?"} · {liveRunners.length} runners
@@ -227,15 +260,10 @@ function RaceCard({ card, state }: { card: RaceCardData; state: AnalysisState })
         <p className="mt-3 text-xs text-destructive">Analysis unavailable: {error}</p>
       )}
 
-      <button
-        onClick={() => setOpen((v) => !v)}
-        className="mt-3 text-xs font-semibold text-info hover:underline"
-      >
-        {open ? "Hide full field" : `Show full field (${liveRunners.length} runners)`}
-      </button>
-
-      {open && (
-        <div className="mt-3 overflow-x-auto rounded-xl border border-border">
+      <div className="mt-3 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+        Full field · {liveRunners.length} runners
+      </div>
+      <div className="mt-2 overflow-x-auto rounded-xl border border-border">
           <table className="w-full text-sm">
             <thead className="bg-muted/40 text-xs uppercase tracking-wide text-muted-foreground">
               <tr>
