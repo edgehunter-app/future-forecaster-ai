@@ -1,17 +1,50 @@
-import { useMemo, useState } from "react";
-import { Sparkles, Trophy, AlertTriangle, Clock, MapPin } from "lucide-react";
+import { useEffect, useMemo, useState } from "react";
+import { Sparkles, Trophy, AlertTriangle, Clock, MapPin, Loader2, RefreshCw } from "lucide-react";
 import HorseIcon from "@/components/icons/HorseIcon";
 import { cn } from "@/lib/utils";
+import { supabase } from "@/integrations/supabase/client";
 
 type Rating = "green" | "yellow" | "red";
 
 interface Runner {
-  pp: number;
+  number: number;
   name: string;
-  jockey: string;
-  trainer: string;
-  morningLine: string;
+  age?: number;
+  sex?: string;
+  weight?: number;
+  barrier?: number;
+  form?: string;
+  last20Starts?: string;
+  careerPrizeMoney?: string;
   scratched?: boolean;
+  decorators?: Array<{ label?: string; shortLabel?: string; sentiment?: string }>;
+  stats?: { overall?: { starts?: number; wins?: number; seconds?: number; thirds?: number } };
+}
+
+interface RaceData {
+  raceNumber: number;
+  raceName?: string;
+  distance?: string;
+  condition?: string;
+  weather?: string;
+  startTime?: string;
+  timezone?: string;
+  numberOfRunners?: number;
+  runners: Runner[];
+}
+
+interface Meeting {
+  track: string;
+  trackName: string;
+  date: string;
+  raceCount: number;
+  races: Array<{ race: number; data: RaceData }>;
+}
+
+interface FetchResponse {
+  date: string;
+  meetings: Meeting[];
+  meetingCount: number;
 }
 
 interface RaceAnalysis {
@@ -19,23 +52,262 @@ interface RaceAnalysis {
   ratingLabel: string;
   topPick: string;
   exacta: string;
+  keyAngles?: Array<{ horse: string; angle: string }>;
   analysis: string;
 }
 
-interface Race {
-  id: string;
-  track: string;
-  raceNumber: number;
-  postTime: string;
-  distance: string;
-  surface: "Dirt" | "Turf" | "Synthetic";
-  purse: string;
-  conditions: string;
-  runners: Runner[];
-  analysis: RaceAnalysis;
+const RATING_STYLES: Record<Rating, { dot: string; chip: string; ring: string }> = {
+  green: {
+    dot: "bg-success shadow-[0_0_12px_hsl(var(--success))]",
+    chip: "bg-success/15 text-success border-success/30",
+    ring: "border-success/40",
+  },
+  yellow: {
+    dot: "bg-warning shadow-[0_0_12px_hsl(var(--warning))]",
+    chip: "bg-warning/15 text-warning border-warning/30",
+    ring: "border-warning/40",
+  },
+  red: {
+    dot: "bg-destructive shadow-[0_0_12px_hsl(var(--destructive))]",
+    chip: "bg-destructive/15 text-destructive border-destructive/30",
+    ring: "border-destructive/40",
+  },
+};
+
+function TrafficLight({ rating }: { rating: Rating }) {
+  return (
+    <div className="flex items-center gap-1.5">
+      <span className={cn("h-2.5 w-2.5 rounded-full", rating === "green" ? RATING_STYLES.green.dot : "bg-muted")} />
+      <span className={cn("h-2.5 w-2.5 rounded-full", rating === "yellow" ? RATING_STYLES.yellow.dot : "bg-muted")} />
+      <span className={cn("h-2.5 w-2.5 rounded-full", rating === "red" ? RATING_STYLES.red.dot : "bg-muted")} />
+    </div>
+  );
 }
 
-const RACES: Race[] = [
+function formatPostTime(iso?: string, tz?: string): string {
+  if (!iso) return "TBD";
+  try {
+    const d = new Date(iso);
+    return d.toLocaleTimeString("en-US", {
+      hour: "numeric",
+      minute: "2-digit",
+      timeZone: tz || undefined,
+      timeZoneName: "short",
+    });
+  } catch {
+    return iso;
+  }
+}
+
+function surfaceFromCondition(condition?: string): string {
+  if (!condition) return "";
+  const c = condition.toLowerCase();
+  if (["firm", "good", "soft", "heavy", "yielding"].some((t) => c.includes(t))) return "Turf";
+  if (c.includes("synthetic") || c.includes("tapeta") || c.includes("polytrack")) return "Synthetic";
+  return "Dirt";
+}
+
+interface RaceCardData {
+  id: string;
+  trackName: string;
+  race: RaceData;
+}
+
+function useRaceAnalysis(card: RaceCardData) {
+  const [analysis, setAnalysis] = useState<RaceAnalysis | null>(null);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    setLoading(true);
+    setError(null);
+    setAnalysis(null);
+    supabase.functions
+      .invoke("analyze-market", {
+        body: {
+          type: "horse-racing",
+          trackName: card.trackName,
+          race: card.race,
+        },
+      })
+      .then(({ data, error: err }) => {
+        if (cancelled) return;
+        if (err) {
+          setError(err.message);
+          setLoading(false);
+          return;
+        }
+        // analyze-market returns { text, ... } where text is the model output
+        const text: string =
+          (data as Any)?.analysis ??
+          (data as Any)?.text ??
+          (data as Any)?.raw ??
+          JSON.stringify(data ?? {});
+        try {
+          const jsonStr = text.match(/\{[\s\S]*\}/)?.[0] ?? text;
+          const parsed = JSON.parse(jsonStr);
+          setAnalysis(parsed);
+        } catch (e) {
+          setError("Failed to parse analysis");
+        }
+        setLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [card.id]);
+
+  return { analysis, loading, error };
+}
+
+// deno-lint-ignore no-explicit-any
+type Any = any;
+
+function RaceCard({ card }: { card: RaceCardData }) {
+  const { race, trackName } = card;
+  const [open, setOpen] = useState(false);
+  const { analysis, loading, error } = useRaceAnalysis(card);
+  const style = analysis ? RATING_STYLES[analysis.rating] : RATING_STYLES.yellow;
+  const liveRunners = race.runners.filter((r) => !r.scratched);
+  const scratches = race.runners.filter((r) => r.scratched);
+  const surface = surfaceFromCondition(race.condition);
+
+  return (
+    <article className={cn("rounded-2xl border bg-card p-4 sm:p-5", analysis ? style.ring : "border-border")}>
+      <header className="flex flex-wrap items-start justify-between gap-3">
+        <div>
+          <div className="flex items-center gap-2 text-xs text-muted-foreground">
+            <MapPin className="h-3.5 w-3.5" />
+            <span>{trackName}</span>
+            <span>·</span>
+            <Clock className="h-3.5 w-3.5" />
+            <span>{formatPostTime(race.startTime, race.timezone)}</span>
+          </div>
+          <h3 className="mt-1 text-lg font-semibold text-foreground">
+            Race {race.raceNumber} · {race.distance ?? ""} {surface}
+          </h3>
+          <p className="text-xs text-muted-foreground">
+            {race.raceName ?? "Race"} · {race.condition ?? "?"} · {liveRunners.length} runners
+          </p>
+        </div>
+        {analysis ? (
+          <div className={cn("flex items-center gap-2 rounded-full border px-3 py-1.5 text-xs font-semibold", style.chip)}>
+            <TrafficLight rating={analysis.rating} />
+            <span>{analysis.ratingLabel}</span>
+          </div>
+        ) : (
+          <div className="flex items-center gap-2 rounded-full border border-border bg-muted/30 px-3 py-1.5 text-xs text-muted-foreground">
+            {loading ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Sparkles className="h-3.5 w-3.5" />}
+            <span>{loading ? "Analyzing…" : error ? "Analysis error" : "Queued"}</span>
+          </div>
+        )}
+      </header>
+
+      {analysis && (
+        <section className="mt-4 rounded-xl border border-info/30 bg-info/5 p-3">
+          <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wide text-info">
+            <Sparkles className="h-3.5 w-3.5" />
+            Edge Analysis
+          </div>
+          <div className="mt-2 grid gap-2 sm:grid-cols-2">
+            <div>
+              <div className="text-[11px] uppercase tracking-wide text-muted-foreground">Top Pick</div>
+              <div className="text-sm font-semibold text-foreground">{analysis.topPick}</div>
+            </div>
+            <div>
+              <div className="text-[11px] uppercase tracking-wide text-muted-foreground">Exacta</div>
+              <div className="text-sm font-semibold text-foreground">{analysis.exacta}</div>
+            </div>
+          </div>
+          <p className="mt-2 text-sm leading-relaxed text-foreground/90">{analysis.analysis}</p>
+          {analysis.keyAngles && analysis.keyAngles.length > 0 && (
+            <ul className="mt-3 space-y-1 border-t border-info/20 pt-2 text-xs">
+              {analysis.keyAngles.map((a, i) => (
+                <li key={i} className="flex gap-2">
+                  <span className="font-semibold text-foreground">{a.horse}:</span>
+                  <span className="text-muted-foreground">{a.angle}</span>
+                </li>
+              ))}
+            </ul>
+          )}
+        </section>
+      )}
+
+      {error && !analysis && (
+        <p className="mt-3 text-xs text-destructive">Analysis unavailable: {error}</p>
+      )}
+
+      <button
+        onClick={() => setOpen((v) => !v)}
+        className="mt-3 text-xs font-semibold text-info hover:underline"
+      >
+        {open ? "Hide full field" : `Show full field (${liveRunners.length} runners)`}
+      </button>
+
+      {open && (
+        <div className="mt-3 overflow-x-auto rounded-xl border border-border">
+          <table className="w-full text-sm">
+            <thead className="bg-muted/40 text-xs uppercase tracking-wide text-muted-foreground">
+              <tr>
+                <th className="px-3 py-2 text-left">#</th>
+                <th className="px-3 py-2 text-left">Horse</th>
+                <th className="px-3 py-2 text-left">Age/Sex</th>
+                <th className="px-3 py-2 text-left">Barrier</th>
+                <th className="px-3 py-2 text-left">Form</th>
+                <th className="px-3 py-2 text-right">Wt</th>
+              </tr>
+            </thead>
+            <tbody>
+              {race.runners.map((r) => (
+                <tr
+                  key={r.number}
+                  className={cn(
+                    "border-t border-border",
+                    r.scratched && "text-muted-foreground line-through opacity-60",
+                  )}
+                >
+                  <td className="px-3 py-2 font-mono">{r.number}</td>
+                  <td className="px-3 py-2 font-medium text-foreground">{r.name}</td>
+                  <td className="px-3 py-2">{r.age}{r.sex ? ` ${r.sex}` : ""}</td>
+                  <td className="px-3 py-2">{r.barrier ?? "-"}</td>
+                  <td className="px-3 py-2 font-mono text-xs">{r.form ?? r.last20Starts ?? "-"}</td>
+                  <td className="px-3 py-2 text-right font-mono">{r.weight ?? "-"}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+
+      {scratches.length > 0 && (
+        <div className="mt-3 flex items-center gap-2 text-xs text-muted-foreground">
+          <AlertTriangle className="h-3.5 w-3.5 text-warning" />
+          Scratches: {scratches.map((s) => `#${s.number} ${s.name}`).join(", ")}
+        </div>
+      )}
+    </article>
+  );
+}
+
+// Legacy mock retained purely to satisfy TS shape below; unused
+const _MOCK: unknown[] = [];
+void _MOCK;
+
+// Original mock RACES array removed — real data now comes from fetch-horse-racing.
+const RACES_LEGACY: never[] = [
+  // (kept for reference in git history — no runtime effect)
+] as never[];
+void RACES_LEGACY;
+
+const _UNUSED_MOCK: never[] = [
+
+] as never[];
+void _UNUSED_MOCK;
+
+/* --------- original mock data removed --------- */
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
+const _REMOVED = [
   {
     id: "cd-r7",
     track: "Churchill Downs",
