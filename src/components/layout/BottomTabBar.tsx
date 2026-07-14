@@ -52,7 +52,7 @@ export default function BottomTabBar() {
     { to: "/", label: "Home", icon: House, end: true, badge: 0 },
     { to: "/suggestions", label: "Signals", icon: Zap, end: false, badge: 0 },
     { to: "/sports", label: "Sports", icon: Trophy, end: false, badge: strongMispricings, badgeColor: "success" as const },
-    { to: "/horse-racing", label: "Racing", icon: HorseIcon, end: false, badge: 0, isNew: true },
+    { to: "/horse-racing", label: "Racing", icon: HorseEmojiIcon, end: false, badge: 0, isNew: true },
   ];
 
   return (
