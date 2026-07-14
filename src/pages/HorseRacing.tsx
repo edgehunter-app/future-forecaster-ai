@@ -184,7 +184,6 @@ type AnalysisState = { status: "pending" | "loading" | "done" | "error"; data?: 
 
 function RaceCard({ card, state }: { card: RaceCardData; state: AnalysisState }) {
   const { race, trackName } = card;
-  const [open, setOpen] = useState(false);
   const analysis = state.data ?? null;
   const loading = state.status === "loading" || state.status === "pending";
   const error = state.status === "error" ? state.error ?? "error" : null;
@@ -340,7 +339,7 @@ function BestBetBanner({ cards, analyses }: { cards: RaceCardData[]; analyses: R
         {card.trackName} · Race {card.race.raceNumber}
       </h2>
       <p className="mt-1 text-sm text-muted-foreground">
-        {card.race.distance ?? ""} {surfaceFromCondition(card.race.condition)} · {formatRaceDate(card.race.startTime, card.race.timezone, card.meetingDate)} · Post {formatPostTime(card.race.startTime, card.race.timezone)}
+        {formatDistance(card.race.distance)} {surfaceFromCondition(card.race.condition)} · {formatRaceDate(card.race.startTime, card.race.timezone, card.meetingDate)} · Post {formatPostTime(card.race.startTime, card.race.timezone)}
       </p>
       <div className="mt-3 flex flex-wrap items-center gap-2">
         <span className="rounded-full border border-success/40 bg-success/15 px-3 py-1 text-xs font-semibold text-success">
@@ -419,7 +418,7 @@ export default function HorseRacing() {
   const load = () => {
     setLoading(true);
     setError(null);
-    const today = new Date().toISOString().slice(0, 10);
+    const today = todayLocalISO();
     supabase.functions
       .invoke("fetch-horse-racing", { body: { date: today } })
       .then(({ data, error }) => {
