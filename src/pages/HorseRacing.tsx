@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { Sparkles, Trophy, AlertTriangle, Clock, MapPin, Loader2, RefreshCw } from "lucide-react";
 import HorseIcon from "@/components/icons/HorseIcon";
+import EdgeHunterLogo from "@/components/brand/EdgeHunterLogo";
 import { cn } from "@/lib/utils";
 import { supabase } from "@/integrations/supabase/client";
 
@@ -509,8 +510,8 @@ export default function HorseRacing() {
 
       {!loading && cards.length === 0 && !error && (
         <section className="flex flex-col items-center justify-center rounded-2xl border border-border bg-card p-10 text-center">
-          <div className="flex h-20 w-20 items-center justify-center rounded-full bg-info/10 text-info">
-            <HorseIcon className="h-10 w-10" />
+          <div className="flex h-20 w-20 items-center justify-center rounded-full bg-info/10">
+            <EdgeHunterLogo size={72} variant="icon" />
           </div>
           <h2 className="mt-5 text-lg font-semibold text-foreground">No races posted yet for today</h2>
           <p className="mt-2 max-w-xs text-sm text-muted-foreground">
