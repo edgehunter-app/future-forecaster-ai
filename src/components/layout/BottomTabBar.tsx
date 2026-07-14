@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { NavLink, useNavigate, useLocation } from "react-router-dom";
 import {
-  House, Zap, Trophy, TrendingUp, LayoutGrid,
+  House, Trophy, TrendingUp, LayoutGrid,
   Users, Clock, ArrowLeftRight, Settings as SettingsIcon, ChevronRight, BarChart2, Shield, Star,
 } from "lucide-react";
 import BottomSheet from "@/components/ui/BottomSheet";
