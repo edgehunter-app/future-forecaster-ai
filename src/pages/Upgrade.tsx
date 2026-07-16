@@ -1,5 +1,5 @@
 import { useNavigate } from "react-router-dom";
-import { Check, Crown, Sparkles, Trophy } from "lucide-react";
+import { Check, Crown, Sparkles, Trophy, Clock } from "lucide-react";
 import { useSubscription, type Tier } from "@/hooks/useSubscription";
 import { usePageTitle } from "@/hooks/usePageTitle";
 import { useToast } from "@/components/ui/AppToast";
@@ -30,7 +30,7 @@ const ELITE_FEATURES = [
 export default function Upgrade() {
   usePageTitle("Upgrade");
   const nav = useNavigate();
-  const { tier, isBeta, upgrade, loading } = useSubscription();
+  const { tier, isBeta, upgrade, loading, isTrialActive, trialDaysRemaining } = useSubscription();
   const { showToast } = useToast();
   const [busy, setBusy] = useState<Tier | null>(null);
 
@@ -53,14 +53,30 @@ export default function Upgrade() {
     <div className="space-y-8">
       <div className="text-center max-w-2xl mx-auto">
         <h1 className="font-sans text-3xl sm:text-4xl font-extrabold tracking-tight text-foreground">
-          Upgrade EdgeHunter
+          {isTrialActive ? "You're on a Pro Trial" : "Upgrade EdgeHunter"}
         </h1>
         <p className="mt-2 text-muted-foreground">
-          Unlock unlimited AI analysis, deeper signals, and priority access.
+          {isTrialActive
+            ? `${trialDaysRemaining} day${trialDaysRemaining === 1 ? "" : "s"} remaining — upgrade now to never lose access.`
+            : "Unlock unlimited AI analysis, deeper signals, and priority access."}
         </p>
         {isBeta && (
           <div className="mt-4 inline-flex items-center gap-2 rounded-full bg-amber-500/15 px-3 py-1 text-xs font-semibold text-amber-400">
             <Trophy className="h-3 w-3" /> You have complimentary Elite (Beta) access
+          </div>
+        )}
+        {isTrialActive && !isBeta && (
+          <div className="mt-4 mx-auto max-w-md rounded-lg border border-blue-500/30 bg-blue-500/10 p-3 text-left">
+            <div className="flex items-center gap-2 text-xs font-bold text-blue-300">
+              <Clock className="h-3.5 w-3.5" />
+              Pro Trial · {trialDaysRemaining} day{trialDaysRemaining === 1 ? "" : "s"} left
+            </div>
+            <div className="mt-2 h-1.5 w-full overflow-hidden rounded-full bg-blue-950/50">
+              <div
+                className="h-full bg-gradient-to-r from-blue-400 to-purple-500"
+                style={{ width: `${Math.max(5, (trialDaysRemaining / 5) * 100)}%` }}
+              />
+            </div>
           </div>
         )}
       </div>
