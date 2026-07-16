@@ -14,6 +14,8 @@ import type { Bet, BetStatus } from "@/types";
 import {
   DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import { useIsDemo } from "@/hooks/useIsDemo";
+import { openDemoGate } from "@/lib/demoGate";
 
 
 type HistoryFilter = "all" | "won" | "lost" | "push";
@@ -24,6 +26,11 @@ export default function BetTracker() {
   const { bets, loading, stats, logBet, resolveBet } = useBetTracker();
   const { alerts, checkLines, dismissAlert, checking, lastCheck: lastChecked } = useLineMonitor();
   const [modalOpen, setModalOpen] = useState(false);
+  const isDemo = useIsDemo();
+  const handleLogBet = () => {
+    if (isDemo) { openDemoGate("Log a bet to track it in your personal Tracker."); return; }
+    setModalOpen(true);
+  };
 
   const [historyFilter, setHistoryFilter] = useState<HistoryFilter>("all");
   const [historySort, setHistorySort] = useState<HistorySort>("recent");
@@ -58,7 +65,7 @@ export default function BetTracker() {
             <p className="text-sm text-muted-foreground">
               Log your first bet to see your performance stats, win rate, and ROI over time.
             </p>
-            <Button onClick={() => setModalOpen(true)} className="inline-flex items-center gap-2">
+            <Button onClick={handleLogBet} className="inline-flex items-center gap-2">
               <Plus className="h-4 w-4" /> Log Your First Bet
             </Button>
           </div>
