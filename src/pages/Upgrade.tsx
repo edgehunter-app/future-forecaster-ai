@@ -1,6 +1,7 @@
 import { useNavigate } from "react-router-dom";
 import { Check, Crown, Sparkles, Trophy, Clock } from "lucide-react";
 import { useSubscription, type Tier } from "@/hooks/useSubscription";
+import { useAuth } from "@/hooks/useAuth";
 import { usePageTitle } from "@/hooks/usePageTitle";
 import { useToast } from "@/components/ui/AppToast";
 import { cn } from "@/lib/utils";
@@ -34,6 +35,7 @@ const ELITE_FEATURES = [
 export default function Upgrade() {
   usePageTitle("Upgrade");
   const nav = useNavigate();
+  const { user } = useAuth();
   const { tier, isBeta, upgrade, loading, isTrialActive, trialDaysRemaining } = useSubscription();
   const { showToast } = useToast();
   const [busy, setBusy] = useState<Tier | null>(null);
@@ -41,6 +43,17 @@ export default function Upgrade() {
   const start = async (priceId: string, name: Tier) => {
     if (isBeta) {
       showToast("You already have complimentary Elite access.", "info");
+      return;
+    }
+    if (!user) {
+      try {
+        localStorage.setItem("pending_upgrade_price", priceId);
+        localStorage.setItem("pending_upgrade_tier", name);
+      } catch {
+        // ignore
+      }
+      console.log("[upgrade] saved pending:", priceId, name);
+      nav(`/auth?mode=signup&redirect=/upgrade&plan=${name}`);
       return;
     }
     setBusy(name);
