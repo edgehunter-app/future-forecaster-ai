@@ -38,42 +38,65 @@ export default function Auth() {
 
   useEffect(() => {
     try {
+      const urlParams = new URLSearchParams(window.location.search);
       console.log(
         "[auth] on mount, pending:",
         localStorage.getItem("pending_upgrade_price"),
         localStorage.getItem("pending_upgrade_tier"),
+        "session:",
+        sessionStorage.getItem("pending_upgrade_price"),
+        sessionStorage.getItem("pending_upgrade_tier"),
+        "url:",
+        urlParams.get("priceId"),
+        urlParams.get("tier"),
         "redirect param:",
-        new URLSearchParams(window.location.search).get("redirect"),
+        urlParams.get("redirect"),
       );
+      // Hydrate sessionStorage from URL so it survives email-confirm redirects
+      const urlPrice = urlParams.get("priceId");
+      const urlTier = urlParams.get("tier");
+      if (urlPrice && urlTier) {
+        sessionStorage.setItem("pending_upgrade_price", urlPrice);
+        sessionStorage.setItem("pending_upgrade_tier", urlTier);
+      }
     } catch {
       // ignore
     }
 
     const { data: sub } = supabase.auth.onAuthStateChange(async (event, session) => {
       if (event !== "SIGNED_IN" || !session) return;
+      const urlParams = new URLSearchParams(window.location.search);
       let pendingPrice: string | null = null;
       let pendingTier: string | null = null;
       try {
-        pendingPrice = localStorage.getItem("pending_upgrade_price");
-        pendingTier = localStorage.getItem("pending_upgrade_tier");
+        pendingPrice =
+          urlParams.get("priceId") ||
+          sessionStorage.getItem("pending_upgrade_price") ||
+          localStorage.getItem("pending_upgrade_price");
+        pendingTier =
+          urlParams.get("tier") ||
+          sessionStorage.getItem("pending_upgrade_tier") ||
+          localStorage.getItem("pending_upgrade_tier");
       } catch {
         // ignore
       }
-      console.log("[auth] signed in, pending upgrade:", pendingPrice, pendingTier);
+      console.log("[auth] SIGNED_IN pending:", pendingPrice, pendingTier);
 
       if (pendingPrice && pendingTier) {
         try {
+          sessionStorage.removeItem("pending_upgrade_price");
+          sessionStorage.removeItem("pending_upgrade_tier");
           localStorage.removeItem("pending_upgrade_price");
           localStorage.removeItem("pending_upgrade_tier");
         } catch {
           // ignore
         }
-        await new Promise((r) => setTimeout(r, 800));
+        await new Promise((r) => setTimeout(r, 1000));
         try {
           const { data, error } = await supabase.functions.invoke("create-checkout", {
             body: { priceId: pendingPrice, tier: pendingTier },
           });
-          console.log("[auth] checkout url:", data?.url, "error:", error);
+          console.log("[auth] checkout result:", data?.url, "error:", error);
           if (data?.url) {
             window.location.href = data.url;
             return;
@@ -127,8 +150,12 @@ export default function Auth() {
       if (error) throw error;
       console.log(
         "[auth] signup complete, pending:",
-        localStorage.getItem("pending_upgrade_price"),
-        localStorage.getItem("pending_upgrade_tier"),
+        "session:",
+        sessionStorage.getItem("pending_upgrade_price"),
+        sessionStorage.getItem("pending_upgrade_tier"),
+        "url:",
+        new URLSearchParams(window.location.search).get("priceId"),
+        new URLSearchParams(window.location.search).get("tier"),
       );
       setSignupSuccess(true);
     } catch (err: any) {
