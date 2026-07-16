@@ -2,6 +2,13 @@ import { useCallback, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAppStore } from "@/store/useAppStore";
 import { bumpAnalysis } from "@/lib/analysisCounter";
+import { useIsDemo } from "@/hooks/useIsDemo";
+import {
+  DEMO_CLAUDE_LIMIT,
+  getDemoClaudeCalls,
+  incDemoClaudeCalls,
+  openDemoGate,
+} from "@/lib/demoGate";
 
 export type AnalysisType =
   | "market"
@@ -20,6 +27,7 @@ export type AnalysisType =
 export function useAIAnalysis() {
   const settings = useAppStore((s) => s.settings);
   const trackedWallets = useAppStore((s) => s.trackedWallets ?? []);
+  const isDemo = useIsDemo();
 
   const [analyzing, setAnalyzing] = useState<Record<string, boolean>>({});
   const [results, setResults] = useState<Record<string, any>>({});
@@ -28,6 +36,13 @@ export function useAIAnalysis() {
   const analyze = useCallback(
     async (key: string, type: AnalysisType, params: Record<string, any>) => {
       if (analyzing[key]) return null;
+      if (isDemo && getDemoClaudeCalls() >= DEMO_CLAUDE_LIMIT) {
+        openDemoGate(
+          `You've used ${DEMO_CLAUDE_LIMIT} free analyses in demo. Sign up for unlimited access.`,
+        );
+        setErrors((p) => ({ ...p, [key]: `Demo limit reached (${DEMO_CLAUDE_LIMIT} analyses)` }));
+        return null;
+      }
       setAnalyzing((p) => ({ ...p, [key]: true }));
       setErrors((p) => ({ ...p, [key]: "" }));
       try {
@@ -79,6 +94,7 @@ export function useAIAnalysis() {
 
         setResults((p) => ({ ...p, [key]: data }));
         bumpAnalysis(type);
+        if (isDemo) incDemoClaudeCalls();
         return data;
       } catch (err) {
         const msg = err instanceof Error ? err.message : "Analysis failed";
@@ -88,7 +104,7 @@ export function useAIAnalysis() {
         setAnalyzing((p) => ({ ...p, [key]: false }));
       }
     },
-    [analyzing, settings, trackedWallets],
+    [analyzing, settings, trackedWallets, isDemo],
   );
 
   const clear = useCallback((key: string) => {

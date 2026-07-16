@@ -28,6 +28,7 @@ const CheckBet = lazy(() => import("./pages/CheckBet"));
 const NotFound = lazy(() => import("./pages/NotFound"));
 const Auth = lazy(() => import("./pages/Auth"));
 const Upgrade = lazy(() => import("./pages/Upgrade"));
+const DemoLogin = lazy(() => import("./pages/DemoLogin"));
 
 const queryClient = new QueryClient();
 
@@ -88,6 +89,7 @@ function AppRoutes() {
       <Suspense fallback={<PageLoadingSkeleton />}>
         <Routes>
           <Route path="/horse-racing" element={wrap(<HorseRacing />)} />
+          <Route path="/demo" element={<DemoLogin />} />
           <Route path="*" element={<Auth />} />
         </Routes>
       </Suspense>
@@ -101,6 +103,7 @@ function AppRoutes() {
       <InstallBanner />
       <Routes>
         <Route path="/auth" element={<Suspense fallback={<PageLoadingSkeleton />}><Auth /></Suspense>} />
+        <Route path="/demo" element={<Suspense fallback={<PageLoadingSkeleton />}><DemoLogin /></Suspense>} />
         <Route path="/" element={wrap(<Dashboard />)} />
         <Route path="/suggestions" element={wrap(<Suggestions />)} />
         <Route path="/wallets" element={wrap(<Wallets />)} />

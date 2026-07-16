@@ -14,6 +14,8 @@ import type { Bet, BetStatus } from "@/types";
 import {
   DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import { useIsDemo } from "@/hooks/useIsDemo";
+import { openDemoGate } from "@/lib/demoGate";
 
 
 type HistoryFilter = "all" | "won" | "lost" | "push";
@@ -24,6 +26,11 @@ export default function BetTracker() {
   const { bets, loading, stats, logBet, resolveBet } = useBetTracker();
   const { alerts, checkLines, dismissAlert, checking, lastCheck: lastChecked } = useLineMonitor();
   const [modalOpen, setModalOpen] = useState(false);
+  const isDemo = useIsDemo();
+  const handleLogBet = () => {
+    if (isDemo) { openDemoGate("Log a bet to track it in your personal Tracker."); return; }
+    setModalOpen(true);
+  };
 
   const [historyFilter, setHistoryFilter] = useState<HistoryFilter>("all");
   const [historySort, setHistorySort] = useState<HistorySort>("recent");
@@ -58,7 +65,7 @@ export default function BetTracker() {
             <p className="text-sm text-muted-foreground">
               Log your first bet to see your performance stats, win rate, and ROI over time.
             </p>
-            <Button onClick={() => setModalOpen(true)} className="inline-flex items-center gap-2">
+            <Button onClick={handleLogBet} className="inline-flex items-center gap-2">
               <Plus className="h-4 w-4" /> Log Your First Bet
             </Button>
           </div>
@@ -79,9 +86,16 @@ export default function BetTracker() {
       <div className="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-3">
         <div>
           <h1 className="font-sans text-[22px] font-extrabold tracking-tight text-foreground">My Bet Tracker</h1>
-          <p className="text-sm text-muted-foreground">Track every bet. Know your edge.</p>
+          <p className="text-sm text-muted-foreground">
+            Track every bet. Know your edge.
+            {isDemo && (
+              <span className="ml-2 inline-flex items-center rounded-full border border-amber-500/50 bg-amber-500/10 px-2 py-0.5 text-[10px] font-bold uppercase text-amber-400">
+                Sample Data
+              </span>
+            )}
+          </p>
         </div>
-        <Button onClick={() => setModalOpen(true)} className="inline-flex items-center gap-2">
+        <Button onClick={handleLogBet} className="inline-flex items-center gap-2">
           <Plus className="h-4 w-4" /> Log Bet
         </Button>
       </div>
@@ -152,7 +166,10 @@ export default function BetTracker() {
 
       {pending.length > 0 && (
         <button
-          onClick={() => void checkLines()}
+          onClick={() => {
+            if (isDemo) { openDemoGate("Sign up to monitor your live line movements."); return; }
+            void checkLines();
+          }}
           disabled={checking}
           className="w-full flex items-center justify-center gap-2 py-3 px-4 rounded-xl border border-blue-500/30 bg-blue-500/10 text-blue-400 hover:bg-blue-500/20 transition mb-4"
         >

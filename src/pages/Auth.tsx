@@ -1,19 +1,23 @@
 import { useEffect, useState } from "react";
-import { useNavigate } from "react-router-dom";
-import { CheckCircle2, Loader2 } from "lucide-react";
+import { useNavigate, useSearchParams } from "react-router-dom";
+import { CheckCircle2, Eye, Loader2 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { lovable } from "@/integrations/lovable";
 import { useToast } from "@/components/ui/AppToast";
 import { cn } from "@/lib/utils";
 import { EdgeHunterLogo } from "@/components/brand/EdgeHunterLogo";
+import { signInAsDemo } from "@/lib/signInAsDemo";
 
 type Mode = "signup" | "signin";
 
 export default function Auth() {
   const navigate = useNavigate();
   const { showToast } = useToast();
+  const [params] = useSearchParams();
 
   const [mode, setMode] = useState<Mode>(() => {
+    const q = new URLSearchParams(window.location.search).get("mode");
+    if (q === "signup" || q === "signin") return q;
     try {
       return localStorage.getItem("returning_user") === "1" ? "signin" : "signup";
     } catch {
@@ -24,7 +28,25 @@ export default function Auth() {
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [loading, setLoading] = useState(false);
+  const [demoLoading, setDemoLoading] = useState(false);
   const [signupSuccess, setSignupSuccess] = useState(false);
+
+  useEffect(() => {
+    const q = params.get("mode");
+    if (q === "signup" || q === "signin") setMode(q);
+  }, [params]);
+
+  const tryDemo = async () => {
+    setDemoLoading(true);
+    try {
+      await signInAsDemo();
+      navigate("/");
+    } catch (err) {
+      showToast(err instanceof Error ? err.message : "Demo login failed", "error");
+    } finally {
+      setDemoLoading(false);
+    }
+  };
 
   useEffect(() => {
     try {
@@ -286,6 +308,17 @@ export default function Auth() {
             </>
           )}
         </div>
+
+        {!signupSuccess && (
+          <button
+            onClick={tryDemo}
+            disabled={demoLoading}
+            className="mt-4 w-full min-h-[48px] inline-flex items-center justify-center gap-2 rounded-md border-2 border-amber-500/60 bg-transparent px-4 py-3 text-sm font-bold text-amber-400 hover:bg-amber-500/10 transition disabled:opacity-60"
+          >
+            {demoLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Eye className="h-4 w-4" />}
+            {demoLoading ? "Loading demo…" : "👀 Try Demo — no signup needed"}
+          </button>
+        )}
       </div>
     </div>
   );

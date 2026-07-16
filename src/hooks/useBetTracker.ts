@@ -4,6 +4,9 @@ import { useAuth } from "@/hooks/useAuth";
 import { useAppStore } from "@/store/useAppStore";
 import type { Bet, BetStatus } from "@/types";
 import { resolveProfitLoss } from "@/lib/betMath";
+import { useIsDemo } from "@/hooks/useIsDemo";
+import { getDemoBets } from "@/lib/demoData";
+import { openDemoGate } from "@/lib/demoGate";
 
 export interface BetStats {
   total: number;
@@ -32,6 +35,7 @@ export type NewBetInput = Omit<
 
 export function useBetTracker() {
   const { user } = useAuth();
+  const isDemo = useIsDemo();
   const bankroll = useAppStore((s) => s.settings.bankroll);
   const [bets, setBets] = useState<Bet[]>([]);
   const [loading, setLoading] = useState(true);
@@ -39,6 +43,11 @@ export function useBetTracker() {
   const load = useCallback(async () => {
     if (!user) {
       setBets([]);
+      setLoading(false);
+      return;
+    }
+    if (isDemo) {
+      setBets(getDemoBets(user.id));
       setLoading(false);
       return;
     }
@@ -51,13 +60,17 @@ export function useBetTracker() {
     if (error) console.warn("load bets failed", error);
     setBets((data as Bet[]) ?? []);
     setLoading(false);
-  }, [user]);
+  }, [user, isDemo]);
 
   useEffect(() => { void load(); }, [load]);
 
   const logBet = useCallback(
     async (input: NewBetInput) => {
       if (!user) return null;
+      if (isDemo) {
+        openDemoGate("Log a bet to track it in your personal Tracker.");
+        return null;
+      }
       const row = {
         user_id: user.id,
         title: input.title,
@@ -83,12 +96,13 @@ export function useBetTracker() {
       setBets((prev) => [data as Bet, ...prev]);
       return data as Bet;
     },
-    [user],
+    [user, isDemo],
   );
 
   const resolveBet = useCallback(
     async (id: string, status: BetStatus) => {
       if (!user) return;
+      if (isDemo) { openDemoGate("Resolve bets in your personal Tracker."); return; }
       const bet = bets.find((b) => b.id === id);
       if (!bet) return;
       const pl = resolveProfitLoss(status, bet.odds, Number(bet.amount));
@@ -109,16 +123,17 @@ export function useBetTracker() {
       }
       setBets((prev) => prev.map((b) => (b.id === id ? (data as Bet) : b)));
     },
-    [bets, user],
+    [bets, user, isDemo],
   );
 
   const deleteBet = useCallback(
     async (id: string) => {
       if (!user) return;
+      if (isDemo) { openDemoGate("Manage your bets with a free account."); return; }
       await supabase.from("bets").delete().eq("id", id).eq("user_id", user.id);
       setBets((prev) => prev.filter((b) => b.id !== id));
     },
-    [user],
+    [user, isDemo],
   );
 
   const stats = useMemo<BetStats>(() => {

@@ -13,6 +13,7 @@ const BETA_EMAILS = [
   "mattg@lakeviewfinancial.net",
   "cgall1501@gmail.com",
   "rickg@lakeviewfinancial.net",
+  "demo@edgehunter.net",
 ];
 
 const supabase = createClient(

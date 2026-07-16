@@ -1,0 +1,92 @@
+import type { Bet } from "@/types";
+
+/** Fixed sample bets shown in the Tracker for the demo account. */
+export function getDemoBets(userId: string): Bet[] {
+  const now = Date.now();
+  const day = 86_400_000;
+  const mk = (over: Partial<Bet>): Bet => ({
+    id: `demo-${over.title}`,
+    user_id: userId,
+    title: "",
+    sport: "MLB",
+    bet_type: "Moneyline",
+    pick: "",
+    odds: -110,
+    amount: 100,
+    sportsbook: "DraftKings",
+    status: "pending",
+    profit_loss: 0,
+    suggestion_id: null,
+    game_date: null,
+    notes: null,
+    opening_odds: over.odds ?? -110,
+    current_odds: over.odds ?? -110,
+    resolved_at: null,
+    created_at: new Date(now - day * 5).toISOString(),
+    updated_at: new Date(now - day * 5).toISOString(),
+    ...over,
+  } as Bet);
+
+  return [
+    mk({
+      title: "Yankees vs Red Sox",
+      sport: "MLB",
+      bet_type: "Moneyline",
+      pick: "Yankees ML",
+      odds: 150,
+      amount: 100,
+      status: "won",
+      profit_loss: 150,
+      created_at: new Date(now - day * 5).toISOString(),
+      resolved_at: new Date(now - day * 5 + 3 * 3600_000).toISOString(),
+    }),
+    mk({
+      title: "Chiefs vs Bills",
+      sport: "NFL",
+      bet_type: "Spread",
+      pick: "Chiefs -3.5",
+      odds: -110,
+      amount: 110,
+      status: "lost",
+      profit_loss: -110,
+      sportsbook: "FanDuel",
+      created_at: new Date(now - day * 4).toISOString(),
+      resolved_at: new Date(now - day * 4 + 4 * 3600_000).toISOString(),
+    }),
+    mk({
+      title: "Lakers vs Celtics",
+      sport: "NBA",
+      bet_type: "Over/Under",
+      pick: "Over 214.5",
+      odds: -105,
+      amount: 100,
+      status: "won",
+      profit_loss: 95,
+      sportsbook: "BetMGM",
+      created_at: new Date(now - day * 3).toISOString(),
+      resolved_at: new Date(now - day * 3 + 3 * 3600_000).toISOString(),
+    }),
+    mk({
+      title: "UFC 310 · McGregor vs Chandler",
+      sport: "UFC",
+      bet_type: "Moneyline",
+      pick: "McGregor ML",
+      odds: 230,
+      amount: 50,
+      status: "pending",
+      sportsbook: "DraftKings",
+      created_at: new Date(now - day).toISOString(),
+    }),
+    mk({
+      title: "The Open Championship",
+      sport: "Golf",
+      bet_type: "Futures",
+      pick: "Scheffler Outright",
+      odds: 550,
+      amount: 25,
+      status: "pending",
+      sportsbook: "FanDuel",
+      created_at: new Date(now - day * 0.5).toISOString(),
+    }),
+  ];
+}

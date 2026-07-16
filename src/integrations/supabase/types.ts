@@ -301,6 +301,7 @@ export type Database = {
           favorite_categories: string[]
           id: string
           is_beta_tester: boolean
+          is_demo: boolean
           kelly_multiplier: number
           max_position: number
           min_confidence: number
@@ -330,6 +331,7 @@ export type Database = {
           favorite_categories?: string[]
           id: string
           is_beta_tester?: boolean
+          is_demo?: boolean
           kelly_multiplier?: number
           max_position?: number
           min_confidence?: number
@@ -359,6 +361,7 @@ export type Database = {
           favorite_categories?: string[]
           id?: string
           is_beta_tester?: boolean
+          is_demo?: boolean
           kelly_multiplier?: number
           max_position?: number
           min_confidence?: number
