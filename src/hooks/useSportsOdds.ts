@@ -323,8 +323,12 @@ export function useSportsOdds(polymarkets: Market[]) {
           game.mispricingGap = match.yesPrice - game.moneyline.homeImplied;
         }
       }
-      setFullGames(allFull);
-      console.log("[useSportsOdds] fullGames set to:", allFull.length);
+      const deduped = dedupeGames(allFull);
+      if (deduped.length !== allFull.length) {
+        console.log("[dedup] client-side collapsed", allFull.length - deduped.length, "duplicate game(s)");
+      }
+      setFullGames(deduped);
+      console.log("[useSportsOdds] fullGames set to:", deduped.length);
       setSportsLastScanned(new Date());
       setFromCache(false);
       setRemainingRequests(getRemainingRequests());
