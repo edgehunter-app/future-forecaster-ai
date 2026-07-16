@@ -47,13 +47,23 @@ export default function Upgrade() {
     }
     if (!user) {
       try {
+        sessionStorage.setItem("pending_upgrade_price", priceId);
+        sessionStorage.setItem("pending_upgrade_tier", name);
         localStorage.setItem("pending_upgrade_price", priceId);
         localStorage.setItem("pending_upgrade_tier", name);
       } catch {
         // ignore
       }
-      console.log("[upgrade] saved pending:", priceId, name);
-      nav(`/auth?mode=signup&redirect=/upgrade&plan=${name}`);
+      console.log(
+        "[upgrade] saved pending:",
+        priceId,
+        name,
+        "session:",
+        sessionStorage.getItem("pending_upgrade_price"),
+      );
+      nav(
+        `/auth?mode=signup&redirect=/upgrade&plan=${name}&priceId=${encodeURIComponent(priceId)}&tier=${name}`,
+      );
       return;
     }
     setBusy(name);
