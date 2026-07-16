@@ -166,7 +166,10 @@ export default function BetTracker() {
 
       {pending.length > 0 && (
         <button
-          onClick={() => void checkLines()}
+          onClick={() => {
+            if (isDemo) { openDemoGate("Sign up to monitor your live line movements."); return; }
+            void checkLines();
+          }}
           disabled={checking}
           className="w-full flex items-center justify-center gap-2 py-3 px-4 rounded-xl border border-blue-500/30 bg-blue-500/10 text-blue-400 hover:bg-blue-500/20 transition mb-4"
         >
