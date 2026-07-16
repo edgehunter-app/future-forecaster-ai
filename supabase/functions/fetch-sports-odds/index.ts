@@ -1116,15 +1116,45 @@ Deno.serve(async (req) => {
     const rawMerged = [...games, ...(oddsApiResult?.games ?? [])];
     console.log(`[merge] sportsbook=${games.length} oddsApi=${oddsApiResult?.games?.length ?? 0} total=${rawMerged.length}`);
 
+    // Debug: surface every World Cup game across sources before dedup so we
+    // can see why duplicates slip through team-name mismatch.
+    try {
+      const wcBefore = rawMerged.filter((g: any) => {
+        const sk = String(g?.sport_key ?? "").toLowerCase();
+        const st = String(g?.sport_title ?? "").toLowerCase();
+        return sk.includes("world_cup") || st.includes("world cup") || st.includes("fifa");
+      }).map((g: any) => ({
+        teams: `${g.away_team} vs ${g.home_team}`,
+        date: g.commence_time,
+        books: g.bookmakers?.length ?? 0,
+        source: g.source,
+      }));
+      console.log("[dedup] WC games before:", JSON.stringify(wcBefore));
+    } catch (_e) { /* ignore */ }
+
     // Dedupe: same teams + same day. Prefer version with more bookmakers
     // (Odds API has full books), preserve cross-market fields from Sportsbook.
-    const norm = (s: any) => String(s ?? "").toLowerCase().trim();
+    // Strict normalization: strip everything except a-z so "St." vs "Saint",
+    // punctuation, accents, and spaces cannot cause false negatives.
+    const norm = (s: any) =>
+      String(s ?? "")
+        .normalize("NFKD")
+        .replace(/[\u0300-\u036f]/g, "")
+        .toLowerCase()
+        .replace(/[^a-z]/g, "")
+        .trim();
     const dayKey = (t: any) => {
       const d = new Date(t);
       return isNaN(d.getTime()) ? "" : d.toDateString();
     };
-    const teamsMatch = (a: string, b: string) =>
-      !!a && !!b && (a.includes(b) || b.includes(a));
+    const teamsMatch = (a: string, b: string) => {
+      if (!a || !b) return false;
+      if (a === b) return true;
+      // Allow substring only when the shorter side is at least 4 chars, to
+      // avoid "usa" matching "russia".
+      const [short, long] = a.length <= b.length ? [a, b] : [b, a];
+      return short.length >= 4 && long.includes(short);
+    };
     const mergedGames = rawMerged.reduce((acc: any[], game: any) => {
       const gHome = norm(game?.home_team);
       const gAway = norm(game?.away_team);
@@ -1133,8 +1163,11 @@ Deno.serve(async (req) => {
         const eHome = norm(existing?.home_team);
         const eAway = norm(existing?.away_team);
         const eDay = dayKey(existing?.commence_time);
-        return eDay && gDay && eDay === gDay
-          && teamsMatch(eHome, gHome) && teamsMatch(eAway, gAway);
+        if (!eDay || !gDay || eDay !== gDay) return false;
+        // Match either orientation — sources sometimes swap home/away.
+        const straight = teamsMatch(eHome, gHome) && teamsMatch(eAway, gAway);
+        const swapped  = teamsMatch(eHome, gAway) && teamsMatch(eAway, gHome);
+        return straight || swapped;
       });
       if (idx === -1) {
         acc.push(game);
