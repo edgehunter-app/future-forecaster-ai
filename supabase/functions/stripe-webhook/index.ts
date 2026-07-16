@@ -89,16 +89,53 @@ Deno.serve(async (req) => {
         }
 
         if (userId && tier) {
+          const subId =
+            typeof session.subscription === "string" ? session.subscription : null;
+          let isTrial = false;
+          let trialEndsAt: string | null = null;
+          if (subId) {
+            try {
+              const sub = await stripe.subscriptions.retrieve(subId);
+              isTrial = sub.status === "trialing";
+              if (isTrial && sub.trial_end) {
+                trialEndsAt = new Date(sub.trial_end * 1000).toISOString();
+              }
+            } catch (e) {
+              console.error("[stripe-webhook] retrieve sub failed", e);
+            }
+          }
           await supabase
             .from("profiles")
             .update({
               subscription_tier: tier,
-              stripe_subscription_id:
-                typeof session.subscription === "string" ? session.subscription : null,
+              stripe_subscription_id: subId,
               stripe_customer_id: customerId,
-              subscription_status: "active",
+              subscription_status: isTrial ? "trial" : "active",
+              is_trial: isTrial,
+              trial_started_at: isTrial ? new Date().toISOString() : null,
+              trial_ends_at: trialEndsAt,
             })
             .eq("id", userId);
+        }
+        break;
+      }
+
+      case "customer.subscription.trial_will_end": {
+        const sub = event.data.object as Stripe.Subscription;
+        const customerId = typeof sub.customer === "string" ? sub.customer : null;
+        if (await isBetaUser(null, customerId)) break;
+        if (customerId) {
+          await supabase
+            .from("profiles")
+            .update({
+              subscription_status: "trial",
+              is_trial: true,
+              trial_ends_at: sub.trial_end
+                ? new Date(sub.trial_end * 1000).toISOString()
+                : null,
+            })
+            .eq("stripe_customer_id", customerId);
+          console.log("[stripe-webhook] trial_will_end for", customerId);
         }
         break;
       }
@@ -114,6 +151,8 @@ Deno.serve(async (req) => {
             .update({
               subscription_tier: "free",
               subscription_status: "inactive",
+              is_trial: false,
+              trial_ends_at: null,
               stripe_subscription_id: null,
             })
             .eq("stripe_customer_id", customerId);
@@ -133,11 +172,21 @@ Deno.serve(async (req) => {
             .eq("stripe_customer_id", customerId)
             .maybeSingle();
           if (profile) {
+            const isTrialing = status === "trialing";
+            const isActive = status === "active";
+            const isCanceled = status === "canceled" || status === "incomplete_expired";
             await supabase
               .from("profiles")
               .update({
                 subscription_status: status,
-                subscription_tier: status === "active" ? profile.subscription_tier : "free",
+                is_trial: isTrialing,
+                subscription_tier: isCanceled ? "free" : profile.subscription_tier,
+                trial_ends_at: isTrialing && sub.trial_end
+                  ? new Date(sub.trial_end * 1000).toISOString()
+                  : isActive || isCanceled
+                    ? null
+                    : undefined,
+                trial_started_at: isActive || isCanceled ? null : undefined,
                 subscription_ends_at: sub.cancel_at
                   ? new Date(sub.cancel_at * 1000).toISOString()
                   : null,
