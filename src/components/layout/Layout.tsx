@@ -11,6 +11,8 @@ import { useIsDemo } from "@/hooks/useIsDemo";
 import DemoBanner from "@/components/demo/DemoBanner";
 import DemoGateSheet from "@/components/demo/DemoGateSheet";
 import { onDemoGate } from "@/lib/demoGate";
+import TrialBanner from "@/components/trial/TrialBanner";
+import TrialExpiredModal from "@/components/trial/TrialExpiredModal";
 
 export function Layout({ children }: { children: ReactNode }) {
   const [mobileOpen, setMobileOpen] = useState(false);
@@ -30,6 +32,7 @@ export function Layout({ children }: { children: ReactNode }) {
       <div className="flex flex-1 flex-col overflow-hidden min-w-0">
         <TopBar onMenuClick={() => setMobileOpen(true)} />
         {isDemo && <DemoBanner />}
+        {!isDemo && <TrialBanner />}
         <main className="flex-1 overflow-y-auto scrollbar-thin">
           <PageTransition pageKey={pathname}>
             <div
@@ -43,6 +46,7 @@ export function Layout({ children }: { children: ReactNode }) {
       </div>
       {isMobile && <BottomTabBar />}
       <DemoGateSheet open={gate.open} onClose={() => setGate({ open: false })} feature={gate.feature} />
+      {!isDemo && <TrialExpiredModal />}
     </div>
   );
 }

@@ -302,6 +302,7 @@ export type Database = {
           id: string
           is_beta_tester: boolean
           is_demo: boolean
+          is_trial: boolean
           kelly_multiplier: number
           max_position: number
           min_confidence: number
@@ -315,6 +316,8 @@ export type Database = {
           subscription_tier: string
           telegram_chat_id: string
           telegram_enabled: boolean
+          trial_ends_at: string | null
+          trial_started_at: string | null
           updated_at: string
         }
         Insert: {
@@ -332,6 +335,7 @@ export type Database = {
           id: string
           is_beta_tester?: boolean
           is_demo?: boolean
+          is_trial?: boolean
           kelly_multiplier?: number
           max_position?: number
           min_confidence?: number
@@ -345,6 +349,8 @@ export type Database = {
           subscription_tier?: string
           telegram_chat_id?: string
           telegram_enabled?: boolean
+          trial_ends_at?: string | null
+          trial_started_at?: string | null
           updated_at?: string
         }
         Update: {
@@ -362,6 +368,7 @@ export type Database = {
           id?: string
           is_beta_tester?: boolean
           is_demo?: boolean
+          is_trial?: boolean
           kelly_multiplier?: number
           max_position?: number
           min_confidence?: number
@@ -375,6 +382,8 @@ export type Database = {
           subscription_tier?: string
           telegram_chat_id?: string
           telegram_enabled?: boolean
+          trial_ends_at?: string | null
+          trial_started_at?: string | null
           updated_at?: string
         }
         Relationships: []

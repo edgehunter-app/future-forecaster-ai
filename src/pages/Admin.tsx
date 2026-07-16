@@ -59,6 +59,10 @@ export default function Admin() {
     totalSuggestions: 0,
     suggestionsToday: 0,
     suggestionsMonth: 0,
+    activeTrials: 0,
+    trialsExpiringToday: 0,
+    trialConverted: 0,
+    trialEnded: 0,
   });
   const [grantEmail, setGrantEmail] = useState("");
   const [granting, setGranting] = useState(false);
@@ -119,14 +123,38 @@ export default function Admin() {
       supabase.from("suggestions").select("*", { count: "exact", head: true }),
       supabase.from("suggestions").select("*", { count: "exact", head: true }).gte("created_at", startOfDay.toISOString()),
       supabase.from("suggestions").select("*", { count: "exact", head: true }).gte("created_at", startOfMonth.toISOString()),
-    ]).then(([profiles, wallets, sugAll, sugDay, sugMonth]) => {
+      supabase.from("profiles").select("is_trial, trial_ends_at, subscription_status, subscription_tier"),
+    ]).then(([profiles, wallets, sugAll, sugDay, sugMonth, trialRows]) => {
       const uniqueWalletUsers = new Set((wallets.data ?? []).map((w: any) => w.user_id)).size;
+      const now = Date.now();
+      const endOfToday = new Date();
+      endOfToday.setHours(23, 59, 59, 999);
+      let active = 0, expiringToday = 0, converted = 0, ended = 0;
+      for (const r of (trialRows.data ?? []) as any[]) {
+        const end = r.trial_ends_at ? new Date(r.trial_ends_at).getTime() : 0;
+        if (r.is_trial && r.subscription_status === "trial" && end > now) {
+          active++;
+          if (end <= endOfToday.getTime()) expiringToday++;
+        } else if (r.trial_ends_at && !r.is_trial) {
+          if (r.subscription_status === "active" && (r.subscription_tier === "pro" || r.subscription_tier === "elite")) {
+            converted++;
+          } else {
+            ended++;
+          }
+        }
+      }
+      const totalTrialCohort = active + converted + ended;
+      const conversionPct = totalTrialCohort > 0 ? Math.round((converted / totalTrialCohort) * 100) : 0;
       setStats({
         totalUsers: profiles.count ?? 0,
         walletUsers: uniqueWalletUsers,
         totalSuggestions: sugAll.count ?? 0,
         suggestionsToday: sugDay.count ?? 0,
         suggestionsMonth: sugMonth.count ?? 0,
+        activeTrials: active,
+        trialsExpiringToday: expiringToday,
+        trialConverted: conversionPct,
+        trialEnded: ended,
       });
     });
     return () => clearInterval(id);
@@ -323,6 +351,9 @@ export default function Admin() {
           <StatBlock label="Registered users" value={stats.totalUsers} />
           <StatBlock label="Users tracking wallets" value={stats.walletUsers} />
           <StatBlock label="Total suggestions" value={stats.totalSuggestions} />
+          <StatBlock label="Active trials" value={stats.activeTrials} />
+          <StatBlock label="Trials expiring today" value={stats.trialsExpiringToday} />
+          <StatBlock label="Trial → paid conversion" value={`${stats.trialConverted}%`} hint={`${stats.trialEnded} lapsed`} />
         </div>
       </section>
 
