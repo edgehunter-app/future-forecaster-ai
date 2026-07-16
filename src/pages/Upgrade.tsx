@@ -10,6 +10,8 @@ const PRO_PRICE_ID = "price_1Ts6wq5MCjCsVPzSQYekGmmZ";
 const ELITE_PRICE_ID = "price_1Ts6y95MCjCsVPzSSzBZ4u5R";
 
 const PRO_FEATURES = [
+  "5 days free · then $19/month",
+  "Cancel anytime before trial ends",
   "Unlimited AI analysis",
   "Best Bet Today scanner",
   "Full book comparison (8+ sportsbooks)",
@@ -19,6 +21,8 @@ const PRO_FEATURES = [
 ];
 
 const ELITE_FEATURES = [
+  "5 days free · then $49/month",
+  "Cancel anytime before trial ends",
   "Everything in Pro",
   "Smart wallet signals",
   "Devil's Advocate AI",
@@ -92,7 +96,8 @@ export default function Upgrade() {
           disabled={loading || busy !== null || tier === "pro" || tier === "elite" || isBeta}
           busy={busy === "pro"}
           onClick={() => start(PRO_PRICE_ID, "pro")}
-          ctaLabel={tier === "pro" ? "Current Plan" : tier === "elite" ? "Included in Elite" : "Upgrade to Pro"}
+          ctaLabel={tier === "pro" ? "Current Plan" : tier === "elite" ? "Included in Elite" : "Start Free Trial"}
+          subtitle="Start free — card required"
         />
         <PlanCard
           name="Elite"
@@ -104,7 +109,8 @@ export default function Upgrade() {
           disabled={loading || busy !== null || tier === "elite" || isBeta}
           busy={busy === "elite"}
           onClick={() => start(ELITE_PRICE_ID, "elite")}
-          ctaLabel={tier === "elite" ? "Current Plan" : "Upgrade to Elite"}
+          ctaLabel={tier === "elite" ? "Current Plan" : "Start Free Trial"}
+          subtitle="Start free — card required"
           highlight
         />
       </div>
@@ -122,7 +128,7 @@ export default function Upgrade() {
 }
 
 function PlanCard({
-  name, price, icon, gradient, features, current, disabled, busy, onClick, ctaLabel, highlight,
+  name, price, icon, gradient, features, current, disabled, busy, onClick, ctaLabel, highlight, subtitle,
 }: {
   name: string;
   price: string;
@@ -135,6 +141,7 @@ function PlanCard({
   onClick: () => void;
   ctaLabel: string;
   highlight?: boolean;
+  subtitle?: string;
 }) {
   return (
     <div className={cn(
@@ -158,6 +165,9 @@ function PlanCard({
       <div className="mt-4">
         <span className="text-4xl font-extrabold text-foreground">{price}</span>
         <span className="text-sm text-muted-foreground">/month</span>
+        {subtitle && (
+          <div className="mt-1 text-xs font-semibold text-blue-300">{subtitle}</div>
+        )}
       </div>
       <ul className="mt-5 space-y-2 flex-1">
         {features.map((f) => (
