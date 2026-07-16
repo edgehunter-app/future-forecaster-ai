@@ -10,6 +10,7 @@ import ErrorBoundary from "@/components/ErrorBoundary";
 import KeyboardShortcuts from "@/components/ui/KeyboardShortcuts";
 import WelcomeModal from "@/components/onboarding/WelcomeModal";
 import InstallBanner from "@/components/pwa/InstallBanner";
+import InstallAppPrompt from "@/components/pwa/InstallAppPrompt";
 import { useAuth } from "@/hooks/useAuth";
 import { useAppStore } from "@/store/useAppStore";
 
@@ -29,6 +30,7 @@ const NotFound = lazy(() => import("./pages/NotFound"));
 const Auth = lazy(() => import("./pages/Auth"));
 const Upgrade = lazy(() => import("./pages/Upgrade"));
 const DemoLogin = lazy(() => import("./pages/DemoLogin"));
+const InstallApp = lazy(() => import("./pages/InstallApp"));
 
 const queryClient = new QueryClient();
 
@@ -101,6 +103,7 @@ function AppRoutes() {
       <KeyboardShortcuts />
       <WelcomeModal />
       <InstallBanner />
+      <InstallAppPrompt />
       <Routes>
         <Route path="/auth" element={<Suspense fallback={<PageLoadingSkeleton />}><Auth /></Suspense>} />
         <Route path="/demo" element={<Suspense fallback={<PageLoadingSkeleton />}><DemoLogin /></Suspense>} />
@@ -116,6 +119,7 @@ function AppRoutes() {
         <Route path="/history" element={wrap(<History />)} />
         <Route path="/settings" element={wrap(<Settings />)} />
         <Route path="/upgrade" element={wrap(<Upgrade />)} />
+        <Route path="/install" element={wrap(<InstallApp />)} />
         <Route path="/admin" element={wrap(<Admin />)} />
         <Route path="*" element={<Suspense fallback={<PageLoadingSkeleton />}><NotFound /></Suspense>} />
       </Routes>
