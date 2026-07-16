@@ -36,10 +36,12 @@ export default function BottomSheet({
       />
       <div
         className={cn(
-          "fixed bottom-0 left-0 right-0 z-[90] rounded-t-2xl border-t border-border bg-card shadow-2xl transition-transform duration-200 ease-out",
+          "fixed bottom-0 left-0 right-0 z-[90] rounded-t-3xl border-t border-border bg-card shadow-2xl",
+          "transition-transform duration-300",
           "max-h-[80vh] flex flex-col",
           isOpen ? "translate-y-0" : "translate-y-full",
         )}
+        style={{ transitionTimingFunction: "cubic-bezier(0.32, 0.72, 0, 1)" }}
         role="dialog"
         aria-modal="true"
       >
