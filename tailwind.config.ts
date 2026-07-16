@@ -28,6 +28,7 @@ export default {
         warning: "hsl(var(--warning))",
         info: "hsl(var(--info))",
         purple: "hsl(var(--purple))",
+        surface2: "hsl(var(--surface-2))",
         sidebar: {
           DEFAULT: "hsl(var(--sidebar-background))",
           foreground: "hsl(var(--sidebar-foreground))",
@@ -49,6 +50,12 @@ export default {
         card: "0 1px 2px 0 rgb(0 0 0 / 0.4), 0 1px 3px 0 rgb(0 0 0 / 0.3)",
         "glow-blue": "0 0 0 1px hsl(217 91% 60% / 0.3), 0 8px 32px -8px hsl(217 91% 60% / 0.4)",
         "glow-green": "0 0 0 1px hsl(160 84% 39% / 0.3), 0 8px 32px -8px hsl(160 84% 39% / 0.4)",
+        "hero-glow": "0 0 60px -10px rgba(59, 130, 246, 0.35), 0 20px 50px -20px rgba(0,0,0,0.6)",
+      },
+      backgroundImage: {
+        "gradient-hero": "var(--gradient-hero)",
+        "gradient-cta": "var(--gradient-cta)",
+        "gradient-action-bar": "var(--gradient-action-bar)",
       },
       keyframes: {
         "accordion-down": { from: { height: "0" }, to: { height: "var(--radix-accordion-content-height)" } },
