@@ -266,7 +266,10 @@ export default function Auth() {
             <>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 mb-5">
                 <button
-                  onClick={() => setMode("signup")}
+                  onClick={() => {
+                    ensurePendingUpgrade();
+                    setMode("signup");
+                  }}
                   className={cn(
                     "min-h-[56px] rounded-md px-4 py-2 text-sm font-bold transition-all",
                     mode === "signup"
