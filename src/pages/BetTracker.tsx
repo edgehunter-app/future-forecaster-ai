@@ -86,9 +86,16 @@ export default function BetTracker() {
       <div className="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-3">
         <div>
           <h1 className="font-sans text-[22px] font-extrabold tracking-tight text-foreground">My Bet Tracker</h1>
-          <p className="text-sm text-muted-foreground">Track every bet. Know your edge.</p>
+          <p className="text-sm text-muted-foreground">
+            Track every bet. Know your edge.
+            {isDemo && (
+              <span className="ml-2 inline-flex items-center rounded-full border border-amber-500/50 bg-amber-500/10 px-2 py-0.5 text-[10px] font-bold uppercase text-amber-400">
+                Sample Data
+              </span>
+            )}
+          </p>
         </div>
-        <Button onClick={() => setModalOpen(true)} className="inline-flex items-center gap-2">
+        <Button onClick={handleLogBet} className="inline-flex items-center gap-2">
           <Plus className="h-4 w-4" /> Log Bet
         </Button>
       </div>
