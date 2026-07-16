@@ -38,7 +38,7 @@ export default function BestEdgeAnalysisSheet({ open, onClose, result }: Props) 
     <BottomSheet isOpen={open} onClose={onClose} title="Edge Analysis">
       <div className="space-y-4 pb-4">
         {/* Why it has value */}
-        <AICard>
+        <AICard tone="success">
           <div className="flex items-center justify-between mb-2">
             <h4 className="text-[11px] font-bold uppercase tracking-wide text-foreground">
               Why it has value
@@ -51,7 +51,7 @@ export default function BestEdgeAnalysisSheet({ open, onClose, result }: Props) 
         </AICard>
 
         {/* What could go wrong */}
-        <AICard tone="danger">
+        <AICard tone="warning">
           <div className="flex items-center justify-between mb-2">
             <h4 className="text-[11px] font-bold uppercase tracking-wide text-foreground">
               What could go wrong
@@ -60,25 +60,31 @@ export default function BestEdgeAnalysisSheet({ open, onClose, result }: Props) 
               {risk} risk
             </span>
           </div>
-          {warnings.length > 0 ? (
-            <ul className="space-y-1.5">
-              {warnings.map((w, i) => (
-                <li key={i} className="flex items-start gap-2 text-[13px] text-foreground/85">
-                  <span className="text-destructive mt-0.5">•</span>
-                  <span>{w}</span>
-                </li>
-              ))}
-            </ul>
-          ) : (
-            <p className="text-[13px] text-foreground/80 leading-relaxed">
-              Line could move against you before kickoff. Market may already reflect the news
-              that created this gap.
-            </p>
-          )}
+          {/* Devil's Advocate nested card */}
+          <div className="rounded-lg border border-red-900/50 bg-red-950/40 p-3">
+            <div className="text-[10px] font-bold uppercase tracking-wide text-red-300/80 mb-1.5">
+              Devil's Advocate
+            </div>
+            {warnings.length > 0 ? (
+              <ul className="space-y-1.5">
+                {warnings.map((w, i) => (
+                  <li key={i} className="flex items-start gap-2 text-[13px] text-foreground/85">
+                    <span className="text-destructive mt-0.5">•</span>
+                    <span>{w}</span>
+                  </li>
+                ))}
+              </ul>
+            ) : (
+              <p className="text-[13px] text-foreground/80 leading-relaxed">
+                Line could move against you before kickoff. Market may already reflect the news
+                that created this gap.
+              </p>
+            )}
+          </div>
         </AICard>
 
         {/* Verdict */}
-        <AICard>
+        <AICard tone="info">
           <div className="flex items-center justify-between mb-2">
             <h4 className="text-[11px] font-bold uppercase tracking-wide text-foreground">
               Verdict
@@ -101,7 +107,7 @@ export default function BestEdgeAnalysisSheet({ open, onClose, result }: Props) 
         </AICard>
 
         {/* Supporting data */}
-        <AICard>
+        <AICard tone="purple">
           <h4 className="text-[11px] font-bold uppercase tracking-wide text-foreground mb-3">
             Supporting data
           </h4>

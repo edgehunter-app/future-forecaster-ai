@@ -1,6 +1,7 @@
 import { ArrowRight, Loader2, Zap } from "lucide-react";
 import type { BestBetResult } from "@/types";
 import { cn } from "@/lib/utils";
+import { sportEmoji } from "@/lib/sportEmoji";
 
 function formatOdds(v: number | string | undefined | null): string {
   if (v === undefined || v === null || v === "") return "—";
@@ -50,16 +51,15 @@ export default function HeroBestEdgeCard({
     return (
       <div className="rounded-2xl border border-white/5 bg-gradient-hero p-6 sm:p-7 shadow-hero-glow min-h-[280px] flex flex-col">
         <div className="flex items-center justify-between mb-6">
-          <span className="inline-flex items-center gap-1.5 rounded-full bg-warning/15 border border-warning/30 px-2.5 py-1 text-[11px] font-bold uppercase tracking-wide text-warning">
-            <Zap className="h-3 w-3" /> Today's Best Edge
-          </span>
+          <EyebrowBadge />
         </div>
         <div className="flex-1 flex flex-col items-center justify-center text-center gap-3 py-6">
+          <div className="text-[48px] leading-none opacity-40" aria-hidden>🌙</div>
           <div className="text-[17px] font-semibold text-foreground/80">
-            No qualifying edge right now
+            No live edges right now
           </div>
           <p className="text-[13px] text-muted-foreground max-w-xs">
-            {emptyMessage ?? "Check back later today — we scan the board every few minutes."}
+            {emptyMessage ?? "Check back when today's slate opens. We scan the board every few minutes."}
           </p>
           <button
             onClick={onHunt}
@@ -73,9 +73,10 @@ export default function HeroBestEdgeCard({
   }
 
   // Sports-source render (most common); fallback to prediction/wallet with generic labels
-  const sport =
+  const sportLabel =
     result.game?.league ??
     (result.source === "prediction_market" ? "Cross-Market" : result.source === "wallet_signal" ? "Signal" : "Bet");
+  const emoji = sportEmoji(result.game?.league ?? result.game?.sport);
 
   const matchup =
     result.source === "sports" && result.game
@@ -130,17 +131,19 @@ export default function HeroBestEdgeCard({
       onKeyDown={(e) => (e.key === "Enter" || e.key === " ") && onOpen()}
     >
       {/* Top row */}
-      <div className="flex items-start justify-between gap-3 mb-4">
-        <span className="inline-flex items-center gap-1.5 rounded-full bg-warning/15 border border-warning/30 px-2.5 py-1 text-[11px] font-bold uppercase tracking-wide text-warning">
-          <Zap className="h-3 w-3" /> Today's Best Edge
-        </span>
+      <div className="flex items-start justify-between gap-3 mb-1">
+        <EyebrowBadge />
         <span className="rounded-full border border-white/10 bg-white/5 px-2.5 py-1 text-[11px] font-semibold uppercase tracking-wide text-foreground/70">
-          {sport}
+          {emoji} {sportLabel}
         </span>
+      </div>
+      <div className="mb-4 text-[10px] text-muted-foreground">
+        Updated {new Date(result.generatedAt).toLocaleTimeString([], { hour: "numeric", minute: "2-digit" })} · Live
       </div>
 
       {/* Matchup */}
       <h2 className="text-[22px] font-extrabold text-foreground leading-tight mb-4 line-clamp-2">
+        <span className="mr-1.5" aria-hidden>{emoji}</span>
         {matchup}
       </h2>
 
@@ -179,7 +182,7 @@ export default function HeroBestEdgeCard({
           onOpen();
         }}
         className={cn(
-          "w-full inline-flex items-center justify-center gap-2 rounded-xl px-5 py-3.5",
+          "shimmer-once w-full inline-flex items-center justify-center gap-2 rounded-xl px-5 py-3.5",
           "bg-gradient-cta text-white text-sm font-bold shadow-glow-blue hover:opacity-95 transition",
         )}
       >
@@ -195,6 +198,15 @@ export default function HeroBestEdgeCard({
         )}
       </div>
     </div>
+  );
+}
+
+function EyebrowBadge() {
+  return (
+    <span className="inline-flex items-center gap-2 rounded-full bg-warning/15 border border-warning/30 px-2.5 py-1 text-[11px] font-bold uppercase tracking-wide text-warning">
+      <span className="live-dot-amber" aria-hidden />
+      <Zap className="h-3 w-3" /> Today's Best Edge
+    </span>
   );
 }
 
