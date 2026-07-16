@@ -10,6 +10,29 @@ import { signInAsDemo } from "@/lib/signInAsDemo";
 
 type Mode = "signup" | "signin";
 
+const DEFAULT_TRIAL_PRICE_ID = "price_1Ts6wq5MCjCsVPzSQYekGmmZ";
+const DEFAULT_TRIAL_TIER = "pro";
+
+function ensurePendingUpgrade() {
+  try {
+    const urlParams = new URLSearchParams(window.location.search);
+    const hasUrl = urlParams.get("priceId") && urlParams.get("tier");
+    const hasSession =
+      sessionStorage.getItem("pending_upgrade_price") &&
+      sessionStorage.getItem("pending_upgrade_tier");
+    const hasLocal =
+      localStorage.getItem("pending_upgrade_price") &&
+      localStorage.getItem("pending_upgrade_tier");
+    if (!hasUrl && !hasSession && !hasLocal) {
+      sessionStorage.setItem("pending_upgrade_price", DEFAULT_TRIAL_PRICE_ID);
+      sessionStorage.setItem("pending_upgrade_tier", DEFAULT_TRIAL_TIER);
+      console.log("[auth] defaulted pending upgrade to Pro trial");
+    }
+  } catch {
+    // ignore
+  }
+}
+
 export default function Auth() {
   const navigate = useNavigate();
   const { showToast } = useToast();
@@ -140,6 +163,8 @@ export default function Auth() {
       showToast("Passwords do not match", "error");
       return;
     }
+    // Ensure a pending upgrade is set so SIGNED_IN handler redirects to Stripe.
+    ensurePendingUpgrade();
     setLoading(true);
     try {
       const { error } = await supabase.auth.signUp({
@@ -241,7 +266,10 @@ export default function Auth() {
             <>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 mb-5">
                 <button
-                  onClick={() => setMode("signup")}
+                  onClick={() => {
+                    ensurePendingUpgrade();
+                    setMode("signup");
+                  }}
                   className={cn(
                     "min-h-[56px] rounded-md px-4 py-2 text-sm font-bold transition-all",
                     mode === "signup"
