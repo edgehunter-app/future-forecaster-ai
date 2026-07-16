@@ -6,6 +6,7 @@ import TodaySignalsList from "@/components/discover/TodaySignalsList";
 import AIInsightStrip from "@/components/discover/AIInsightStrip";
 import GamblingDisclaimer from "@/components/sports/GamblingDisclaimer";
 import { useBestBet } from "@/hooks/useBestBet";
+import { useSportsOdds } from "@/hooks/useSportsOdds";
 import { useSuggestionsDB } from "@/hooks/useSuggestionsDB";
 import { useAppStore } from "@/store/useAppStore";
 import { usePageTitle } from "@/hooks/usePageTitle";
@@ -15,6 +16,8 @@ export default function Discover() {
   usePageTitle("Discover");
   const navigate = useNavigate();
   const { suggestions } = useSuggestionsDB(["active"]);
+  // Ensure games are loaded so the best-edge scan has data
+  useSportsOdds([]);
   const { result, loading, findBestBet, availability, scannedSoFar } = useBestBet();
   const fullGames = useAppStore((s) => s.fullGames);
   const lastBestBet = useAppStore((s) => s.lastBestBet);
