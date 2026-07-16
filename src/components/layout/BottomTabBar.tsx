@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { NavLink, useNavigate, useLocation } from "react-router-dom";
 import {
-  House, Trophy, TrendingUp, LayoutGrid, Zap,
+  House, Trophy, TrendingUp, LayoutGrid, Zap, Search, BarChart2 as BarChart2Icon, User as UserIcon,
   Users, Clock, ArrowLeftRight, Settings as SettingsIcon, ChevronRight, BarChart2, Shield, Star,
 } from "lucide-react";
 import BottomSheet from "@/components/ui/BottomSheet";
@@ -17,9 +17,9 @@ function HorseEmojiIcon({ className }: { className?: string }) {
 
 const MORE_ITEMS = [
   { to: "/suggestions", label: "Signals", icon: Zap },
-  { to: "/tracker", label: "Bet Tracker", icon: BarChart2 },
   { to: "/wallets", label: "Wallets", icon: Users },
   { to: "/markets", label: "Markets", icon: TrendingUp },
+  { to: "/horse-racing", label: "Racing", icon: HorseEmojiIcon },
   { to: "/cross-market", label: "Cross-Market", icon: ArrowLeftRight },
   { to: "/history", label: "History", icon: Clock },
   { to: "/settings", label: "Settings", icon: SettingsIcon },
@@ -50,9 +50,11 @@ export default function BottomTabBar() {
   const isMoreActive = moreItems.some((i) => pathname.startsWith(i.to));
 
   const tabs = [
-    { to: "/", label: "Home", icon: House, end: true, badge: 0 },
+    { to: "/", label: "Discover", icon: House, end: true, badge: 0 },
+    { to: "/search", label: "Search", icon: Search, end: false, badge: 0 },
     { to: "/sports", label: "Sports", icon: Trophy, end: false, badge: strongMispricings, badgeColor: "success" as const },
-    { to: "/horse-racing", label: "Racing", icon: HorseEmojiIcon, end: false, badge: 0, isNew: true },
+    { to: "/tracker", label: "Tracker", icon: BarChart2Icon, end: false, badge: 0 },
+    { to: "/settings", label: "Profile", icon: UserIcon, end: false, badge: 0 },
   ];
 
   return (
