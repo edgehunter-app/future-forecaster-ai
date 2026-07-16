@@ -4,16 +4,22 @@ import { useSubscription } from "@/hooks/useSubscription";
 
 export default function TrialBanner() {
   const nav = useNavigate();
-  const { isTrialActive, trialDaysRemaining } = useSubscription();
+  const { isTrialActive, trialDaysRemaining, trialEndsAt, stripeSubscriptionId, openBillingPortal } =
+    useSubscription();
   if (!isTrialActive) return null;
 
   const urgent = trialDaysRemaining <= 1;
   const label = urgent
     ? "Trial ends tomorrow"
-    : `Pro Trial — ${trialDaysRemaining} day${trialDaysRemaining === 1 ? "" : "s"} remaining`;
-  const sub = urgent
-    ? "Upgrade now to keep your access"
-    : "Upgrade to keep full access";
+    : `Free Trial — ${trialDaysRemaining} day${trialDaysRemaining === 1 ? "" : "s"} remaining`;
+  const chargeDate = trialEndsAt
+    ? new Date(trialEndsAt).toLocaleDateString(undefined, { month: "short", day: "numeric" })
+    : null;
+  const sub = stripeSubscriptionId && chargeDate
+    ? `Your card will be charged ${chargeDate} unless you cancel`
+    : urgent
+      ? "Upgrade now to keep your access"
+      : "Upgrade to keep full access";
 
   return (
     <div
@@ -38,14 +44,17 @@ export default function TrialBanner() {
         </div>
       </div>
       <button
-        onClick={() => nav("/upgrade")}
+        onClick={() => {
+          if (stripeSubscriptionId) void openBillingPortal();
+          else nav("/upgrade");
+        }}
         className={
           urgent
             ? "shrink-0 rounded-md bg-amber-500 px-3 py-1.5 text-[11px] font-bold text-black hover:bg-amber-400 transition-colors"
             : "shrink-0 rounded-md bg-white/95 px-3 py-1.5 text-[11px] font-bold text-blue-700 hover:bg-white transition-colors"
         }
       >
-        Upgrade — $19/mo
+        {stripeSubscriptionId ? "Manage" : "Upgrade — $19/mo"}
       </button>
     </div>
   );
