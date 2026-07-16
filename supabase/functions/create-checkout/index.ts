@@ -73,10 +73,17 @@ Deno.serve(async (req) => {
       payment_method_types: ["card"],
       line_items: [{ price: priceId, quantity: 1 }],
       mode: "subscription",
+      payment_method_collection: "always",
+      subscription_data: {
+        trial_period_days: 5,
+        trial_settings: {
+          end_behavior: { missing_payment_method: "cancel" },
+        },
+        metadata: { user_id: user.id, tier },
+      },
       success_url: `${APP_URL}/settings?upgraded=true&tier=${tier}`,
       cancel_url: `${APP_URL}/settings?cancelled=true`,
       metadata: { user_id: user.id, tier },
-      subscription_data: { metadata: { user_id: user.id, tier } },
     });
 
     return new Response(JSON.stringify({ url: session.url }), {
