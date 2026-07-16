@@ -1117,7 +1117,7 @@ Deno.serve(async (req) => {
     console.log(`[merge] sportsbook=${games.length} oddsApi=${oddsApiResult?.games?.length ?? 0} total=${rawMerged.length}`);
 
     // Debug: surface every World Cup game across sources before dedup so we
-    // can see why duplicates slip through team-name mismatch.
+    // can see exact source team-name formats and normalized values.
     try {
       const wcBefore = rawMerged.filter((g: any) => {
         const sk = String(g?.sport_key ?? "").toLowerCase();
@@ -1145,7 +1145,29 @@ Deno.serve(async (req) => {
         .trim();
     const dayKey = (t: any) => {
       const d = new Date(t);
-      return isNaN(d.getTime()) ? "" : d.toDateString();
+      return isNaN(d.getTime()) ? "" : d.toISOString().split("T")[0];
+    };
+    const isWorldCupGame = (g: any) => {
+      const sk = String(g?.sport_key ?? "").toLowerCase();
+      const st = String(g?.sport_title ?? "").toLowerCase();
+      const league = String(g?.league ?? "").toLowerCase();
+      return sk.includes("world_cup") || st.includes("world cup") || st.includes("fifa") || league.includes("world") || league === "fifa_wc";
+    };
+    const leagueKey = (g: any) => String(g?.league ?? g?.sport_title ?? g?.sport_key ?? "").toLowerCase();
+    const sameLeague = (a: any, b: any) => {
+      const aLeague = leagueKey(a);
+      const bLeague = leagueKey(b);
+      return aLeague === bLeague
+        || (aLeague.includes("world") && bLeague.includes("world"))
+        || (aLeague === "fifa_wc" && bLeague.includes("world"))
+        || (aLeague.includes("world") && bLeague === "fifa_wc")
+        || (isWorldCupGame(a) && isWorldCupGame(b));
+    };
+    const timeDiffMs = (a: any, b: any) => {
+      const aTime = new Date(a?.commence_time ?? a?.commenceTime).getTime();
+      const bTime = new Date(b?.commence_time ?? b?.commenceTime).getTime();
+      if (isNaN(aTime) || isNaN(bTime)) return Number.POSITIVE_INFINITY;
+      return Math.abs(aTime - bTime);
     };
     const teamsMatch = (a: string, b: string) => {
       if (!a || !b) return false;
@@ -1155,6 +1177,20 @@ Deno.serve(async (req) => {
       const [short, long] = a.length <= b.length ? [a, b] : [b, a];
       return short.length >= 4 && long.includes(short);
     };
+    try {
+      const allWcGames = rawMerged.filter(isWorldCupGame).map((g: any) => ({
+        home: g.home_team ?? g.homeTeam,
+        away: g.away_team ?? g.awayTeam,
+        homeNorm: norm(g.home_team ?? g.homeTeam),
+        awayNorm: norm(g.away_team ?? g.awayTeam),
+        commenceTime: g.commence_time ?? g.commenceTime,
+        date: new Date(g.commence_time ?? g.commenceTime).toISOString().split("T")[0],
+        source: g.source,
+        league: g.league ?? g.sport_title ?? g.sport_key,
+        books: g.bookmakers?.length ?? 0,
+      }));
+      console.log("[dedup] all WC games:", JSON.stringify(allWcGames));
+    } catch (_e) { /* ignore */ }
     const mergedGames = rawMerged.reduce((acc: any[], game: any) => {
       const gHome = norm(game?.home_team);
       const gAway = norm(game?.away_team);
@@ -1167,7 +1203,38 @@ Deno.serve(async (req) => {
         // Match either orientation — sources sometimes swap home/away.
         const straight = teamsMatch(eHome, gHome) && teamsMatch(eAway, gAway);
         const swapped  = teamsMatch(eHome, gAway) && teamsMatch(eAway, gHome);
-        return straight || swapped;
+        if (straight || swapped) return true;
+
+        // Fallback: same World Cup league + near-identical kickoff across two
+        // providers. This catches source naming variants that normalization
+        // misses while avoiding cross-game merges from the same provider.
+        const proximityDuplicate = sameLeague(existing, game)
+          && existing?.source !== game?.source
+          && timeDiffMs(existing, game) < 7_200_000;
+        if (proximityDuplicate) {
+          console.log("[dedup] WC proximity match:", JSON.stringify({
+            existing: {
+              home: existing?.home_team,
+              away: existing?.away_team,
+              homeNorm: eHome,
+              awayNorm: eAway,
+              commenceTime: existing?.commence_time,
+              source: existing?.source,
+              books: existing?.bookmakers?.length ?? 0,
+            },
+            incoming: {
+              home: game?.home_team,
+              away: game?.away_team,
+              homeNorm: gHome,
+              awayNorm: gAway,
+              commenceTime: game?.commence_time,
+              source: game?.source,
+              books: game?.bookmakers?.length ?? 0,
+            },
+            timeDiffMs: timeDiffMs(existing, game),
+          }));
+        }
+        return proximityDuplicate;
       });
       if (idx === -1) {
         acc.push(game);
