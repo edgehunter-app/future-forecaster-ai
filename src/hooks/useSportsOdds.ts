@@ -72,6 +72,39 @@ function isTennisGame(game: FullGame): boolean {
     || league.includes("wimbledon") || league.includes("open");
 }
 
+// Safety-net client-side dedup. Matches the edge-function logic: same
+// normalized team names on the same ISO date collapse to one entry.
+function normTeam(name: string): string {
+  return (name ?? "").toLowerCase().replace(/[^a-z]/g, "");
+}
+function gameDateKey(iso: string): string {
+  try {
+    return new Date(iso).toISOString().slice(0, 10);
+  } catch {
+    return iso ?? "";
+  }
+}
+function dedupeGames(games: FullGame[]): FullGame[] {
+  const seen = new Map<string, FullGame>();
+  for (const g of games) {
+    const home = normTeam(g.homeTeam);
+    const away = normTeam(g.awayTeam);
+    const date = gameDateKey(g.commenceTime);
+    const pair = [home, away].sort().join("_");
+    const key = `${g.sport ?? ""}|${pair}|${date}`;
+    const existing = seen.get(key);
+    if (!existing) {
+      seen.set(key, g);
+      continue;
+    }
+    // Prefer the entry with more bookmakers / richer odds data.
+    const existingBooks = existing.bookmakers?.length ?? 0;
+    const candidateBooks = g.bookmakers?.length ?? 0;
+    if (candidateBooks > existingBooks) seen.set(key, g);
+  }
+  return Array.from(seen.values());
+}
+
 export function useSportsOdds(polymarkets: Market[]) {
   const settings = useAppStore((s) => s.settings);
   const threshold = settings.sportsGapThreshold ?? 0.02;
