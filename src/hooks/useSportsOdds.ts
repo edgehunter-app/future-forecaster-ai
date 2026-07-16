@@ -345,10 +345,15 @@ export function useSportsOdds(polymarkets: Market[]) {
         if (isWC) console.log("[WC] after filter:", gotForSport.length);
         if (gotForSport.length || force) {
           const current = useAppStore.getState().fullGames ?? [];
-          const base = sportKey === "golf" || force
-            ? current.filter((game) => sportKey === "golf" ? !isGolfGame(game) : game.sport !== sportKey)
-            : current;
-          const merged = [...base, ...gotForSport];
+          // Always drop any existing games for this sport before merging in
+          // the freshly fetched set — otherwise re-loading a tab appends
+          // duplicates on top of what the initial scan already stored.
+          const base = current.filter((game) => {
+            if (sportKey === "golf") return !isGolfGame(game);
+            if (sportKey === "soccer_fifa_world_cup") return !isWorldCupGame(game);
+            return game.sport !== sportKey;
+          });
+          const merged = dedupeGames([...base, ...gotForSport]);
           setFullGames(sortGamesForDisplay(merged));
         }
         setLoadedSports((prev) => {
