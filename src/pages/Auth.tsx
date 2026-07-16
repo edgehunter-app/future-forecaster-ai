@@ -164,8 +164,8 @@ export default function Auth() {
                       : "bg-gradient-to-r from-blue-600/70 to-purple-600/70 text-white opacity-80 hover:opacity-100",
                   )}
                 >
-                  <div className="leading-tight">Create Account</div>
-                  <div className="text-[10px] font-medium opacity-90">Start free — 5-day Pro trial</div>
+                  <div className="leading-tight">Start Free Trial</div>
+                  <div className="text-[10px] font-medium opacity-90">5 days free · card required</div>
                 </button>
                 <button
                   onClick={() => setMode("signin")}
@@ -185,15 +185,23 @@ export default function Auth() {
                 <form onSubmit={submitSignup} className="space-y-3">
                   <div className="rounded-lg border border-blue-500/30 bg-gradient-to-br from-blue-600/10 via-indigo-600/10 to-purple-600/10 p-3">
                     <div className="text-[11px] font-bold uppercase tracking-wide text-blue-300">
-                      ⚡ Start Free — 5-day Pro trial
+                      ⚡ Start your 5-day free trial
                     </div>
+                    <p className="mt-1 text-[12px] text-foreground">
+                      Enter your card — you won't be charged for 5 days.
+                    </p>
                     <ul className="mt-2 space-y-1 text-[12px] text-foreground">
                       <li>✓ 5 days of full Pro access</li>
                       <li>✓ Unlimited AI analysis</li>
                       <li>✓ Best Bet Today</li>
                       <li>✓ Full book comparison</li>
-                      <li>✓ No credit card needed</li>
                     </ul>
+                    <p className="mt-2 text-[11px] text-muted-foreground">
+                      Cancel anytime · No commitment
+                    </p>
+                    <p className="mt-1 text-[11px] text-muted-foreground">
+                      Card is entered after account creation on the Upgrade page.
+                    </p>
                   </div>
                   <div>
                     <label className={labelCls}>Email</label>
