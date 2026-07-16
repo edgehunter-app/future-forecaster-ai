@@ -43,9 +43,7 @@ export default function BottomSheet({
         role="dialog"
         aria-modal="true"
       >
-        <div className="flex justify-center pt-2">
-          <span className="h-1 w-10 rounded-full bg-muted-foreground/40" />
-        </div>
+        <span className="mx-auto mt-3 mb-4 h-1 w-10 rounded-full bg-white/20" aria-hidden />
         <div className="flex items-center justify-between px-4 pt-2 pb-3 border-b border-border">
           <h3 className="text-sm font-semibold text-foreground">{title}</h3>
           <button

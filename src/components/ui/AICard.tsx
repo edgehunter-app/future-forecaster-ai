@@ -12,14 +12,20 @@ export default function AICard({
 }: {
   children: ReactNode;
   className?: string;
-  tone?: "purple" | "danger";
+  tone?: "purple" | "danger" | "success" | "warning" | "info";
 }) {
+  const border =
+    tone === "success" ? "border-l-green-500"
+    : tone === "warning" ? "border-l-amber-500"
+    : tone === "info" ? "border-l-blue-500"
+    : tone === "danger" ? "border-l-destructive"
+    : "border-l-purple-500";
   return (
     <div
       className={cn(
         "rounded-2xl border border-white/5 bg-card p-5 sm:p-6 shadow-sm",
         "border-l-2",
-        tone === "purple" ? "border-l-purple" : "border-l-destructive",
+        border,
         className,
       )}
     >
