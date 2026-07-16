@@ -1,15 +1,16 @@
 import { useNavigate } from "react-router-dom";
 import type { Suggestion } from "@/types";
 import { cn } from "@/lib/utils";
+import { ChevronRight } from "lucide-react";
+import { sportEmoji } from "@/lib/sportEmoji";
 
 interface Props {
   suggestions: Suggestion[];
 }
 
 function edgeTone(edgePct: number) {
-  if (edgePct >= 5) return "text-success";
-  if (edgePct >= 2) return "text-warning";
-  return "text-muted-foreground";
+  if (edgePct >= 3) return "text-success font-bold";
+  return "text-warning";
 }
 
 function verdictBucket(confidence: number, edgePct: number): "go" | "caution" | "skip" {
@@ -20,7 +21,10 @@ function verdictBucket(confidence: number, edgePct: number): "go" | "caution" | 
 
 export default function TodaySignalsList({ suggestions }: Props) {
   const navigate = useNavigate();
-  const sorted = [...suggestions].sort((a, b) => (b.edge ?? 0) - (a.edge ?? 0)).slice(0, 8);
+  const sorted = [...suggestions]
+    .filter((s) => (s.edge ?? 0) * 100 >= 1) // Hide sub-1% edges from home screen
+    .sort((a, b) => (b.edge ?? 0) - (a.edge ?? 0))
+    .slice(0, 8);
 
   if (sorted.length === 0) {
     return (
@@ -40,6 +44,7 @@ export default function TodaySignalsList({ suggestions }: Props) {
         const emoji = v === "go" ? "✅" : v === "caution" ? "⚠️" : "⛔";
         const emojiBg =
           v === "go" ? "bg-success/15" : v === "caution" ? "bg-warning/15" : "bg-destructive/15";
+        const sEmoji = sportEmoji(s.category);
         return (
           <button
             key={s.id}
@@ -56,7 +61,7 @@ export default function TodaySignalsList({ suggestions }: Props) {
             </div>
             <div className="flex-1 min-w-0">
               <div className="text-[13px] font-semibold text-foreground truncate">
-                {s.question}
+                <span className="mr-1" aria-hidden>{sEmoji}</span>{s.question}
               </div>
               <div className="text-[11px] text-muted-foreground truncate">
                 {s.category ?? "Signal"} · {s.direction}
@@ -72,6 +77,7 @@ export default function TodaySignalsList({ suggestions }: Props) {
                 </span>
               )}
             </div>
+            <ChevronRight className="h-4 w-4 text-muted-foreground shrink-0" aria-hidden />
           </button>
         );
       })}
