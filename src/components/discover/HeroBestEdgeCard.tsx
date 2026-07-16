@@ -122,6 +122,9 @@ export default function HeroBestEdgeCard({
     result.wallet?.confidence ??
     0;
 
+  const gameCount = scannedLines || result.scannedCount;
+  const gameNoun = gameCount === 1 ? "game" : "games";
+
   return (
     <div
       className="rounded-2xl border border-white/5 bg-gradient-hero p-6 sm:p-7 shadow-hero-glow cursor-pointer transition hover:border-info/30"
@@ -194,7 +197,7 @@ export default function HeroBestEdgeCard({
             <Loader2 className="h-3 w-3 animate-spin" /> Scanning…
           </span>
         ) : (
-          `Scanned ${scannedLines || result.scannedCount} lines across ${bookCount} books`
+          `Scanned ${gameCount} ${gameNoun} across ${bookCount} books`
         )}
       </div>
     </div>
