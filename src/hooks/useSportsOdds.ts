@@ -206,6 +206,28 @@ export function useSportsOdds(polymarkets: Market[]) {
     }
   }, [clearGolfCache]);
 
+  // Global sports cache invalidation. Bump SPORTS_CACHE_VERSION to purge
+  // every eh_* localStorage key and force a fresh scan on next mount.
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    try {
+      const current = window.localStorage.getItem(SPORTS_CACHE_VERSION_KEY);
+      if (current === SPORTS_CACHE_VERSION) return;
+      Object.keys(window.localStorage)
+        .filter((k) => k.startsWith("eh_"))
+        .forEach((k) => window.localStorage.removeItem(k));
+      window.localStorage.setItem(SPORTS_CACHE_VERSION_KEY, SPORTS_CACHE_VERSION);
+      // Wipe any in-memory games so stale WC entries can't linger.
+      setFullGames([]);
+      setSportsLastScanned(null as unknown as Date);
+      console.log("[cache] version bumped to", SPORTS_CACHE_VERSION, "— all eh_ cache cleared, forcing fresh scan");
+      void scan("cache-version-bump");
+    } catch (err) {
+      console.warn("Failed to invalidate sports cache", err);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   const scan = useCallback(async (trigger: string = "manual") => {
     if (fetchingRef.current) return;
     console.log("Sports scan starting...", {
