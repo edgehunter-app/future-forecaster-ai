@@ -197,7 +197,7 @@ export default function HeroBestEdgeCard({
             <Loader2 className="h-3 w-3 animate-spin" /> Scanning…
           </span>
         ) : (
-          `Scanned ${scannedLines || result.scannedCount} lines across ${bookCount} books`
+          `Scanned ${gameCount} ${gameNoun} across ${bookCount} books`
         )}
       </div>
     </div>
