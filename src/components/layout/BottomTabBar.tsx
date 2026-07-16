@@ -2,7 +2,7 @@ import { useState } from "react";
 import { NavLink, useNavigate, useLocation } from "react-router-dom";
 import {
   House, Trophy, TrendingUp, LayoutGrid, Zap, Search, BarChart2 as BarChart2Icon, User as UserIcon,
-  Users, Clock, ArrowLeftRight, Settings as SettingsIcon, ChevronRight, BarChart2, Shield, Star,
+  Users, Clock, ArrowLeftRight, Settings as SettingsIcon, ChevronRight, BarChart2, Shield, Star, Smartphone,
 } from "lucide-react";
 import BottomSheet from "@/components/ui/BottomSheet";
 import { useAppStore } from "@/store/useAppStore";
@@ -22,6 +22,7 @@ const MORE_ITEMS = [
   { to: "/horse-racing", label: "Racing", icon: HorseEmojiIcon },
   { to: "/cross-market", label: "Cross-Market", icon: ArrowLeftRight },
   { to: "/history", label: "History", icon: Clock },
+  { to: "/install", label: "Get the App", icon: Smartphone },
   { to: "/settings", label: "Settings", icon: SettingsIcon },
 ] as const;
 
