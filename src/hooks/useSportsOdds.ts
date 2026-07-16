@@ -24,6 +24,8 @@ import { getDailyCount, DAILY_CAP } from "@/lib/oddsDailyCap";
 const DEFAULT_SPORT = "americanfootball_nfl";
 const GOLF_CACHE_VERSION_KEY = "eh.sportsOddsCacheVersion";
 const GOLF_CACHE_VERSION = "wc-7day-filter-v2";
+const SPORTS_CACHE_VERSION_KEY = "eh_cache_version";
+const SPORTS_CACHE_VERSION = "v4";
 const GOLF_CACHE_KEYS = [
   "golf",
   "golf_pga_tour",
