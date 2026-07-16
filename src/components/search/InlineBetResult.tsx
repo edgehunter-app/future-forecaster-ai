@@ -1,3 +1,4 @@
+import React from "react";
 import { Loader2 } from "lucide-react";
 import type { FullGame } from "@/lib/oddsApi";
 import type { GameAnalysisResult } from "@/types";
