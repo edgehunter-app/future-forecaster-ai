@@ -1,29 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
-import { Link, useNavigate } from "react-router-dom";
-import { Lightbulb, Wallet as WalletIcon, BarChart2, TrendingUp, Zap, LineChart, Star, GitCompare, ArrowRight, Loader2, Brain, ShieldAlert, Trophy, RotateCw, ChevronDown, ChevronUp } from "lucide-react";
-import StatCard from "@/components/ui/StatCard";
-import SuggestionCard from "@/components/suggestions/SuggestionCard";
-import SafetyBanner from "@/components/ui/SafetyBanner";
-import ConfidenceBar from "@/components/ui/ConfidenceBar";
-import { useAppStore } from "@/store/useAppStore";
-import EmptyState from "@/components/ui/EmptyState";
-import { useMarkets } from "@/hooks/useMarkets";
-import { useWallets } from "@/hooks/useWallets";
-import { MOCK_MARKETS } from "@/data/mockData";
-import { fmtUSD, cn } from "@/lib/utils";
-import { useCrossMarket } from "@/hooks/useCrossMarket";
-import GamblingDisclaimer from "@/components/sports/GamblingDisclaimer";
-import { getConfidenceColor, getConfidenceTier } from "@/lib/confidenceColor";
-import { useSuggestionsDB } from "@/hooks/useSuggestionsDB";
-import { useTrackedWallets } from "@/hooks/useTrackedWallets";
-import { useHistory } from "@/hooks/useHistory";
-import { analyzeMarketWithClaude } from "@/lib/claude";
-import type { ClaudeAnalysis, Market } from "@/types";
-import { KNOWN_TOP_WALLETS } from "@/data/knownTopWallets";
-import { usePageTitle } from "@/hooks/usePageTitle";
-import { useIsAdmin } from "@/hooks/useIsAdmin";
-import { cleanMarketTitle } from "@/lib/cleanMarketTitle";
-import { useLineMonitor } from "@/hooks/useLineMonitor";
+export { default } from "./Discover";
 
 function LineAlertsBanner() {
   const { alerts } = useLineMonitor();
