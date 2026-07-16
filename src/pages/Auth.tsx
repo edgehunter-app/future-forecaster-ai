@@ -36,6 +36,59 @@ export default function Auth() {
     if (q === "signup" || q === "signin") setMode(q);
   }, [params]);
 
+  useEffect(() => {
+    try {
+      console.log(
+        "[auth] on mount, pending:",
+        localStorage.getItem("pending_upgrade_price"),
+        localStorage.getItem("pending_upgrade_tier"),
+        "redirect param:",
+        new URLSearchParams(window.location.search).get("redirect"),
+      );
+    } catch {
+      // ignore
+    }
+
+    const { data: sub } = supabase.auth.onAuthStateChange(async (event, session) => {
+      if (event !== "SIGNED_IN" || !session) return;
+      let pendingPrice: string | null = null;
+      let pendingTier: string | null = null;
+      try {
+        pendingPrice = localStorage.getItem("pending_upgrade_price");
+        pendingTier = localStorage.getItem("pending_upgrade_tier");
+      } catch {
+        // ignore
+      }
+      console.log("[auth] signed in, pending upgrade:", pendingPrice, pendingTier);
+
+      if (pendingPrice && pendingTier) {
+        try {
+          localStorage.removeItem("pending_upgrade_price");
+          localStorage.removeItem("pending_upgrade_tier");
+        } catch {
+          // ignore
+        }
+        await new Promise((r) => setTimeout(r, 800));
+        try {
+          const { data, error } = await supabase.functions.invoke("create-checkout", {
+            body: { priceId: pendingPrice, tier: pendingTier },
+          });
+          console.log("[auth] checkout url:", data?.url, "error:", error);
+          if (data?.url) {
+            window.location.href = data.url;
+            return;
+          }
+          showToast("Could not start checkout. Redirecting…", "error");
+        } catch (err) {
+          console.error("[auth] checkout invoke failed", err);
+          showToast("Could not start checkout.", "error");
+        }
+      }
+    });
+
+    return () => sub.subscription.unsubscribe();
+  }, []);
+
   const tryDemo = async () => {
     setDemoLoading(true);
     try {
@@ -72,6 +125,11 @@ export default function Auth() {
         options: { emailRedirectTo: `${window.location.origin}/` },
       });
       if (error) throw error;
+      console.log(
+        "[auth] signup complete, pending:",
+        localStorage.getItem("pending_upgrade_price"),
+        localStorage.getItem("pending_upgrade_tier"),
+      );
       setSignupSuccess(true);
     } catch (err: any) {
       showToast(err?.message ?? "Auth error", "error");
