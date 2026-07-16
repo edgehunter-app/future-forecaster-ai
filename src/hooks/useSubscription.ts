@@ -29,13 +29,14 @@ export function useSubscription() {
       return;
     }
     setLoading(true);
-    const { data } = await supabase
+    const { data, error } = await supabase
       .from("profiles")
       .select(
         "subscription_tier, subscription_status, stripe_subscription_id, is_beta_tester, is_trial, trial_started_at, trial_ends_at, is_demo",
       )
       .eq("id", user.id)
       .maybeSingle();
+    console.log("[subscription] profile data:", data, "error:", error);
     const t = (data?.subscription_tier as Tier) ?? "free";
     const s = data?.subscription_status ?? "inactive";
 
@@ -94,6 +95,12 @@ export function useSubscription() {
   useEffect(() => {
     void refresh();
   }, [refresh]);
+
+  useEffect(() => {
+    if (!loading) {
+      console.log("[subscription] loaded:", { tier, isTrialActive, isBeta, status });
+    }
+  }, [loading, tier, isTrialActive, isBeta, status]);
 
   const isPro = tier === "pro" || tier === "elite" || isTrialActive;
   const isElite = tier === "elite";

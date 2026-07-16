@@ -41,6 +41,16 @@ export default function Upgrade() {
   const [busy, setBusy] = useState<Tier | null>(null);
 
   const start = async (priceId: string, name: Tier) => {
+    console.log("[upgrade] button clicked", {
+      priceId,
+      name,
+      hasUser: !!user,
+      tier,
+      isBeta,
+      isTrialActive,
+      loading,
+      busy,
+    });
     if (isBeta) {
       showToast("You already have complimentary Elite access.", "info");
       return;
