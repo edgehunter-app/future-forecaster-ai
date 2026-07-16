@@ -1,8 +1,10 @@
+import React from "react";
 import { Loader2 } from "lucide-react";
 import type { FullGame } from "@/lib/oddsApi";
 import type { GameAnalysisResult } from "@/types";
 import AICard from "@/components/ui/AICard";
 import { cn } from "@/lib/utils";
+import { sportEmoji } from "@/lib/sportEmoji";
 
 interface Props {
   game: FullGame;
@@ -24,18 +26,21 @@ export default function InlineBetResult({ game, analysis, analyzing, error, onAn
     hour: "numeric",
     minute: "2-digit",
   });
+  const emoji = sportEmoji(game.league ?? game.sport);
 
   return (
     <div className="rounded-2xl border border-white/5 bg-card p-5 sm:p-6 space-y-4">
       {/* Match header */}
       <div>
         <div className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
-          {game.league} · {startLabel}
+          {emoji} {game.league} · {startLabel}
         </div>
         <h3 className="mt-1 text-[18px] font-extrabold text-foreground">
           {game.awayTeam} @ {game.homeTeam}
         </h3>
       </div>
+
+      {analysis && <VerdictBanner analysis={analysis} />}
 
       {/* Odds row */}
       <div className="grid grid-cols-2 gap-3">
@@ -43,11 +48,16 @@ export default function InlineBetResult({ game, analysis, analyzing, error, onAn
         <OddsCell team={game.homeTeam} odds={game.moneyline?.bestHomeOdds ?? game.moneyline?.home} book={game.moneyline?.bestHomeBook} />
       </div>
 
+      {/* Book comparison table */}
+      {game.bookmakers?.length > 0 && (
+        <BookComparisonTable game={game} />
+      )}
+
       {/* Analysis */}
       {!analysis && !analyzing && !error && (
         <button
           onClick={onAnalyze}
-          className="w-full rounded-xl bg-gradient-cta text-white text-sm font-bold py-3 shadow-glow-blue hover:opacity-95 transition"
+          className="shimmer-once w-full rounded-xl bg-gradient-cta text-white text-sm font-bold py-3 shadow-glow-blue hover:opacity-95 transition active:scale-[0.97] duration-100"
         >
           Analyze with Claude
         </button>
@@ -67,7 +77,7 @@ export default function InlineBetResult({ game, analysis, analyzing, error, onAn
 
       {analysis && (
         <div className="space-y-3">
-          <AICard>
+          <AICard tone="success">
             <div className="flex items-center justify-between mb-2">
               <h4 className="text-[11px] font-bold uppercase tracking-wide">Why it has value</h4>
               <span className={cn(
@@ -79,26 +89,29 @@ export default function InlineBetResult({ game, analysis, analyzing, error, onAn
                 {analysis.edge > 0 ? "+" : ""}{(analysis.edge * 100).toFixed(1)}% EDGE
               </span>
             </div>
-            <p className="text-[13px] text-foreground/90 leading-relaxed">{analysis.reasoning}</p>
+            <ExpandableText text={analysis.reasoning} />
           </AICard>
 
-          <AICard tone="danger">
+          <AICard tone="warning">
             <h4 className="text-[11px] font-bold uppercase tracking-wide mb-2">What could go wrong</h4>
-            {analysis.warningFlags?.length > 0 ? (
-              <ul className="space-y-1.5">
-                {analysis.warningFlags.map((w, i) => (
-                  <li key={i} className="flex gap-2 text-[13px] text-foreground/85">
-                    <span className="text-destructive mt-0.5">•</span>
-                    <span>{w}</span>
-                  </li>
-                ))}
-              </ul>
-            ) : (
-              <p className="text-[13px] text-foreground/80">Risk level: {analysis.riskLevel}.</p>
-            )}
+            <div className="rounded-lg border border-red-900/50 bg-red-950/40 p-3">
+              <div className="text-[10px] font-bold uppercase tracking-wide text-red-300/80 mb-1.5">Devil's Advocate</div>
+              {analysis.warningFlags?.length > 0 ? (
+                <ul className="space-y-1.5">
+                  {analysis.warningFlags.map((w, i) => (
+                    <li key={i} className="flex gap-2 text-[13px] text-foreground/85">
+                      <span className="text-destructive mt-0.5">•</span>
+                      <span>{w}</span>
+                    </li>
+                  ))}
+                </ul>
+              ) : (
+                <p className="text-[13px] text-foreground/80">Risk level: {analysis.riskLevel}.</p>
+              )}
+            </div>
           </AICard>
 
-          <AICard>
+          <AICard tone="info">
             <div className="flex items-center justify-between mb-1">
               <h4 className="text-[11px] font-bold uppercase tracking-wide">Verdict</h4>
               <span className={cn(
@@ -122,7 +135,7 @@ export default function InlineBetResult({ game, analysis, analyzing, error, onAn
             </p>
           </AICard>
 
-          <AICard>
+          <AICard tone="purple">
             <h4 className="text-[11px] font-bold uppercase tracking-wide mb-3">Supporting data</h4>
             <div className="grid grid-cols-3 gap-3">
               <Metric label="Confidence" value={`${analysis.confidence}%`} />
@@ -140,6 +153,104 @@ export default function InlineBetResult({ game, analysis, analyzing, error, onAn
             )}
           </AICard>
         </div>
+      )}
+    </div>
+  );
+}
+
+function verdictOf(a: GameAnalysisResult): "good" | "caution" | "pass" {
+  const edgePct = a.edge * 100;
+  if (a.confidence >= 65 && edgePct >= 3) return "good";
+  if (a.confidence >= 50) return "caution";
+  return "pass";
+}
+
+function VerdictBanner({ analysis }: { analysis: GameAnalysisResult }) {
+  const v = verdictOf(analysis);
+  const cfg =
+    v === "good"
+      ? { bg: "rgba(16,185,129,0.08)", border: "rgba(16,185,129,0.2)", accent: "#10b981", icon: "✅", word: "Good line" }
+      : v === "caution"
+        ? { bg: "rgba(245,158,11,0.08)", border: "rgba(245,158,11,0.2)", accent: "#f59e0b", icon: "⚠️", word: "Caution" }
+        : { bg: "rgba(239,68,68,0.06)", border: "rgba(239,68,68,0.15)", accent: "#ef4444", icon: "❌", word: "Pass" };
+  return (
+    <div
+      className="rounded-xl border p-4 flex items-center gap-3"
+      style={{
+        background: cfg.bg,
+        borderColor: cfg.border,
+        borderLeft: `4px solid ${cfg.accent}`,
+      }}
+    >
+      <span className="text-[28px] leading-none" aria-hidden>{cfg.icon}</span>
+      <div className="min-w-0">
+        <div className="text-[18px] font-bold" style={{ color: cfg.accent }}>{cfg.word}</div>
+        <div className="text-[12px] text-muted-foreground">
+          {(analysis.edge * 100).toFixed(1)}% edge · {analysis.confidence}% confidence
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function BookComparisonTable({ game }: { game: FullGame }) {
+  const rows = game.bookmakers
+    .filter((b) => Number.isFinite(b.awayMoneyline) && Number.isFinite(b.homeMoneyline))
+    .slice(0, 6);
+  if (rows.length === 0) return null;
+  // Pick the "best" row by away odds (higher is better). Simple heuristic.
+  const bestAway = Math.max(...rows.map((r) => r.awayMoneyline));
+  return (
+    <div className="rounded-xl border border-white/5 bg-black/30 overflow-hidden">
+      <div className="grid grid-cols-[1fr_auto_auto] gap-3 px-3 py-2 text-[10px] uppercase font-semibold text-muted-foreground tracking-wide border-b border-white/5">
+        <span>Book</span>
+        <span className="text-right">Away</span>
+        <span className="text-right">Home</span>
+      </div>
+      {rows.map((r) => {
+        const isBest = r.awayMoneyline === bestAway;
+        const cents = bestAway - r.awayMoneyline;
+        const isWorst = !isBest && cents > 15;
+        return (
+          <div
+            key={r.key}
+            className={cn(
+              "grid grid-cols-[1fr_auto_auto] gap-3 px-3 py-2 text-[12px] items-center border-b border-white/5 last:border-b-0",
+              isBest && "border-l-2 border-green-500 bg-green-500/5",
+            )}
+          >
+            <span className="truncate text-foreground/90">{r.name}</span>
+            <span
+              className={cn(
+                "font-mono text-right tabular-nums",
+                isBest ? "text-green-400 font-bold" : isWorst ? "text-red-400/60" : "text-foreground",
+              )}
+            >
+              {fmtOdds(r.awayMoneyline)}
+            </span>
+            <span className="font-mono text-right tabular-nums text-foreground">{fmtOdds(r.homeMoneyline)}</span>
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
+function ExpandableText({ text }: { text: string }) {
+  const sentences = text.split(/(?<=[.!?])\s+/);
+  const short = sentences.slice(0, 2).join(" ");
+  const needsExpand = sentences.length > 2;
+  const [open, setOpen] = React.useState(false);
+  return (
+    <div className="text-[13px] text-foreground/90 leading-relaxed">
+      {open || !needsExpand ? text : short}
+      {needsExpand && (
+        <button
+          onClick={() => setOpen((o) => !o)}
+          className="ml-1 text-info hover:underline text-[12px] font-semibold"
+        >
+          {open ? "Show less" : "Read full analysis →"}
+        </button>
       )}
     </div>
   );

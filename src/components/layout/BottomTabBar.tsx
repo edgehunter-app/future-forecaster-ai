@@ -72,17 +72,23 @@ export default function BottomTabBar() {
                 end={tab.end}
                 className={({ isActive }) =>
                   cn(
-                    "relative flex h-full min-h-[44px] flex-col items-center justify-center gap-0.5 transition-colors active:scale-95",
+                    "relative flex h-full min-h-[44px] flex-col items-center justify-center gap-0.5 transition-colors active:scale-[0.97]",
                     isActive
-                      ? "text-info"
-                      : "text-muted-foreground hover:text-foreground",
+                      ? "text-blue-400"
+                      : "text-muted-foreground opacity-50 hover:opacity-100 hover:text-foreground",
                   )
                 }
               >
                 {({ isActive }) => (
                   <>
                     <div className="relative">
-                      <tab.icon className="h-5 w-5" strokeWidth={isActive ? 2.5 : 2} />
+                      <tab.icon
+                        className={cn(
+                          "h-5 w-5 transition-transform duration-150 ease-out",
+                          isActive && "scale-110",
+                        )}
+                        strokeWidth={isActive ? 2.5 : 2}
+                      />
                       {tab.badge > 0 && (
                         <span className={cn(
                           "absolute -right-1.5 -top-1 h-2 w-2 rounded-full",
