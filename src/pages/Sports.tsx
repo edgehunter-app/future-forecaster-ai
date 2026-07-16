@@ -199,9 +199,17 @@ export default function Sports() {
 
   const filteredGames = useMemo(() => {
     const list = fullGames ?? [];
-    if (!activeSport || activeSport === "all") return list;
+    const threeHoursAgo = Date.now() - 3 * 60 * 60 * 1000;
+    // Defensive: drop any game that started more than 3h ago. Outrights
+    // (golf) have no meaningful commenceTime — keep them.
+    const fresh = list.filter((g) => {
+      if (g.isOutright) return true;
+      const t = new Date(g.commenceTime).getTime();
+      return Number.isFinite(t) ? t >= threeHoursAgo : true;
+    });
+    if (!activeSport || activeSport === "all") return fresh;
     if (activeSport === "soccer_fifa_world_cup") {
-      return list.filter((g) => {
+      return fresh.filter((g) => {
         const s = (g.sport ?? "").toLowerCase();
         const l = (g.league ?? "").toLowerCase();
         const sRaw = g.sport ?? "";
@@ -215,20 +223,20 @@ export default function Sports() {
       });
     }
     if (activeSport === "golf") {
-      return list.filter((g) => {
+      return fresh.filter((g) => {
         const s = (g.sport ?? "").toLowerCase();
         const l = (g.league ?? "").toLowerCase();
         return s.startsWith("golf") || l.includes("golf");
       });
     }
     if (activeSport === "tennis") {
-      return list.filter((g) => {
+      return fresh.filter((g) => {
         const s = (g.sport ?? "").toLowerCase();
         return s.startsWith("tennis") || g.isTennis === true;
       });
     }
     const sportLabel = SPORTS.find((s) => s.key === activeSport)?.label.toLowerCase() ?? "";
-    return list.filter(
+    return fresh.filter(
       (g) =>
         g.sport === activeSport ||
         (sportLabel && g.league?.toLowerCase().includes(sportLabel)),

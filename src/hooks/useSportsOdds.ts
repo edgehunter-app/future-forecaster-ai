@@ -24,6 +24,8 @@ import { getDailyCount, DAILY_CAP } from "@/lib/oddsDailyCap";
 const DEFAULT_SPORT = "americanfootball_nfl";
 const GOLF_CACHE_VERSION_KEY = "eh.sportsOddsCacheVersion";
 const GOLF_CACHE_VERSION = "wc-7day-filter-v2";
+const SPORTS_CACHE_VERSION_KEY = "eh_cache_version";
+const SPORTS_CACHE_VERSION = "v4";
 const GOLF_CACHE_KEYS = [
   "golf",
   "golf_pga_tour",
@@ -203,6 +205,28 @@ export function useSportsOdds(polymarkets: Market[]) {
       console.warn("Failed to invalidate stale golf cache", err);
     }
   }, [clearGolfCache]);
+
+  // Global sports cache invalidation. Bump SPORTS_CACHE_VERSION to purge
+  // every eh_* localStorage key and force a fresh scan on next mount.
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    try {
+      const current = window.localStorage.getItem(SPORTS_CACHE_VERSION_KEY);
+      if (current === SPORTS_CACHE_VERSION) return;
+      Object.keys(window.localStorage)
+        .filter((k) => k.startsWith("eh_"))
+        .forEach((k) => window.localStorage.removeItem(k));
+      window.localStorage.setItem(SPORTS_CACHE_VERSION_KEY, SPORTS_CACHE_VERSION);
+      // Wipe any in-memory games so stale WC entries can't linger.
+      setFullGames([]);
+      setSportsLastScanned(null as unknown as Date);
+      console.log("[cache] version bumped to", SPORTS_CACHE_VERSION, "— all eh_ cache cleared, forcing fresh scan");
+      void scan("cache-version-bump");
+    } catch (err) {
+      console.warn("Failed to invalidate sports cache", err);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const scan = useCallback(async (trigger: string = "manual") => {
     if (fetchingRef.current) return;
