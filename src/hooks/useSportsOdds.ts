@@ -72,6 +72,39 @@ function isTennisGame(game: FullGame): boolean {
     || league.includes("wimbledon") || league.includes("open");
 }
 
+// Safety-net client-side dedup. Matches the edge-function logic: same
+// normalized team names on the same ISO date collapse to one entry.
+function normTeam(name: string): string {
+  return (name ?? "").toLowerCase().replace(/[^a-z]/g, "");
+}
+function gameDateKey(iso: string): string {
+  try {
+    return new Date(iso).toISOString().slice(0, 10);
+  } catch {
+    return iso ?? "";
+  }
+}
+function dedupeGames(games: FullGame[]): FullGame[] {
+  const seen = new Map<string, FullGame>();
+  for (const g of games) {
+    const home = normTeam(g.homeTeam);
+    const away = normTeam(g.awayTeam);
+    const date = gameDateKey(g.commenceTime);
+    const pair = [home, away].sort().join("_");
+    const key = `${g.sport ?? ""}|${pair}|${date}`;
+    const existing = seen.get(key);
+    if (!existing) {
+      seen.set(key, g);
+      continue;
+    }
+    // Prefer the entry with more bookmakers / richer odds data.
+    const existingBooks = existing.bookmakers?.length ?? 0;
+    const candidateBooks = g.bookmakers?.length ?? 0;
+    if (candidateBooks > existingBooks) seen.set(key, g);
+  }
+  return Array.from(seen.values());
+}
+
 export function useSportsOdds(polymarkets: Market[]) {
   const settings = useAppStore((s) => s.settings);
   const threshold = settings.sportsGapThreshold ?? 0.02;
@@ -290,8 +323,12 @@ export function useSportsOdds(polymarkets: Market[]) {
           game.mispricingGap = match.yesPrice - game.moneyline.homeImplied;
         }
       }
-      setFullGames(allFull);
-      console.log("[useSportsOdds] fullGames set to:", allFull.length);
+      const deduped = dedupeGames(allFull);
+      if (deduped.length !== allFull.length) {
+        console.log("[dedup] client-side collapsed", allFull.length - deduped.length, "duplicate game(s)");
+      }
+      setFullGames(deduped);
+      console.log("[useSportsOdds] fullGames set to:", deduped.length);
       setSportsLastScanned(new Date());
       setFromCache(false);
       setRemainingRequests(getRemainingRequests());
@@ -345,10 +382,15 @@ export function useSportsOdds(polymarkets: Market[]) {
         if (isWC) console.log("[WC] after filter:", gotForSport.length);
         if (gotForSport.length || force) {
           const current = useAppStore.getState().fullGames ?? [];
-          const base = sportKey === "golf" || force
-            ? current.filter((game) => sportKey === "golf" ? !isGolfGame(game) : game.sport !== sportKey)
-            : current;
-          const merged = [...base, ...gotForSport];
+          // Always drop any existing games for this sport before merging in
+          // the freshly fetched set — otherwise re-loading a tab appends
+          // duplicates on top of what the initial scan already stored.
+          const base = current.filter((game) => {
+            if (sportKey === "golf") return !isGolfGame(game);
+            if (sportKey === "soccer_fifa_world_cup") return !isWorldCupGame(game);
+            return game.sport !== sportKey;
+          });
+          const merged = dedupeGames([...base, ...gotForSport]);
           setFullGames(sortGamesForDisplay(merged));
         }
         setLoadedSports((prev) => {
