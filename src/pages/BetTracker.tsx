@@ -364,42 +364,69 @@ function ResolvedRow({ bet }: { bet: Bet }) {
   const isPush = bet.status === "push";
   const pl = Number(bet.profit_loss);
   const badgeClass = isWin
-    ? "bg-success/15 text-success border-success/30"
+    ? "bg-success/15 text-success border-success/40"
     : isLoss
-      ? "bg-destructive/15 text-destructive border-destructive/30"
+      ? "bg-destructive/15 text-destructive border-destructive/40"
       : "bg-muted text-muted-foreground border-border";
+  const accent = isWin
+    ? "border-l-2 border-l-green-500"
+    : isLoss
+      ? "border-l-2 border-l-red-500"
+      : "border-l-2 border-l-white/20";
+  const closingLine = (bet as any).closing_line as number | null | undefined;
+  const clvDelta =
+    typeof closingLine === "number" && Number.isFinite(closingLine)
+      ? impliedFromAmerican(bet.odds) - impliedFromAmerican(closingLine)
+      : null;
   return (
-    <div className="flex items-center justify-between gap-3 rounded-md border border-border bg-card px-3 py-2">
-      <div className="min-w-0">
-        <div className="flex items-center gap-2">
-          <span className="rounded-full border border-border bg-background/40 px-1.5 py-0.5 text-[9px] font-semibold uppercase text-muted-foreground">
-            {bet.sport}
-          </span>
-          <span className={cn("rounded-full border px-1.5 py-0.5 text-[9px] font-bold uppercase", badgeClass)}>
-            {bet.status}
-          </span>
-          <span className="text-[10px] text-muted-foreground">{bet.sportsbook}</span>
+    <div className={cn("rounded-lg border border-border bg-card px-4 py-3", accent)}>
+      <div className="flex items-start justify-between gap-3">
+        <div className="min-w-0">
+          <div className="flex items-center gap-2 flex-wrap">
+            <span className={cn("rounded-full border px-2 py-0.5 text-[10px] font-extrabold uppercase tracking-wide", badgeClass)}>
+              {bet.status}
+            </span>
+            <span className="rounded-full border border-border bg-background/40 px-1.5 py-0.5 text-[9px] font-semibold uppercase text-muted-foreground">
+              {bet.sport}
+            </span>
+            <span className="text-[10px] text-muted-foreground">{bet.sportsbook}</span>
+          </div>
+          <div className="mt-1 text-sm font-semibold text-foreground truncate">{bet.title}</div>
+          <div className="text-[11px] text-muted-foreground truncate">
+            {bet.pick} · <span className="font-mono">{bet.odds > 0 ? "+" : ""}{bet.odds}</span> · {fmtUSD(Number(bet.amount))}
+          </div>
         </div>
-        <div className="mt-0.5 text-sm font-semibold text-foreground truncate">{bet.title}</div>
-        <div className="text-[11px] text-muted-foreground truncate">
-          {bet.pick} · <span className="font-mono">{bet.odds > 0 ? "+" : ""}{bet.odds}</span> · {fmtUSD(Number(bet.amount))}
+        <div className="text-right shrink-0">
+          <div
+            className={cn(
+              "font-mono text-xl font-extrabold",
+              isWin ? "text-success" : isLoss ? "text-destructive" : "text-muted-foreground",
+            )}
+          >
+            {isPush ? "Push" : `${pl >= 0 ? "+" : ""}${fmtUSD(pl)}`}
+          </div>
+          <div className="text-[10px] text-muted-foreground">
+            {new Date(bet.resolved_at ?? bet.created_at).toLocaleDateString()}
+          </div>
         </div>
       </div>
-      <div className="text-right shrink-0">
-        <div
-          className={cn(
-            "font-mono font-bold",
-            isWin ? "text-success" : isLoss ? "text-destructive" : "text-muted-foreground",
-          )}
-        >
-          {isPush ? "Push" : `${pl >= 0 ? "+" : ""}${fmtUSD(pl)}`}
+      {typeof closingLine === "number" && Number.isFinite(closingLine) && clvDelta !== null && (
+        <div className="mt-2 text-[11px] text-muted-foreground border-t border-white/5 pt-2">
+          Closed at <span className="font-mono text-foreground/80">{closingLine > 0 ? "+" : ""}{closingLine}</span>
+          {" · "}You had <span className="font-mono text-foreground/80">{bet.odds > 0 ? "+" : ""}{bet.odds}</span>
+          {" · "}
+          <span className={cn("font-semibold", clvDelta > 0 ? "text-success" : clvDelta < 0 ? "text-destructive" : "text-muted-foreground")}>
+            {clvDelta > 0 ? "Beat" : clvDelta < 0 ? "Lost to" : "Matched"} closing line by {Math.abs(clvDelta * 100).toFixed(1)}%
+          </span>
         </div>
-        <div className="text-[10px] text-muted-foreground">
-          {new Date(bet.resolved_at ?? bet.created_at).toLocaleDateString()}
-        </div>
-      </div>
+      )}
     </div>
   );
+}
+
+function impliedFromAmerican(odds: number): number {
+  if (!Number.isFinite(odds) || odds === 0) return 0;
+  return odds > 0 ? 100 / (odds + 100) : -odds / (-odds + 100);
 }
 
 function BreakdownTable({ title, headers, rows }: {

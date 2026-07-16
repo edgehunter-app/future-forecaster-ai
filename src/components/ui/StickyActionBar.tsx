@@ -12,7 +12,7 @@ export default function StickyActionBar({
 }: {
   children: ReactNode;
   className?: string;
-  tone?: "green" | "blue";
+  tone?: "green" | "blue" | "muted";
 }) {
   return (
     <div
@@ -22,7 +22,9 @@ export default function StickyActionBar({
         "flex items-center justify-between gap-3 px-4 py-3",
         tone === "green"
           ? "bg-gradient-action-bar text-white"
-          : "bg-gradient-cta text-white",
+          : tone === "muted"
+            ? "bg-white/5 text-muted-foreground border-white/10"
+            : "bg-gradient-cta text-white",
         className,
       )}
       style={{ bottom: "calc(80px + env(safe-area-inset-bottom))" }}
