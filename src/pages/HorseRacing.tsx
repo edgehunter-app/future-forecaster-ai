@@ -319,7 +319,7 @@ function RaceCard({ card, state, onAnalyze }: { card: RaceCardData; state: Analy
   const liveRunners = race.runners.filter((r) => r.scratched !== true);
   const scratches = race.runners.filter((r) => r.scratched === true);
   if (trackName?.toLowerCase().includes("delta")) {
-    console.log("[horse-racing][delta] race", race.race, "total=", race.runners.length,
+    console.log("[horse-racing][delta] race", race.raceNumber, "total=", race.runners.length,
       "live=", liveRunners.length, "scratched=", scratches.length,
       "names=", race.runners.map((r) => `${r.name}(${r.scratched})`));
   }
