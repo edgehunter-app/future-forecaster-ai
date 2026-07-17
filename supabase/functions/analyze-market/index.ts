@@ -941,6 +941,80 @@ Deno.serve(async (req) => {
     }
 
     const callAnthropic = async (): Promise<Response> => {
+      // no-op marker
+      return await _callAnthropic();
+    };
+    // Horse racing goes through a Claude call with the FormFav MCP server attached
+    // so the model can pull live meetings and race cards on demand.
+    if (type === "horse-racing") {
+      const formfavKey = Deno.env.get("FORMFAV_API_KEY") ?? "";
+      try {
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 60000);
+        const r = await fetch("https://api.anthropic.com/v1/messages", {
+          method: "POST",
+          signal: controller.signal,
+          headers: {
+            "x-api-key": apiKey,
+            "anthropic-version": "2023-06-01",
+            "anthropic-beta": "mcp-client-2025-04-04",
+            "content-type": "application/json",
+          },
+          body: JSON.stringify({
+            model: "claude-sonnet-4-5",
+            max_tokens: 2000,
+            messages: [{ role: "user", content: prompt }],
+            mcp_servers: [
+              {
+                type: "url",
+                url: "https://api.formfav.com/mcp/",
+                name: "formfav",
+                authorization_token: formfavKey,
+              },
+            ],
+          }),
+        });
+        clearTimeout(timeoutId);
+        if (!r.ok) {
+          const errText = await r.text();
+          return new Response(JSON.stringify({
+            error: "AI provider error",
+            code: "UPSTREAM_ERROR",
+            upstreamStatus: r.status,
+            detail: errText,
+          }), { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+        }
+        const data = await r.json() as { content?: Array<{ type: string; text?: string }> };
+        const text = (data.content ?? [])
+          .filter((b) => b.type === "text")
+          .map((b) => b.text ?? "")
+          .join("");
+        const cleaned = text.replace(/```json/gi, "").replace(/```/g, "").trim();
+        let parsed: Record<string, unknown> = {};
+        try {
+          const m = cleaned.match(/\{[\s\S]*\}/);
+          parsed = JSON.parse(m ? m[0] : cleaned);
+        } catch {
+          return new Response(JSON.stringify({
+            error: "Failed to parse model response",
+            code: "MODEL_PARSE_ERROR",
+            raw: text,
+          }), { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+        }
+        return new Response(JSON.stringify(parsed), {
+          status: 200,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      } catch (err) {
+        return new Response(JSON.stringify({
+          error: "Network error reaching AI provider",
+          code: "NETWORK_ERROR",
+          detail: (err as Error).message,
+        }), { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+      }
+    }
+
+    const _callAnthropic = async (): Promise<Response> => {
       const maxAttempts = 4;
       let lastResp: Response | null = null;
       for (let attempt = 0; attempt < maxAttempts; attempt++) {
