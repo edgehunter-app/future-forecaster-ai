@@ -844,41 +844,52 @@ CONSIDER_EXIT if: Significant movement against position, edge now negative or mi
 }
 
 function buildHorseRacingPrompt(b: AnalyzeBody): string {
-  const race = b.race ?? {};
-  const trackName = b.trackName ?? race.track ?? "Unknown Track";
-  const runners = (race.runners ?? []).filter((r: Any) => !r?.scratched);
-  const scratched = (race.runners ?? []).filter((r: Any) => r?.scratched);
-  const runnerLines = runners.map((r: Any) => {
-    const decos = (r.decorators ?? []).map((d: Any) => d.shortLabel ?? d.label).filter(Boolean).join(", ");
-    const ov = r.stats?.overall;
-    const record = ov ? `${ov.wins ?? 0}-${ov.seconds ?? 0}-${ov.thirds ?? 0} in ${ov.starts ?? 0}` : "n/a";
-    return `#${r.number} ${r.name} (${r.age}yo ${r.sex ?? ""}, barrier ${r.barrier}, wt ${r.weight}) — form ${r.form ?? r.last20Starts ?? "-"} | career ${record} | prize ${r.careerPrizeMoney ?? "n/a"} | angles: ${decos || "none"}`;
-  }).join("\n");
-  return `You are a professional horse racing handicapper. Analyze this race and return ONLY valid JSON (no markdown, no prose).
+  const today = new Date().toLocaleDateString("en-CA", { timeZone: "America/New_York" });
+  const date = b.date ?? today;
+  const track = b.track ? `Focus on this track/meeting slug: ${b.track}` : "Analyze the best available US race today";
+  const race = b.race ? `Focus on race number: ${b.race}` : "Pick the most competitive US race with the best betting opportunity";
+  return `You are EdgeHunter's AI horse racing handicapper. Use the FormFav tools to analyze today's races.
 
-RACE: ${trackName} R${race.raceNumber ?? "?"} — ${race.raceName ?? "Race"}
-Distance: ${race.distance ?? "n/a"} | Surface/Condition: ${race.condition ?? "n/a"} | Weather: ${race.weather ?? "n/a"}
-Post: ${race.startTime ?? "n/a"} (${race.timezone ?? "local"})
-Field size: ${runners.length} (${scratched.length} scratched)
+${track}
+${race}
+Date: ${date}
 
-RUNNERS:
-${runnerLines}
+INSTRUCTIONS:
+1. Use get_meetings to find US race cards for ${date}.
+2. ${b.track ? `Locate the meeting matching "${b.track}"` : "Pick the most competitive US race with the best betting opportunity"}.
+3. Use get_race_card${b.race ? ` for race ${b.race}` : ""} to get full form for each runner (jockey, trainer, morning line, recent starts, class).
+4. Apply the traffic light system:
+   🟢 GREEN — Value race, overlay exists, AI sees edge worth betting
+   🟡 YELLOW — Possible value, worth a closer look
+   🔴 RED — Chalk race, short prices, not worth betting
+5. Return your best selection with clear reasoning.
 
-Return this exact JSON shape:
+Respond with ONLY valid JSON (no markdown, no prose):
 {
-  "rating": "green" | "yellow" | "red",
-  "ratingLabel": short label like "Strong Play" | "Use With Caution" | "Pass / Toss-Up",
-  "topPick": "#N Horse Name",
-  "exacta": "N / A,B,C" or similar,
-  "keyAngles": [ { "horse": "#N Name", "angle": "one short phrase" }, ... up to 4 ],
-  "analysis": "3-4 sentences of handicapping reasoning covering pace, class, form, and value"
-}
-
-Rating rubric:
-- green: a clear standout with value at expected price
-- yellow: playable but chalky or with real question marks — use with caution
-- red: chaotic, wide-open, or heavy favorite with no value — pass or toss-up
-Always return a pick even in a red race. Never refuse.`;
+  "track": "track name",
+  "race": race number,
+  "raceName": "race name",
+  "distance": "distance",
+  "surface": "dirt/turf/synthetic",
+  "trafficLight": "GREEN" | "YELLOW" | "RED",
+  "topPick": {
+    "horse": "horse name",
+    "jockey": "jockey name",
+    "trainer": "trainer name",
+    "morningLine": "odds",
+    "confidence": 0-100,
+    "reasoning": "why this horse"
+  },
+  "valuePlay": {
+    "horse": "longshot name",
+    "morningLine": "odds",
+    "reason": "why value"
+  },
+  "raceSummary": "2-3 sentences on the race",
+  "keyFactors": ["factor1", "factor2"],
+  "warningFlags": ["any concerns"],
+  "exoticSuggestion": "exacta/trifecta tip"
+}`;
 }
 
 Deno.serve(async (req) => {
@@ -927,6 +938,76 @@ Deno.serve(async (req) => {
       case "market":
       default:
         prompt = buildPrompt(body);
+    }
+
+    // Horse racing goes through a Claude call with the FormFav MCP server attached
+    // so the model can pull live meetings and race cards on demand.
+    if (type === "horse-racing") {
+      const formfavKey = Deno.env.get("FORMFAV_API_KEY") ?? "";
+      try {
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 60000);
+        const r = await fetch("https://api.anthropic.com/v1/messages", {
+          method: "POST",
+          signal: controller.signal,
+          headers: {
+            "x-api-key": apiKey,
+            "anthropic-version": "2023-06-01",
+            "anthropic-beta": "mcp-client-2025-04-04",
+            "content-type": "application/json",
+          },
+          body: JSON.stringify({
+            model: "claude-sonnet-4-5",
+            max_tokens: 2000,
+            messages: [{ role: "user", content: prompt }],
+            mcp_servers: [
+              {
+                type: "url",
+                url: "https://api.formfav.com/mcp/",
+                name: "formfav",
+                authorization_token: formfavKey,
+              },
+            ],
+          }),
+        });
+        clearTimeout(timeoutId);
+        if (!r.ok) {
+          const errText = await r.text();
+          return new Response(JSON.stringify({
+            error: "AI provider error",
+            code: "UPSTREAM_ERROR",
+            upstreamStatus: r.status,
+            detail: errText,
+          }), { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+        }
+        const data = await r.json() as { content?: Array<{ type: string; text?: string }> };
+        const text = (data.content ?? [])
+          .filter((b) => b.type === "text")
+          .map((b) => b.text ?? "")
+          .join("");
+        const cleaned = text.replace(/```json/gi, "").replace(/```/g, "").trim();
+        let parsed: Record<string, unknown> = {};
+        try {
+          const m = cleaned.match(/\{[\s\S]*\}/);
+          parsed = JSON.parse(m ? m[0] : cleaned);
+        } catch {
+          return new Response(JSON.stringify({
+            error: "Failed to parse model response",
+            code: "MODEL_PARSE_ERROR",
+            raw: text,
+          }), { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+        }
+        return new Response(JSON.stringify(parsed), {
+          status: 200,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      } catch (err) {
+        return new Response(JSON.stringify({
+          error: "Network error reaching AI provider",
+          code: "NETWORK_ERROR",
+          detail: (err as Error).message,
+        }), { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+      }
     }
 
     const callAnthropic = async (): Promise<Response> => {
