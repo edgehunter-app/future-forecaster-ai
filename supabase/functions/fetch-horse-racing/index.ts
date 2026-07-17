@@ -19,14 +19,21 @@ const headers = {
 const US_TRACKS = [
   "churchill-downs",
   "saratoga",
+  "saratoga-race-course",
   "del-mar",
+  "delmar",
   "belmont-park",
+  "belmont-at-the-big-a",
+  "aqueduct",
   "santa-anita",
+  "santa-anita-park",
   "gulfstream-park",
+  "gulfstream",
   "keeneland",
   "oaklawn-park",
   "ellis-park",
   "monmouth-park",
+  "monmouth",
   "pimlico",
   "laurel-park",
   "colonial-downs",
@@ -34,6 +41,7 @@ const US_TRACKS = [
   "woodbine",
   "finger-lakes",
   "parx-racing",
+  "parx",
   "charles-town",
   "fair-grounds",
   "tampa-bay-downs",
@@ -86,39 +94,89 @@ async function scanDate(date: string): Promise<ScanResult> {
   const meetings: ScanResult["meetings"] = [];
   let shapeSample: ScanResult["shapeSample"];
 
-  // Probe all tracks in parallel. For each track probe all race numbers
-  // 1..12 in parallel and keep the ones that return 200. Sequential probing
-  // was blowing past the edge function timeout.
-  const trackResults = await Promise.all(
-    US_TRACKS.map(async (track) => {
-      const races = await Promise.all(
-        Array.from({ length: 12 }, (_, i) => i + 1).map(async (race) => {
-          const url = `${FORMFAV_BASE}/form?date=${date}&track=${track}&race=${race}&country=us`;
-          try {
-            const res = await fetch(url, { headers, signal: AbortSignal.timeout(8000) });
-            if (res.ok) {
-              const json = await res.json();
-              return { race, data: json };
-            }
-            await res.body?.cancel();
-            return null;
-          } catch {
-            return null;
-          }
-        }),
-      );
+  // FormFav has a low burst limit — hammering 500 concurrent requests
+  // returns 429 "Too many requests (burst)". Strategy:
+  //   1. Probe race=1 for every track (throttled to CONCURRENCY at a time,
+  //      with retry on 429). Tracks whose race=1 404s have no card today.
+  //   2. For tracks with a race=1, probe races 2..12 (also throttled).
+  const CONCURRENCY = 6;
+  const BURST_RETRIES = 3;
+
+  async function probe(track: string, race: number): Promise<{ race: number; data: unknown } | null> {
+    const url = `${FORMFAV_BASE}/form?date=${date}&track=${track}&race=${race}&country=us`;
+    for (let attempt = 0; attempt <= BURST_RETRIES; attempt++) {
+      try {
+        const res = await fetch(url, { headers, signal: AbortSignal.timeout(8000) });
+        if (res.ok) return { race, data: await res.json() };
+        if (res.status === 429) {
+          await res.body?.cancel();
+          // Exponential backoff with jitter for burst-limit recovery.
+          await new Promise((r) => setTimeout(r, 400 * (attempt + 1) + Math.random() * 200));
+          continue;
+        }
+        if (race === 1 && res.status !== 404) {
+          const body = await res.text();
+          console.log(`[horse-racing] ${track} race=1 status=${res.status} body=${body.slice(0, 160)}`);
+          return null;
+        }
+        await res.body?.cancel();
+        return null;
+      } catch {
+        return null;
+      }
+    }
+    console.log(`[horse-racing] ${track} race=${race} gave up after 429 retries`);
+    return null;
+  }
+
+  async function runPool<T, R>(items: T[], worker: (item: T) => Promise<R>): Promise<R[]> {
+    const results: R[] = new Array(items.length);
+    let idx = 0;
+    const workers = Array.from({ length: Math.min(CONCURRENCY, items.length) }, async () => {
+      while (true) {
+        const i = idx++;
+        if (i >= items.length) return;
+        results[i] = await worker(items[i]);
+      }
+    });
+    await Promise.all(workers);
+    return results;
+  }
+
+  // Phase 1: race=1 for every track.
+  const firstRaces = await runPool(US_TRACKS, (t) => probe(t, 1));
+  const activeTracks = US_TRACKS
+    .map((t, i) => ({ track: t, first: firstRaces[i] }))
+    .filter((x): x is { track: string; first: { race: number; data: unknown } } => !!x.first);
+  console.log(`[horse-racing] active tracks after race=1 probe: ${activeTracks.length}`);
+
+  // Phase 2: races 2..12 for the tracks that have a card.
+  const extraJobs: Array<{ track: string; race: number }> = [];
+  for (const { track } of activeTracks) {
+    for (let r = 2; r <= 12; r++) extraJobs.push({ track, race: r });
+  }
+  const extraResults = await runPool(extraJobs, ({ track, race }) => probe(track, race));
+  const extraByTrack = new Map<string, Array<{ race: number; data: unknown }>>();
+  extraJobs.forEach((job, i) => {
+    const r = extraResults[i];
+    if (!r) return;
+    const arr = extraByTrack.get(job.track) ?? [];
+    arr.push(r);
+    extraByTrack.set(job.track, arr);
+  });
+
+  const trackResults = activeTracks.map(({ track, first }) => {
+    const races = [first, ...(extraByTrack.get(track) ?? [])];
       // FormFav sometimes returns the most recent card even when the date
       // param is future — filter races whose payload `date` doesn't match
       // what we requested so we never surface yesterday's races as today's.
       const trackRaces = races
-        .filter((r): r is { race: number; data: unknown } => !!r)
         .filter(({ data }) => {
           const d = (data as Record<string, unknown>)?.date;
           return typeof d !== "string" || d === date;
         });
       return { track, trackRaces };
-    }),
-  );
+  });
 
   for (const { track, trackRaces } of trackResults) {
     if (trackRaces.length === 0) continue;
@@ -148,6 +206,7 @@ Deno.serve(async (req) => {
 
   try {
     const url = new URL(req.url);
+    console.log("[horse-racing] req.url:", req.url, "search:", url.search);
     let requested = url.searchParams.get("date");
     if (!requested && (req.method === "POST" || req.method === "PUT")) {
       try {
@@ -157,6 +216,36 @@ Deno.serve(async (req) => {
     }
     const alsoScanSaturday = url.searchParams.get("probeSaturday") === "1";
     const probeUK = url.searchParams.get("probeUK") === "1";
+    const probeAuth = url.searchParams.get("probeAuth") === "1";
+
+    if (probeAuth) {
+      const results: Record<string, unknown> = { key_present: !!FORMFAV_KEY };
+      const testDate = url.searchParams.get("date") ?? "2026-07-17";
+      const tracks = ["del-mar", "delmar", "del_mar", "saratoga", "saratoga-race-course"];
+      for (const track of tracks) {
+        const base = `${FORMFAV_BASE}/form?date=${testDate}&track=${track}&race=1&country=us`;
+        const attempts = [
+          { label: "X-API-Key", url: base, headers: { "X-API-Key": FORMFAV_KEY ?? "" } },
+          { label: "Bearer", url: base, headers: { Authorization: `Bearer ${FORMFAV_KEY ?? ""}` } },
+          { label: "apikey-param", url: `${base}&apikey=${FORMFAV_KEY ?? ""}`, headers: {} as Record<string, string> },
+        ];
+        const perTrack: Record<string, unknown> = {};
+        for (const a of attempts) {
+          try {
+            const r = await fetch(a.url, { headers: a.headers, signal: AbortSignal.timeout(8000) });
+            const remaining = r.headers.get("x-ratelimit-requests-remaining");
+            const body = r.ok ? await r.json() : (await r.text()).slice(0, 300);
+            console.log(`[auth-probe] ${track} ${a.label}: ${r.status} remaining=${remaining}`);
+            perTrack[a.label] = { status: r.status, remaining, body };
+          } catch (e) {
+            perTrack[a.label] = { error: String(e) };
+          }
+          await new Promise((res) => setTimeout(res, 250));
+        }
+        results[track] = perTrack;
+      }
+      return new Response(JSON.stringify({ probeAuth: true, testDate, results }, null, 2), { headers: CORS_HEADERS });
+    }
 
     if (probeUK) {
       // Diagnostic 1: fetch /form with NO args to see full list of required
@@ -200,8 +289,14 @@ Deno.serve(async (req) => {
       return new Response(JSON.stringify({ probeUK: true, results }, null, 2), { headers: CORS_HEADERS });
     }
 
-    const today = new Date().toISOString().split("T")[0];
-    const primaryDate = requested ?? today;
+    // US horse racing uses Eastern time — a card scheduled for "today"
+    // in Kentucky is still "yesterday" in UTC until early morning ET.
+    const easternToday = new Date().toLocaleDateString("en-CA", {
+      timeZone: "America/New_York",
+    });
+    const utcToday = new Date().toISOString().split("T")[0];
+    console.log("[horse-racing] date ET:", easternToday, "UTC:", utcToday);
+    const primaryDate = requested ?? easternToday;
 
     const primary = await scanDate(primaryDate);
 
