@@ -1,4 +1,41 @@
 {
-  "name": "EdgeHunter",
-  "version": "1.0.0"
+  "expo": {
+    "name": "EdgeHunter",
+    "slug": "mattyg",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "userInterfaceStyle": "dark",
+    "splash": {
+      "backgroundColor": "#0a0b0f"
+    },
+    "ios": {
+      "supportsTablet": false,
+      "bundleIdentifier": "net.edgehunter",
+      "buildNumber": "1",
+      "deploymentTarget": "15.1"
+    },
+    "android": {
+      "package": "net.edgehunter",
+      "versionCode": 1,
+      "adaptiveIcon": {
+        "backgroundColor": "#0a0b0f"
+      }
+    },
+    "plugins": [
+      [
+        "expo-build-properties",
+        {
+          "ios": {
+            "deploymentTarget": "15.1"
+          }
+        }
+      ]
+    ],
+    "extra": {
+      "eas": {
+        "projectId": "bd817616-67ad-4999-8c94-ecdbdbcf2721"
+      }
+    },
+    "owner": "edgehunters-team"
+  }
 }
