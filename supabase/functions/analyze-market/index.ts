@@ -844,41 +844,52 @@ CONSIDER_EXIT if: Significant movement against position, edge now negative or mi
 }
 
 function buildHorseRacingPrompt(b: AnalyzeBody): string {
-  const race = b.race ?? {};
-  const trackName = b.trackName ?? race.track ?? "Unknown Track";
-  const runners = (race.runners ?? []).filter((r: Any) => !r?.scratched);
-  const scratched = (race.runners ?? []).filter((r: Any) => r?.scratched);
-  const runnerLines = runners.map((r: Any) => {
-    const decos = (r.decorators ?? []).map((d: Any) => d.shortLabel ?? d.label).filter(Boolean).join(", ");
-    const ov = r.stats?.overall;
-    const record = ov ? `${ov.wins ?? 0}-${ov.seconds ?? 0}-${ov.thirds ?? 0} in ${ov.starts ?? 0}` : "n/a";
-    return `#${r.number} ${r.name} (${r.age}yo ${r.sex ?? ""}, barrier ${r.barrier}, wt ${r.weight}) — form ${r.form ?? r.last20Starts ?? "-"} | career ${record} | prize ${r.careerPrizeMoney ?? "n/a"} | angles: ${decos || "none"}`;
-  }).join("\n");
-  return `You are a professional horse racing handicapper. Analyze this race and return ONLY valid JSON (no markdown, no prose).
+  const today = new Date().toLocaleDateString("en-CA", { timeZone: "America/New_York" });
+  const date = b.date ?? today;
+  const track = b.track ? `Focus on this track/meeting slug: ${b.track}` : "Analyze the best available US race today";
+  const race = b.race ? `Focus on race number: ${b.race}` : "Pick the most competitive US race with the best betting opportunity";
+  return `You are EdgeHunter's AI horse racing handicapper. Use the FormFav tools to analyze today's races.
 
-RACE: ${trackName} R${race.raceNumber ?? "?"} — ${race.raceName ?? "Race"}
-Distance: ${race.distance ?? "n/a"} | Surface/Condition: ${race.condition ?? "n/a"} | Weather: ${race.weather ?? "n/a"}
-Post: ${race.startTime ?? "n/a"} (${race.timezone ?? "local"})
-Field size: ${runners.length} (${scratched.length} scratched)
+${track}
+${race}
+Date: ${date}
 
-RUNNERS:
-${runnerLines}
+INSTRUCTIONS:
+1. Use get_meetings to find US race cards for ${date}.
+2. ${b.track ? `Locate the meeting matching "${b.track}"` : "Pick the most competitive US race with the best betting opportunity"}.
+3. Use get_race_card${b.race ? ` for race ${b.race}` : ""} to get full form for each runner (jockey, trainer, morning line, recent starts, class).
+4. Apply the traffic light system:
+   🟢 GREEN — Value race, overlay exists, AI sees edge worth betting
+   🟡 YELLOW — Possible value, worth a closer look
+   🔴 RED — Chalk race, short prices, not worth betting
+5. Return your best selection with clear reasoning.
 
-Return this exact JSON shape:
+Respond with ONLY valid JSON (no markdown, no prose):
 {
-  "rating": "green" | "yellow" | "red",
-  "ratingLabel": short label like "Strong Play" | "Use With Caution" | "Pass / Toss-Up",
-  "topPick": "#N Horse Name",
-  "exacta": "N / A,B,C" or similar,
-  "keyAngles": [ { "horse": "#N Name", "angle": "one short phrase" }, ... up to 4 ],
-  "analysis": "3-4 sentences of handicapping reasoning covering pace, class, form, and value"
-}
-
-Rating rubric:
-- green: a clear standout with value at expected price
-- yellow: playable but chalky or with real question marks — use with caution
-- red: chaotic, wide-open, or heavy favorite with no value — pass or toss-up
-Always return a pick even in a red race. Never refuse.`;
+  "track": "track name",
+  "race": race number,
+  "raceName": "race name",
+  "distance": "distance",
+  "surface": "dirt/turf/synthetic",
+  "trafficLight": "GREEN" | "YELLOW" | "RED",
+  "topPick": {
+    "horse": "horse name",
+    "jockey": "jockey name",
+    "trainer": "trainer name",
+    "morningLine": "odds",
+    "confidence": 0-100,
+    "reasoning": "why this horse"
+  },
+  "valuePlay": {
+    "horse": "longshot name",
+    "morningLine": "odds",
+    "reason": "why value"
+  },
+  "raceSummary": "2-3 sentences on the race",
+  "keyFactors": ["factor1", "factor2"],
+  "warningFlags": ["any concerns"],
+  "exoticSuggestion": "exacta/trifecta tip"
+}`;
 }
 
 Deno.serve(async (req) => {
