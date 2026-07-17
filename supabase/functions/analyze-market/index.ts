@@ -889,7 +889,9 @@ Respond with ONLY valid JSON (no markdown, no prose):
   "keyFactors": ["factor1", "factor2"],
   "warningFlags": ["any concerns"],
   "exoticSuggestion": "exacta/trifecta tip"
-}`;
+}
+
+CRITICAL: Your final message must be ONLY the JSON object with no other text, no explanation, no markdown code blocks. Start your response with { and end with }. Nothing before or after the JSON.`;
 }
 
 Deno.serve(async (req) => {
