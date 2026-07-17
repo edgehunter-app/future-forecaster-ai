@@ -850,8 +850,17 @@ function buildHorseRacingAnalysisPrompt(card: Record<string, unknown>): string {
   const runners: any[] = Array.isArray(c.runners) ? c.runners : [];
   const runnerLines = runners.map((r) => {
     const stats = r?.stats?.overall ?? {};
-    return `${r.number ?? "?"}. ${r.name ?? "?"} | Jockey: ${r.jockey ?? "?"} | Trainer: ${r.trainer ?? "?"} | ML: ${r.morningLine ?? r.odds ?? "?"} | Form: ${r.form ?? "?"} | Weight: ${r.weight ?? "?"} | Win%: ${stats.winPercent ?? "?"}`;
+    const jockey = r.jockey ?? r.jockeyName ?? r.jockey_name ?? r.rider ?? "N/A";
+    const trainer = r.trainer ?? r.trainerName ?? r.trainer_name ?? "N/A";
+    const ml = r.morningLine ?? r.morning_line ?? r.odds ?? r.price ?? r.ml ?? "N/A";
+    const weight = r.weight ?? r.weightKg ?? r.weight_kg ?? r.weightLbs ?? "N/A";
+    const barrier = r.barrier ?? r.gate ?? r.post ?? r.postPosition ?? r.number ?? "N/A";
+    return `${r.number ?? r.saddle ?? "?"}. ${r.name ?? r.horse ?? "?"} | Jockey: ${jockey} | Trainer: ${trainer} | Form: ${r.form ?? "N/A"} | Weight: ${weight} | Barrier: ${barrier} | ML Odds: ${ml} | Win%: ${stats.winPercent ?? stats.win_percent ?? "N/A"}`;
   }).join("\n");
+  const distance = c.distance ?? c.distanceMetres ?? c.distance_metres ?? c.distanceFurlongs ?? "N/A";
+  const surface = c.surface ?? c.trackType ?? c.track_type ?? c.condition ?? c.going ?? "N/A";
+  const raceClass = c.raceClass ?? c.class ?? c.raceGrade ?? "N/A";
+  const prize = c.prize ?? c.purse ?? c.prizeMoney ?? "N/A";
   return `You are EdgeHunter's AI horse racing handicapper.
 Analyze the race below and return ONLY a JSON object.
 
@@ -859,9 +868,10 @@ TODAY'S RACE:
 Track: ${c.track ?? "?"}
 Race: ${c.raceNumber ?? c.race ?? "?"}
 Name: ${c.raceName ?? c.name ?? ""}
-Distance: ${c.distance ?? "?"}
-Surface/Condition: ${c.surface ?? c.condition ?? "?"}
-Class: ${c.raceClass ?? c.class ?? "?"}
+Distance: ${distance}
+Surface/Condition: ${surface}
+Class: ${raceClass}
+Prize: ${prize}
 Runners: ${c.numberOfRunners ?? runners.length}
 
 FIELD:
@@ -1019,6 +1029,8 @@ Deno.serve(async (req) => {
         }
         const card = await cardRes.json();
         console.log("[horse-racing] race card:", (card as any)?.track, (card as any)?.numberOfRunners, "runners");
+        console.log("[horse-racing] raw card:", JSON.stringify(card).slice(0, 1000));
+        console.log("[horse-racing] first runner:", JSON.stringify((card as any)?.runners?.[0] ?? null));
 
         // 4. Claude analysis with data in prompt (no MCP)
         const analysisPrompt = buildHorseRacingAnalysisPrompt(card as Record<string, unknown>);
