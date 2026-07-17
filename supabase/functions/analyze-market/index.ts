@@ -843,42 +843,90 @@ MONITOR if: Edge reduced but still positive, worth watching for more movement.
 CONSIDER_EXIT if: Significant movement against position, edge now negative or minimal, or major shift in market consensus.`;
 }
 
-function buildHorseRacingPrompt(b: AnalyzeBody): string {
-  const race = b.race ?? {};
-  const trackName = b.trackName ?? race.track ?? "Unknown Track";
-  const runners = (race.runners ?? []).filter((r: Any) => !r?.scratched);
-  const scratched = (race.runners ?? []).filter((r: Any) => r?.scratched);
-  const runnerLines = runners.map((r: Any) => {
-    const decos = (r.decorators ?? []).map((d: Any) => d.shortLabel ?? d.label).filter(Boolean).join(", ");
-    const ov = r.stats?.overall;
-    const record = ov ? `${ov.wins ?? 0}-${ov.seconds ?? 0}-${ov.thirds ?? 0} in ${ov.starts ?? 0}` : "n/a";
-    return `#${r.number} ${r.name} (${r.age}yo ${r.sex ?? ""}, barrier ${r.barrier}, wt ${r.weight}) — form ${r.form ?? r.last20Starts ?? "-"} | career ${record} | prize ${r.careerPrizeMoney ?? "n/a"} | angles: ${decos || "none"}`;
-  }).join("\n");
-  return `You are a professional horse racing handicapper. Analyze this race and return ONLY valid JSON (no markdown, no prose).
+// Horse racing analysis is built at call time from live FormFav REST data
+// rather than a pre-built prompt, so no dedicated builder helper here.
+function buildHorseRacingAnalysisPrompt(card: Record<string, unknown>): string {
+  const c = card as Record<string, any>;
+  const runners: any[] = Array.isArray(c.runners) ? c.runners : [];
+  const live = runners.filter((r) => !r?.scratched);
+  const decoratorLabels = (r: any): string[] => {
+    const d = r?.decorators;
+    if (!Array.isArray(d)) return [];
+    return d.map((x: any) => typeof x === "string" ? x : (x?.shortLabel ?? x?.label ?? x?.type)).filter(Boolean);
+  };
+  const runnerLines = live.map((r: any) => {
+    const stats = r?.stats ?? {};
+    const sp = r?.speedMap ?? {};
+    const cls = r?.classProfile ?? {};
+    const decs = decoratorLabels(r);
+    return `#${r.number} ${r.name}
+  Form: ${r.form ?? "N/A"} (last20: ${r.last20Starts ?? "N/A"})
+  Weight: ${r.weight ?? "N/A"}  Barrier: ${r.barrier ?? "N/A"}  Age/Sex: ${r.age ?? ""}${r.sex ?? ""}
+  Class Rating: ${cls.currentRating ?? "N/A"} (Peak: ${cls.peakRating ?? "N/A"}, Highest Won: ${cls.highestClassWon ?? "N/A"}, Trend: ${cls.trend ?? "N/A"})
+  Running Style: ${sp.runningStyle ?? "N/A"}  EarlySpeedIdx: ${sp.earlySpeedIndex ?? "N/A"}  SettlingPos: ${sp.settlingPosition ?? "N/A"}
+  Overall Win%: ${stats.overall?.winPercent ?? "N/A"}  Track Win%: ${stats.track?.winPercent ?? "N/A"}  FirstUp Win%: ${stats.firstUp?.winPercent ?? "N/A"}  SecondUp Win%: ${stats.secondUp?.winPercent ?? "N/A"}
+  Signals: ${decs.length ? decs.join(", ") : "None"}
+  Sire: ${r.sire ?? "N/A"}  Dam: ${r.dam ?? "N/A"}`;
+  }).join("\n\n");
+  const styleNames = (want: string) => live
+    .filter((r: any) => String(r?.speedMap?.runningStyle ?? "").toUpperCase().startsWith(want))
+    .map((r: any) => r.name).join(", ") || "None";
+  return `You are EdgeHunter's AI horse racing handicapper using FormFav data.
+Return ONLY a JSON object (no markdown, no prose).
 
-RACE: ${trackName} R${race.raceNumber ?? "?"} — ${race.raceName ?? "Race"}
-Distance: ${race.distance ?? "n/a"} | Surface/Condition: ${race.condition ?? "n/a"} | Weather: ${race.weather ?? "n/a"}
-Post: ${race.startTime ?? "n/a"} (${race.timezone ?? "local"})
-Field size: ${runners.length} (${scratched.length} scratched)
+RACE:
+Track: ${c.track ?? "?"}
+Race: ${c.raceNumber ?? "?"}
+Date: ${c.date ?? "?"}
+Start Time: ${c.startTime ?? "N/A"}
+Runners: ${c.numberOfRunners ?? live.length}
 
-RUNNERS:
-${runnerLines}
+FIELD:
+${runnerLines || "(no runners)"}
 
-Return this exact JSON shape:
+PACE SCENARIO:
+Leaders: ${styleNames("L")}
+Pressers: ${styleNames("P")}
+Closers: ${styleNames("C")}
+
+ANALYSIS INSTRUCTIONS:
+1. Apply Rick's Traffic Light System:
+   🟢 GREEN — Clear value horse, significant edge detected
+   🟡 YELLOW — Competitive race, possible value worth watching
+   🔴 RED — Chalk race, short prices, skip it
+2. Key factors: class rating vs field, class trend (rising/declining), pace scenario (lone leader?), recent form string, decorator signals, first-up stats, track win%, weight.
+3. Find overlays: high class rating + improving trend + strong decorator signals that may be overlooked.
+
+Return ONLY valid JSON in this shape:
 {
-  "rating": "green" | "yellow" | "red",
-  "ratingLabel": short label like "Strong Play" | "Use With Caution" | "Pass / Toss-Up",
-  "topPick": "#N Horse Name",
-  "exacta": "N / A,B,C" or similar,
-  "keyAngles": [ { "horse": "#N Name", "angle": "one short phrase" }, ... up to 4 ],
-  "analysis": "3-4 sentences of handicapping reasoning covering pace, class, form, and value"
-}
-
-Rating rubric:
-- green: a clear standout with value at expected price
-- yellow: playable but chalky or with real question marks — use with caution
-- red: chaotic, wide-open, or heavy favorite with no value — pass or toss-up
-Always return a pick even in a red race. Never refuse.`;
+  "track": "track name",
+  "race": race number,
+  "startTime": "start time",
+  "trafficLight": "GREEN" | "YELLOW" | "RED",
+  "trafficLightReason": "one sentence why",
+  "topPick": {
+    "horse": "name",
+    "number": runner number,
+    "weight": weight,
+    "barrier": barrier,
+    "classRating": rating,
+    "classTrend": "IMPROVING" | "STABLE" | "DECLINING",
+    "runningStyle": "LEADER" | "PRESSER" | "CLOSER",
+    "decorators": ["signal1", "signal2"],
+    "confidence": 0-100,
+    "reasoning": "2-3 sentences why"
+  },
+  "valuePlay": {
+    "horse": "longshot name",
+    "number": runner number,
+    "reason": "why value"
+  },
+  "paceScenario": "description of pace",
+  "raceSummary": "2-3 sentences",
+  "keyFactors": ["factor1", "factor2"],
+  "warningFlags": ["concern1", "concern2"],
+  "exoticSuggestion": "exacta/trifecta tip"
+}`;
 }
 
 Deno.serve(async (req) => {
@@ -922,11 +970,152 @@ Deno.serve(async (req) => {
       case "sentiment": prompt = buildSentimentPrompt(body); break;
       case "wallet-strategy": prompt = buildWalletStrategyPrompt(body); break;
       case "golf": prompt = buildGolfPrompt(body); break;
-      case "horse-racing": prompt = buildHorseRacingPrompt(body); break;
+      case "horse-racing": prompt = ""; break; // built dynamically below from FormFav REST
       case "cashout": prompt = buildCashoutPrompt(body); break;
       case "market":
       default:
         prompt = buildPrompt(body);
+    }
+
+    // Horse racing: fetch FormFav REST directly, then pass data to Claude
+    // in the prompt (no MCP). Simpler, faster, and avoids MCP auth issues.
+    if (type === "horse-racing") {
+      const formfavKey = Deno.env.get("FORMFAV_API_KEY") ?? "";
+      if (!formfavKey) {
+        return new Response(JSON.stringify({
+          error: "FORMFAV_API_KEY not configured",
+          code: "NO_FORMFAV_KEY",
+        }), { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+      }
+      const today = new Date().toLocaleDateString("en-CA", { timeZone: "America/New_York" });
+      const date = String(body.date ?? today);
+      const wantTrack = body.track ? String(body.track).toLowerCase() : null;
+      const wantRace = body.race ? Number(body.race) : null;
+      const ffHeaders = { "X-API-Key": formfavKey, "Accept": "application/json" };
+
+      try {
+        // 1. meetings
+        const meetingsUrl = `https://api.formfav.com/v1/form/meetings?date=${encodeURIComponent(date)}&race_code=gallops&country=us`;
+        const meetingsRes = await fetch(meetingsUrl, { headers: ffHeaders, signal: AbortSignal.timeout(15000) });
+        if (!meetingsRes.ok) {
+          const txt = await meetingsRes.text();
+          return new Response(JSON.stringify({
+            error: "FormFav meetings fetch failed",
+            code: "FORMFAV_ERROR",
+            upstreamStatus: meetingsRes.status,
+            detail: txt.slice(0, 400),
+          }), { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+        }
+        const meetingsJson = await meetingsRes.json() as { meetings?: any[] };
+        const allMeetings = (meetingsJson.meetings ?? []).filter(
+          (m: any) => String(m?.country ?? "").toLowerCase() === "us",
+        );
+        console.log("[horse-racing] meetings via REST:", allMeetings.length,
+          allMeetings.map((m: any) => m.slug ?? m.track));
+
+        if (allMeetings.length === 0) {
+          return new Response(JSON.stringify({
+            error: "No US meetings today",
+            code: "NO_MEETINGS",
+            date,
+          }), { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+        }
+
+        // 2. pick meeting + race
+        let meeting: any = wantTrack
+          ? allMeetings.find((m: any) => String(m.slug ?? "").toLowerCase() === wantTrack
+              || String(m.track ?? "").toLowerCase() === wantTrack)
+          : allMeetings[0];
+        if (!meeting) meeting = allMeetings[0];
+
+        const meetingRaces: any[] = Array.isArray(meeting.races) ? meeting.races : [];
+        const raceNumber = wantRace
+          ?? meetingRaces[0]?.raceNumber
+          ?? meetingRaces[0]?.race
+          ?? 1;
+
+        // 3. race card
+        const cardUrl = `https://api.formfav.com/v1/form?date=${encodeURIComponent(date)}&track=${encodeURIComponent(meeting.slug)}&race=${encodeURIComponent(String(raceNumber))}&country=us`;
+        const cardRes = await fetch(cardUrl, { headers: ffHeaders, signal: AbortSignal.timeout(15000) });
+        if (!cardRes.ok) {
+          const txt = await cardRes.text();
+          return new Response(JSON.stringify({
+            error: "FormFav race card fetch failed",
+            code: "FORMFAV_ERROR",
+            upstreamStatus: cardRes.status,
+            detail: txt.slice(0, 400),
+          }), { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+        }
+        const card = await cardRes.json();
+        console.log("[horse-racing] race card:", (card as any)?.track, (card as any)?.numberOfRunners, "runners");
+        console.log("[horse-racing] raw card:", JSON.stringify(card).slice(0, 1000));
+        console.log("[horse-racing] first runner:", JSON.stringify((card as any)?.runners?.[0] ?? null));
+
+        // 4. Claude analysis with data in prompt (no MCP)
+        const analysisPrompt = buildHorseRacingAnalysisPrompt(card as Record<string, unknown>);
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 45000);
+        let anthropicRes: Response;
+        try {
+          anthropicRes = await fetch("https://api.anthropic.com/v1/messages", {
+            method: "POST",
+            signal: controller.signal,
+            headers: {
+              "x-api-key": apiKey,
+              "anthropic-version": "2023-06-01",
+              "content-type": "application/json",
+            },
+            body: JSON.stringify({
+              model: "claude-sonnet-4-5",
+              max_tokens: 1500,
+              messages: [{ role: "user", content: analysisPrompt }],
+            }),
+          });
+        } finally {
+          clearTimeout(timeoutId);
+        }
+        if (!anthropicRes.ok) {
+          const errText = await anthropicRes.text();
+          return new Response(JSON.stringify({
+            error: "AI provider error",
+            code: "UPSTREAM_ERROR",
+            upstreamStatus: anthropicRes.status,
+            detail: errText.slice(0, 400),
+          }), { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+        }
+        const data = await anthropicRes.json() as { content?: Array<{ type: string; text?: string }>; stop_reason?: string };
+        const allText = (data.content ?? [])
+          .filter((b) => b.type === "text")
+          .map((b) => b.text ?? "")
+          .join("\n");
+        console.log("[horse-racing] claude stop:", data.stop_reason, "text:", allText.slice(0, 300));
+
+        let result: Record<string, unknown> | null = null;
+        try {
+          result = JSON.parse(allText.replace(/```json/gi, "").replace(/```/g, "").trim());
+        } catch { /* try regex */ }
+        if (!result) {
+          const m = allText.match(/\{[\s\S]*\}/);
+          if (m) { try { result = JSON.parse(m[0]); } catch { /* fallback */ } }
+        }
+        if (!result) {
+          return new Response(JSON.stringify({
+            error: "Failed to parse model response",
+            code: "PARSE_ERROR",
+            rawText: allText.slice(0, 1000),
+          }), { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+        }
+        return new Response(JSON.stringify(result), {
+          status: 200,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      } catch (err) {
+        return new Response(JSON.stringify({
+          error: "Network error reaching AI provider",
+          code: "NETWORK_ERROR",
+          detail: (err as Error).message,
+        }), { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+      }
     }
 
     const callAnthropic = async (): Promise<Response> => {

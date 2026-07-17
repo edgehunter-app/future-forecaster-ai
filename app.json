@@ -1,10 +1,9 @@
-﻿{
+{
   "expo": {
     "name": "EdgeHunter",
     "slug": "mattyg",
     "version": "1.0.0",
     "orientation": "portrait",
-    "icon": "./src/assets/app-icon.png",
     "userInterfaceStyle": "dark",
     "splash": {
       "backgroundColor": "#0a0b0f"
@@ -13,10 +12,7 @@
       "supportsTablet": false,
       "bundleIdentifier": "net.edgehunter",
       "buildNumber": "1",
-      "deploymentTarget": "15.1",
-      "infoPlist": {
-        "ITSAppUsesNonExemptEncryption": false
-      }
+      "deploymentTarget": "15.1"
     },
     "android": {
       "package": "net.edgehunter",

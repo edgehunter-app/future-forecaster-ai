@@ -1,34 +1,15 @@
 {
   "cli": {
-    "version": ">= 5.0.0",
-    "appVersionSource": "local"
-  },
-  "build": {
-    "development": {
-      "developmentClient": true,
-      "distribution": "internal"
-    },
-    "preview": {
-      "distribution": "internal",
-      "ios": {
-        "simulator": false
-      }
-    },
-    "production": {
-      "ios": {
-        "buildConfiguration": "Release"
-      },
-      "android": {
-        "buildType": "apk"
-      }
-    }
+    "version": ">= 5.0.0"
   },
   "submit": {
     "production": {
       "ios": {
         "appleId": "mattg@lakeviewfinancial.net",
-        "ascAppId": "net.edgehunter",
-        "appleTeamId": "YOUR_TEAM_ID"
+        "ascAppId": "net.edgehunter"
+      },
+      "android": {
+        "track": "internal"
       }
     }
   }

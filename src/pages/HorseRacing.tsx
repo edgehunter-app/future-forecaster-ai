@@ -1,11 +1,11 @@
 import { useEffect, useMemo, useState } from "react";
-import { Sparkles, Trophy, AlertTriangle, Clock, MapPin, Loader2, RefreshCw } from "lucide-react";
+import { Sparkles, Trophy, AlertTriangle, Clock, MapPin, Loader2, RefreshCw, Zap } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { supabase } from "@/integrations/supabase/client";
 
 // deno-lint-ignore no-explicit-any
 type Any = any;
-type Rating = "green" | "yellow" | "red";
+type Rating = "GREEN" | "YELLOW" | "RED";
 
 interface Runner {
   number: number;
@@ -49,33 +49,60 @@ interface FetchResponse {
 }
 
 interface RaceAnalysis {
-  rating: Rating;
-  ratingLabel: string;
-  topPick: string;
-  exacta: string;
-  keyAngles?: Array<{ horse: string; angle: string }>;
-  analysis: string;
+  track?: string;
+  race?: number | string;
+  startTime?: string;
+  trafficLight: Rating;
+  trafficLightReason?: string;
+  topPick?: {
+    horse?: string;
+    number?: number;
+    weight?: number | string;
+    barrier?: number | string;
+    classRating?: number | string;
+    classTrend?: string;
+    runningStyle?: string;
+    decorators?: string[];
+    confidence?: number;
+    reasoning?: string;
+  };
+  valuePlay?: { horse?: string; number?: number; reason?: string };
+  paceScenario?: string;
+  raceSummary?: string;
+  keyFactors?: string[];
+  warningFlags?: string[];
+  exoticSuggestion?: string;
 }
 
 interface RaceCardData {
   id: string;
+  trackSlug: string;
   trackName: string;
   race: RaceData;
   meetingDate: string;
+  pending?: boolean;
+}
+
+interface CoverageEntry {
+  trackName: string;
+  slug: string;
+  totalRaces: number;
+  racesWithField: number;
+  status: "live" | "pending";
 }
 
 const RATING_STYLES: Record<Rating, { dot: string; chip: string; ring: string }> = {
-  green: {
+  GREEN: {
     dot: "bg-success shadow-[0_0_12px_hsl(var(--success))]",
     chip: "bg-success/15 text-success border-success/30",
     ring: "border-success/40",
   },
-  yellow: {
+  YELLOW: {
     dot: "bg-warning shadow-[0_0_12px_hsl(var(--warning))]",
     chip: "bg-warning/15 text-warning border-warning/30",
     ring: "border-warning/40",
   },
-  red: {
+  RED: {
     dot: "bg-destructive shadow-[0_0_12px_hsl(var(--destructive))]",
     chip: "bg-destructive/15 text-destructive border-destructive/30",
     ring: "border-destructive/40",
@@ -181,14 +208,130 @@ function surfaceFromCondition(condition?: string): string {
 
 type AnalysisState = { status: "pending" | "loading" | "done" | "error"; data?: RaceAnalysis; error?: string };
 
-function RaceCard({ card, state }: { card: RaceCardData; state: AnalysisState }) {
+function AnalysisPanel({ a }: { a: RaceAnalysis }) {
+  const style = RATING_STYLES[a.trafficLight] ?? RATING_STYLES.YELLOW;
+  const clean = (v: unknown): string | null => {
+    if (v == null) return null;
+    const s = String(v).trim();
+    if (!s) return null;
+    if (/^(unknown|n\/a|na|null|undefined|\?|-)$/i.test(s)) return null;
+    return s;
+  };
+  const trendArrow = (t?: string) => {
+    const s = (t ?? "").toUpperCase();
+    if (s.includes("IMPROV") || s.includes("RIS")) return "↑";
+    if (s.includes("DECLIN") || s.includes("FALL")) return "↓";
+    return "→";
+  };
+  return (
+    <section className={cn("mt-4 rounded-xl border p-3", style.ring, "bg-info/5")}>
+      <div className="flex items-center justify-between gap-2">
+        <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wide text-info">
+          <Sparkles className="h-3.5 w-3.5" />
+          FormFav-Powered Edge Analysis
+        </div>
+        <div className={cn("flex items-center gap-2 rounded-full border px-2.5 py-1 text-[11px] font-semibold", style.chip)}>
+          <TrafficLight rating={a.trafficLight} />
+          <span>{a.trafficLight}</span>
+        </div>
+      </div>
+      {a.trafficLightReason && (
+        <p className="mt-1.5 text-xs text-muted-foreground">{a.trafficLightReason}</p>
+      )}
+      {a.topPick && (
+        <div className="mt-3 rounded-lg border border-border bg-card/50 p-3">
+          <div className="flex items-center justify-between gap-2">
+            <div>
+              <div className="text-[11px] uppercase tracking-wide text-muted-foreground">Top Pick</div>
+              <div className="text-base font-semibold text-foreground">
+                {a.topPick.number != null && <span className="text-muted-foreground">#{a.topPick.number} </span>}
+                {clean(a.topPick.horse) ?? "—"}
+                {a.topPick.barrier != null && <span className="ml-1 text-xs text-muted-foreground">(Bar {a.topPick.barrier})</span>}
+              </div>
+            </div>
+            {a.topPick.confidence != null && (
+              <div className="rounded-full border border-info/30 bg-info/10 px-2 py-0.5 text-[11px] font-semibold text-info">
+                {a.topPick.confidence}% conf
+              </div>
+            )}
+          </div>
+          <div className="mt-1.5 flex flex-wrap gap-1.5 text-[11px]">
+            {clean(a.topPick.classRating) && (
+              <span className="rounded-full border border-border bg-muted/40 px-2 py-0.5 text-muted-foreground">
+                Class {a.topPick.classRating} {trendArrow(a.topPick.classTrend)}
+              </span>
+            )}
+            {clean(a.topPick.runningStyle) && (
+              <span className="rounded-full border border-border bg-muted/40 px-2 py-0.5 text-muted-foreground">
+                {a.topPick.runningStyle}
+              </span>
+            )}
+            {clean(a.topPick.weight) && (
+              <span className="rounded-full border border-border bg-muted/40 px-2 py-0.5 text-muted-foreground">
+                {a.topPick.weight}
+              </span>
+            )}
+            {(a.topPick.decorators ?? []).map((d, i) => (
+              <span key={i} className="rounded-full border border-success/30 bg-success/10 px-2 py-0.5 text-success">{d}</span>
+            ))}
+          </div>
+          {a.topPick.reasoning && <p className="mt-2 text-sm text-foreground/90">{a.topPick.reasoning}</p>}
+        </div>
+      )}
+      {a.valuePlay?.horse && (
+        <div className="mt-2 rounded-lg border border-warning/30 bg-warning/5 p-3">
+          <div className="text-[11px] uppercase tracking-wide text-warning">Value Play</div>
+          <div className="text-sm font-semibold text-foreground">
+            {a.valuePlay.number != null && <span className="text-muted-foreground">#{a.valuePlay.number} </span>}
+            {clean(a.valuePlay.horse) ?? "—"}
+          </div>
+          {a.valuePlay.reason && <p className="mt-1 text-xs text-foreground/80">{a.valuePlay.reason}</p>}
+        </div>
+      )}
+      {a.paceScenario && (
+        <div className="mt-2 rounded-lg border border-border bg-muted/20 p-2.5">
+          <div className="text-[11px] uppercase tracking-wide text-muted-foreground">Pace Scenario</div>
+          <p className="mt-0.5 text-xs text-foreground/90">{a.paceScenario}</p>
+        </div>
+      )}
+      {a.raceSummary && <p className="mt-3 text-sm text-foreground/90">{a.raceSummary}</p>}
+      {a.exoticSuggestion && (
+        <div className="mt-2 text-xs">
+          <span className="font-semibold text-foreground">Exotic: </span>
+          <span className="text-muted-foreground">{a.exoticSuggestion}</span>
+        </div>
+      )}
+      {a.keyFactors && a.keyFactors.length > 0 && (
+        <ul className="mt-2 flex flex-wrap gap-1.5">
+          {a.keyFactors.map((f, i) => (
+            <li key={i} className="rounded-full border border-border bg-muted/40 px-2 py-0.5 text-[11px] text-muted-foreground">{f}</li>
+          ))}
+        </ul>
+      )}
+      {a.warningFlags && a.warningFlags.length > 0 && (
+        <ul className="mt-2 space-y-1 border-t border-border pt-2 text-xs text-destructive">
+          {a.warningFlags.map((w, i) => (
+            <li key={i} className="flex gap-1.5"><AlertTriangle className="h-3.5 w-3.5 shrink-0" /><span>{w}</span></li>
+          ))}
+        </ul>
+      )}
+    </section>
+  );
+}
+
+function RaceCard({ card, state, onAnalyze }: { card: RaceCardData; state: AnalysisState; onAnalyze: () => void }) {
   const { race, trackName } = card;
   const analysis = state.data ?? null;
-  const loading = state.status === "loading" || state.status === "pending";
+  const loading = state.status === "loading";
   const error = state.status === "error" ? state.error ?? "error" : null;
-  const style = analysis ? RATING_STYLES[analysis.rating] : RATING_STYLES.yellow;
-  const liveRunners = race.runners.filter((r) => !r.scratched);
-  const scratches = race.runners.filter((r) => r.scratched);
+  const style = analysis ? (RATING_STYLES[analysis.trafficLight] ?? RATING_STYLES.YELLOW) : RATING_STYLES.YELLOW;
+  const liveRunners = race.runners.filter((r) => r.scratched !== true);
+  const scratches = race.runners.filter((r) => r.scratched === true);
+  if (trackName?.toLowerCase().includes("delta")) {
+    console.log("[horse-racing][delta] race", race.raceNumber, "total=", race.runners.length,
+      "live=", liveRunners.length, "scratched=", scratches.length,
+      "names=", race.runners.map((r) => `${r.name}(${r.scratched})`));
+  }
   const surface = surfaceFromCondition(race.condition);
 
   return (
@@ -211,48 +354,17 @@ function RaceCard({ card, state }: { card: RaceCardData; state: AnalysisState })
             {race.raceName ?? "Race"} · {race.condition ?? "?"} · {liveRunners.length} runners
           </p>
         </div>
-        {analysis ? (
-          <div className={cn("flex items-center gap-2 rounded-full border px-3 py-1.5 text-xs font-semibold", style.chip)}>
-            <TrafficLight rating={analysis.rating} />
-            <span>{analysis.ratingLabel}</span>
-          </div>
-        ) : (
-          <div className="flex items-center gap-2 rounded-full border border-border bg-muted/30 px-3 py-1.5 text-xs text-muted-foreground">
-            {loading ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Sparkles className="h-3.5 w-3.5" />}
-            <span>{loading ? "Analyzing…" : error ? "Analysis error" : "Queued"}</span>
-          </div>
-        )}
+        <button
+          onClick={onAnalyze}
+          disabled={loading}
+          className="flex items-center gap-1.5 rounded-lg border border-info/40 bg-info/10 px-3 py-1.5 text-xs font-semibold text-info hover:bg-info/15 disabled:opacity-50"
+        >
+          {loading ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Sparkles className="h-3.5 w-3.5" />}
+          {loading ? "Analyzing…" : analysis ? "Re-analyze" : "Analyze This Race"}
+        </button>
       </header>
 
-      {analysis && (
-        <section className="mt-4 rounded-xl border border-info/30 bg-info/5 p-3">
-          <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wide text-info">
-            <Sparkles className="h-3.5 w-3.5" />
-            Edge Analysis
-          </div>
-          <div className="mt-2 grid gap-2 sm:grid-cols-2">
-            <div>
-              <div className="text-[11px] uppercase tracking-wide text-muted-foreground">Top Pick</div>
-              <div className="text-sm font-semibold text-foreground">{analysis.topPick}</div>
-            </div>
-            <div>
-              <div className="text-[11px] uppercase tracking-wide text-muted-foreground">Exacta</div>
-              <div className="text-sm font-semibold text-foreground">{analysis.exacta}</div>
-            </div>
-          </div>
-          <p className="mt-2 text-sm leading-relaxed text-foreground/90">{analysis.analysis}</p>
-          {analysis.keyAngles && analysis.keyAngles.length > 0 && (
-            <ul className="mt-3 space-y-1 border-t border-info/20 pt-2 text-xs">
-              {analysis.keyAngles.map((a, i) => (
-                <li key={i} className="flex gap-2">
-                  <span className="font-semibold text-foreground">{a.horse}:</span>
-                  <span className="text-muted-foreground">{a.angle}</span>
-                </li>
-              ))}
-            </ul>
-          )}
-        </section>
-      )}
+      {analysis && <AnalysisPanel a={analysis} />}
 
       {error && !analysis && (
         <p className="mt-3 text-xs text-destructive">Analysis unavailable: {error}</p>
@@ -305,50 +417,84 @@ function RaceCard({ card, state }: { card: RaceCardData; state: AnalysisState })
   );
 }
 
-function BestBetBanner({ cards, analyses }: { cards: RaceCardData[]; analyses: Record<string, AnalysisState> }) {
-  const best = useMemo(() => {
-    const withA = cards
-      .map((c) => ({ card: c, a: analyses[c.id]?.data }))
-      .filter((x): x is { card: RaceCardData; a: RaceAnalysis } => !!x.a);
-    return (
-      withA.find((x) => x.a.rating === "green") ??
-      withA.find((x) => x.a.rating === "yellow") ??
-      withA[0] ??
-      null
-    );
-  }, [cards, analyses]);
-
-  if (!best) {
-    return (
-      <section className="relative overflow-hidden rounded-2xl border border-border bg-card p-5">
-        <div className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Best Bet of the Day</div>
-        <p className="mt-2 text-sm text-muted-foreground">Awaiting analysis on today's cards…</p>
-      </section>
-    );
+function parseAnalysis(raw: Any): RaceAnalysis | null {
+  if (!raw) return null;
+  if (typeof raw === "object" && raw.trafficLight) return raw as RaceAnalysis;
+  if (typeof raw?.raw === "string") {
+    const m = raw.raw.match(/\{[\s\S]*\}/);
+    if (m) { try { return JSON.parse(m[0]); } catch { return null; } }
   }
+  return null;
+}
 
-  const { card, a } = best;
+function BestRaceTodayPanel({ date }: { date: string }) {
+  const [state, setState] = useState<AnalysisState>({ status: "pending" });
+
+  const run = async () => {
+    setState({ status: "loading" });
+    try {
+      const { data, error } = await supabase.functions.invoke("analyze-market", {
+        body: { type: "horse-racing", date },
+      });
+      if (error) { setState({ status: "error", error: error.message }); return; }
+      const parsed = parseAnalysis(data);
+      if (parsed) setState({ status: "done", data: parsed });
+      else setState({ status: "error", error: (data as Any)?.error ?? "no analysis" });
+    } catch (e) {
+      setState({ status: "error", error: (e as Error).message });
+    }
+  };
+
+  const loading = state.status === "loading";
+  const a = state.data;
+
   return (
-    <section className="relative overflow-hidden rounded-2xl border border-success/40 bg-gradient-to-br from-success/15 via-card to-card p-5">
+    <section className="relative overflow-hidden rounded-2xl border border-purple-500/40 bg-gradient-to-br from-purple-600/20 via-fuchsia-500/10 to-card p-5">
       <div className="absolute right-4 top-4 opacity-20">
-        <Trophy className="h-20 w-20 text-success" />
+        <Trophy className="h-20 w-20 text-purple-400" />
       </div>
-      <div className="text-xs font-semibold uppercase tracking-wider text-success">Best Bet of the Day</div>
-      <h2 className="mt-1 text-xl font-bold text-foreground">
-        {card.trackName} · Race {card.race.raceNumber}
-      </h2>
-      <p className="mt-1 text-sm text-muted-foreground">
-        {formatDistance(card.race.distance)} {surfaceFromCondition(card.race.condition)} · {formatRaceDate(card.race.startTime, card.race.timezone, card.meetingDate)} · Post {formatPostTime(card.race.startTime, card.race.timezone)}
-      </p>
-      <div className="mt-3 flex flex-wrap items-center gap-2">
-        <span className="rounded-full border border-success/40 bg-success/15 px-3 py-1 text-xs font-semibold text-success">
-          {a.topPick}
-        </span>
-        <span className="rounded-full border border-border bg-card px-3 py-1 text-xs font-semibold text-foreground">
-          Exacta {a.exacta}
-        </span>
+      <div className="flex items-center justify-between gap-3">
+        <div>
+          <div className="text-xs font-semibold uppercase tracking-wider text-purple-300">Best Race Today</div>
+          <h2 className="mt-1 text-xl font-bold text-foreground">FormFav + Claude Race Finder</h2>
+          <p className="mt-1 text-xs text-muted-foreground">
+            Claude scans today's US meetings via FormFav MCP and returns the most bettable race.
+          </p>
+        </div>
+        <button
+          onClick={run}
+          disabled={loading}
+          className="shrink-0 flex items-center gap-2 rounded-xl bg-gradient-to-r from-purple-600 to-fuchsia-600 px-4 py-2 text-sm font-semibold text-white shadow-lg hover:from-purple-500 hover:to-fuchsia-500 disabled:opacity-60"
+        >
+          {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Zap className="h-4 w-4" />}
+          {loading ? "Scanning…" : a ? "Re-scan" : "🏇 Find Best Race Today"}
+        </button>
       </div>
-      <p className="mt-3 max-w-2xl text-sm text-foreground/90">{a.analysis}</p>
+      {state.status === "error" && (
+        <p className="mt-3 text-xs text-destructive">Scan failed: {state.error}</p>
+      )}
+      {a && (
+        <div className="mt-4 rounded-xl border border-border bg-card/70 p-4">
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <div>
+              <div className="text-xs uppercase tracking-wide text-muted-foreground">
+                {a.track ?? "Track"} · Race {a.race ?? "?"}
+              </div>
+              <div className="text-base font-semibold text-foreground">
+                {a.startTime ? new Date(a.startTime).toLocaleTimeString([], { hour: "numeric", minute: "2-digit" }) : "Race"}
+              </div>
+            </div>
+            <div className={cn(
+              "flex items-center gap-2 rounded-full border px-3 py-1 text-xs font-semibold",
+              (RATING_STYLES[a.trafficLight] ?? RATING_STYLES.YELLOW).chip,
+            )}>
+              <TrafficLight rating={a.trafficLight} />
+              <span>{a.trafficLight}</span>
+            </div>
+          </div>
+          <AnalysisPanel a={a} />
+        </div>
+      )}
     </section>
   );
 }
@@ -356,56 +502,97 @@ function BestBetBanner({ cards, analyses }: { cards: RaceCardData[]; analyses: R
 function HorseRacingBody({ cards }: { cards: RaceCardData[] }) {
   const [analyses, setAnalyses] = useState<Record<string, AnalysisState>>({});
 
-  useEffect(() => {
-    let cancelled = false;
-    const initial: Record<string, AnalysisState> = {};
-    cards.forEach((c) => (initial[c.id] = { status: "pending" }));
-    setAnalyses(initial);
-    (async () => {
-      for (const card of cards) {
-        if (cancelled) return;
-        setAnalyses((prev) => ({ ...prev, [card.id]: { status: "loading" } }));
-        try {
-          const { data, error } = await supabase.functions.invoke("analyze-market", {
-            body: { type: "horse-racing", trackName: card.trackName, race: card.race },
-          });
-          if (cancelled) return;
-          if (error) {
-            setAnalyses((prev) => ({ ...prev, [card.id]: { status: "error", error: error.message } }));
-            continue;
-          }
-          const raw = data as Any;
-          let parsed: RaceAnalysis | null = null;
-          if (raw && typeof raw === "object" && raw.rating) {
-            parsed = raw as RaceAnalysis;
-          } else if (typeof raw?.raw === "string") {
-            const m = raw.raw.match(/\{[\s\S]*\}/);
-            if (m) parsed = JSON.parse(m[0]);
-          }
-          if (parsed) {
-            setAnalyses((prev) => ({ ...prev, [card.id]: { status: "done", data: parsed! } }));
-          } else {
-            setAnalyses((prev) => ({ ...prev, [card.id]: { status: "error", error: raw?.error ?? "no analysis" } }));
-          }
-        } catch (e) {
-          setAnalyses((prev) => ({ ...prev, [card.id]: { status: "error", error: (e as Error).message } }));
-        }
+  const analyze = async (card: RaceCardData) => {
+    setAnalyses((prev) => ({ ...prev, [card.id]: { status: "loading" } }));
+    try {
+      const { data, error } = await supabase.functions.invoke("analyze-market", {
+        body: {
+          type: "horse-racing",
+          track: card.trackSlug,
+          race: card.race.raceNumber,
+          date: card.meetingDate,
+        },
+      });
+      if (error) {
+        setAnalyses((prev) => ({ ...prev, [card.id]: { status: "error", error: error.message } }));
+        return;
       }
-    })();
-    return () => {
-      cancelled = true;
-    };
-  }, [cards]);
+      const parsed = parseAnalysis(data);
+      if (parsed) setAnalyses((prev) => ({ ...prev, [card.id]: { status: "done", data: parsed } }));
+      else setAnalyses((prev) => ({ ...prev, [card.id]: { status: "error", error: (data as Any)?.error ?? "no analysis" } }));
+    } catch (e) {
+      setAnalyses((prev) => ({ ...prev, [card.id]: { status: "error", error: (e as Error).message } }));
+    }
+  };
 
   return (
-    <>
-      <BestBetBanner cards={cards} analyses={analyses} />
-      <div className="space-y-4">
-        {cards.map((card) => (
-          <RaceCard key={card.id} card={card} state={analyses[card.id] ?? { status: "pending" }} />
-        ))}
+    <div className="space-y-4">
+      {cards.map((card) =>
+        card.pending ? (
+          <PendingRaceCard key={card.id} card={card} />
+        ) : (
+          <RaceCard
+            key={card.id}
+            card={card}
+            state={analyses[card.id] ?? { status: "pending" }}
+            onAnalyze={() => analyze(card)}
+          />
+        ),
+      )}
+    </div>
+  );
+}
+
+function PendingRaceCard({ card }: { card: RaceCardData }) {
+  const { race, trackName } = card;
+  return (
+    <article className="rounded-2xl border border-dashed border-border bg-card/60 p-4 sm:p-5">
+      <div className="flex items-center gap-2 text-xs text-muted-foreground">
+        <MapPin className="h-3.5 w-3.5" />
+        <span>{trackName}</span>
       </div>
-    </>
+      <h3 className="mt-1 text-base font-semibold text-foreground">Race {race.raceNumber}</h3>
+      <div className="mt-3 flex items-start gap-2 rounded-xl border border-warning/30 bg-warning/5 p-3 text-sm">
+        <span aria-hidden className="text-base">⏳</span>
+        <div>
+          <div className="font-semibold text-warning">Field not yet published</div>
+          <p className="mt-0.5 text-xs text-muted-foreground">
+            Full field typically posts 2–3 hours before first post.
+          </p>
+        </div>
+      </div>
+    </article>
+  );
+}
+
+function CoverageSummary({ entries }: { entries: CoverageEntry[] }) {
+  if (entries.length === 0) return null;
+  const live = entries.filter((e) => e.status === "live");
+  const pending = entries.filter((e) => e.status === "pending");
+  return (
+    <section className="rounded-2xl border border-border bg-card p-4">
+      <div className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+        Today's Coverage
+      </div>
+      <ul className="mt-2 space-y-1 text-sm">
+        {live.map((e) => (
+          <li key={e.slug} className="flex items-center gap-2 text-foreground">
+            <span className="text-success" aria-hidden>✅</span>
+            <span className="font-medium">{e.trackName}</span>
+            <span className="text-muted-foreground">
+              — {e.totalRaces} race{e.totalRaces === 1 ? "" : "s"} · Full fields
+            </span>
+          </li>
+        ))}
+        {pending.map((e) => (
+          <li key={e.slug} className="flex items-center gap-2 text-muted-foreground">
+            <span aria-hidden>⏳</span>
+            <span className="font-medium text-foreground">{e.trackName}</span>
+            <span>— {e.slug === "saratoga" ? "Card posts day-of" : "Field pending"}</span>
+          </li>
+        ))}
+      </ul>
+    </section>
   );
 }
 
@@ -413,6 +600,7 @@ export default function HorseRacing() {
   const [data, setData] = useState<FetchResponse | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [lastChecked, setLastChecked] = useState<Date | null>(null);
 
   const load = async () => {
     setLoading(true);
@@ -428,12 +616,15 @@ export default function HorseRacing() {
       const first = await supabase.functions.invoke("fetch-horse-racing", { body: { date: today } });
       if (first.error) { setError(first.error.message); setLoading(false); return; }
       let resp = first.data as FetchResponse;
+      console.log("[horse-racing] hook received:", resp);
+      console.log("[horse-racing] meetings:", resp?.meetings?.length, "meetingCount:", resp?.meetingCount);
       if (!resp || resp.meetingCount === 0) {
         console.log("[horse-racing] today empty, trying tomorrow:", tomorrow);
         const second = await supabase.functions.invoke("fetch-horse-racing", { body: { date: tomorrow } });
         if (!second.error && second.data) resp = second.data as FetchResponse;
       }
       setData({ ...resp, date: resp.date ?? today });
+      setLastChecked(new Date());
     } finally {
       setLoading(false);
     }
@@ -443,25 +634,70 @@ export default function HorseRacing() {
     load();
   }, []);
 
-  const cards: RaceCardData[] = useMemo(() => {
-    if (!data) return [];
+  const { cards, coverage } = useMemo(() => {
+    if (!data) return { cards: [] as RaceCardData[], coverage: [] as CoverageEntry[] };
+
+    const coverageAll: CoverageEntry[] = data.meetings.map((m) => {
+      const races = m.races ?? [];
+      const racesWithField = races.filter(
+        ({ data: rd }) => (rd.numberOfRunners ?? (rd.runners ?? []).length) >= 2,
+      );
+      return {
+        trackName: m.trackName,
+        slug: m.track,
+        totalRaces: races.length,
+        racesWithField: racesWithField.length,
+        status: "live",
+      };
+    });
+
+    const visibleSlugs = new Set<string>();
+    for (const entry of coverageAll) {
+      const enough = entry.totalRaces > 0 && entry.racesWithField >= entry.totalRaces * 0.5;
+      if (enough) {
+        entry.status = "live";
+        visibleSlugs.add(entry.slug);
+      } else {
+        entry.status = "pending";
+        console.log(
+          "[horse-racing] hiding incomplete:",
+          entry.trackName,
+          "only",
+          entry.racesWithField,
+          "of",
+          entry.totalRaces,
+          "races have full fields",
+        );
+      }
+    }
+
     const out: RaceCardData[] = [];
     for (const m of data.meetings) {
+      if (!visibleSlugs.has(m.track)) continue;
       for (const { race, data: rd } of m.races) {
-        const liveRunners = (rd.runners ?? []).filter((r) => !r.scratched);
-        if (liveRunners.length < 4) continue;
-        const hasDistance = !!rd.distance && String(rd.distance).trim() !== "";
-        const hasSurface = !!surfaceFromCondition(rd.condition);
-        if (!hasDistance && !hasSurface) continue;
+        const liveRunners = (rd.runners ?? []).filter((r) => r.scratched !== true);
+        const advertised = rd.numberOfRunners ?? liveRunners.length;
+        const pending = advertised < 2 && liveRunners.length < 2;
         out.push({
           id: `${m.track}-r${rd.raceNumber ?? race}`,
+          trackSlug: m.track,
           trackName: m.trackName,
           race: rd,
           meetingDate: m.date,
+          pending,
         });
       }
     }
-    return out;
+    console.log(
+      "[horse-racing] cards built:",
+      out.length,
+      "from",
+      visibleSlugs.size,
+      "visible meetings (of",
+      data.meetings.length,
+      "total)",
+    );
+    return { cards: out, coverage: coverageAll };
   }, [data]);
 
   return (
@@ -506,17 +742,56 @@ export default function HorseRacing() {
         </div>
       )}
 
+      <BestRaceTodayPanel date={data?.date ?? todayLocalISO()} />
+
+      {coverage.length > 0 && <CoverageSummary entries={coverage} />}
+
       {!loading && cards.length === 0 && !error && (
-        <section className="flex flex-col items-center justify-center rounded-2xl border border-border bg-card p-10 text-center">
-          <div className="text-[64px] leading-none" aria-hidden>🐎</div>
-          <h2 className="mt-5 text-lg font-semibold text-foreground">No races posted yet for today</h2>
-          <p className="mt-2 max-w-xs text-sm text-muted-foreground">
-            Check back later — race cards are typically posted the morning of race day
-          </p>
-          <div className="mt-4 rounded-xl border border-success/20 bg-success/5 px-4 py-3 text-sm text-success">
-            Saratoga and Del Mar open Friday July 17 — big cards coming!
-          </div>
-        </section>
+        <div className="space-y-4">
+          <section className="flex flex-col items-center justify-center rounded-2xl border border-border bg-card p-10 text-center">
+            <div className="text-[64px] leading-none" aria-hidden>🐎</div>
+            <h2 className="mt-5 text-lg font-semibold text-foreground">No races posted yet for today</h2>
+            <p className="mt-2 max-w-xs text-sm text-muted-foreground">
+              Race cards are typically posted 2–3 hours before first post.
+            </p>
+            {lastChecked && (
+              <p className="mt-3 text-xs text-muted-foreground">
+                Last checked {lastChecked.toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" })}
+              </p>
+            )}
+            <button
+              onClick={load}
+              disabled={loading}
+              className="mt-4 flex items-center gap-1.5 rounded-lg border border-info/30 bg-info/10 px-4 py-2 text-sm font-semibold text-info hover:bg-info/15 disabled:opacity-50"
+            >
+              <RefreshCw className={cn("h-3.5 w-3.5", loading && "animate-spin")} />
+              Check again
+            </button>
+          </section>
+
+          <section className="rounded-2xl border border-info/30 bg-info/5 p-4 text-sm">
+            <div className="flex items-center gap-2 font-semibold text-info">
+              <span aria-hidden>🏇</span> Saratoga — Card posts day-of
+            </div>
+            <p className="mt-1 text-foreground/90">
+              Saratoga's full card typically becomes available 2–3 hours before first post. Check back closer to race time.
+            </p>
+          </section>
+
+          <section className="rounded-2xl border border-border bg-muted/30 p-4 text-sm">
+            <div className="flex items-center gap-2 font-semibold text-foreground">
+              <span aria-hidden>📋</span> Coverage Note
+            </div>
+            <p className="mt-1 text-muted-foreground">
+              Some tracks — including <span className="font-medium text-foreground">Del Mar</span> — aren't
+              currently available in our data feed. We're working to add more track coverage.
+            </p>
+            <p className="mt-2 text-muted-foreground">
+              Currently showing: Saratoga, Churchill Downs, Belmont Park, Santa Anita, Gulfstream Park,
+              Keeneland, and other major US tracks when cards are available.
+            </p>
+          </section>
+        </div>
       )}
 
       {cards.length > 0 && <HorseRacingBody cards={cards} />}
