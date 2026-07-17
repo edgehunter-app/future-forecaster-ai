@@ -516,6 +516,7 @@ export default function HorseRacing() {
         if (liveRunners.length < 1) continue;
         out.push({
           id: `${m.track}-r${rd.raceNumber ?? race}`,
+          trackSlug: m.track,
           trackName: m.trackName,
           race: rd,
           meetingDate: m.date,
