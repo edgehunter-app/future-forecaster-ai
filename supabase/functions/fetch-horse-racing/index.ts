@@ -221,6 +221,55 @@ Deno.serve(async (req) => {
     const alsoScanSaturday = url.searchParams.get("probeSaturday") === "1";
     const probeUK = url.searchParams.get("probeUK") === "1";
     const probeAuth = url.searchParams.get("probeAuth") === "1";
+    const probeSlugs = url.searchParams.get("probeSlugs") === "1";
+
+    if (probeSlugs) {
+      const testDate = url.searchParams.get("date") ?? "2026-07-17";
+      const out: Record<string, unknown> = { testDate };
+
+      // 1) /tracks?country=us
+      try {
+        const r = await fetch(`${FORMFAV_BASE}/tracks?country=us`, { headers, signal: AbortSignal.timeout(8000) });
+        const body = r.ok ? await r.json() : (await r.text()).slice(0, 1500);
+        out.tracks_endpoint = { status: r.status, body };
+        console.log(`[slugs] /tracks?country=us status=${r.status}`);
+      } catch (e) {
+        out.tracks_endpoint = { error: String(e) };
+      }
+      await new Promise((r) => setTimeout(r, 400));
+
+      const testSlug = async (slug: string) => {
+        const u = `${FORMFAV_BASE}/form?date=${testDate}&track=${slug}&race=1&country=us`;
+        try {
+          const r = await fetch(u, { headers, signal: AbortSignal.timeout(8000) });
+          const body = r.ok ? await r.json() : (await r.text()).slice(0, 200);
+          const returnedDate = r.ok ? (body as Record<string, unknown>)?.date : undefined;
+          console.log(`[slugs] ${slug}: ${r.status}${returnedDate ? ` returnedDate=${returnedDate}` : ""}`);
+          return { status: r.status, returnedDate, body };
+        } catch (e) {
+          return { error: String(e) };
+        }
+      };
+
+      const delMar = ["del-mar", "delmar", "del_mar", "dmr", "del-mar-thoroughbred-club", "del-mar-racetrack", "san-diego"];
+      const saratoga = ["saratoga", "saratoga-race-course", "sar", "saratoga-springs", "nyra-saratoga"];
+
+      const delMarResults: Record<string, unknown> = {};
+      for (const s of delMar) {
+        delMarResults[s] = await testSlug(s);
+        await new Promise((r) => setTimeout(r, 400));
+      }
+      out.del_mar = delMarResults;
+
+      const saratogaResults: Record<string, unknown> = {};
+      for (const s of saratoga) {
+        saratogaResults[s] = await testSlug(s);
+        await new Promise((r) => setTimeout(r, 400));
+      }
+      out.saratoga = saratogaResults;
+
+      return new Response(JSON.stringify(out, null, 2), { headers: CORS_HEADERS });
+    }
 
     if (probeAuth) {
       const results: Record<string, unknown> = { key_present: !!FORMFAV_KEY };
