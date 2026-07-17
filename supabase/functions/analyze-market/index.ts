@@ -941,91 +941,139 @@ Deno.serve(async (req) => {
       case "sentiment": prompt = buildSentimentPrompt(body); break;
       case "wallet-strategy": prompt = buildWalletStrategyPrompt(body); break;
       case "golf": prompt = buildGolfPrompt(body); break;
-      case "horse-racing": prompt = buildHorseRacingPrompt(body); break;
+      case "horse-racing": prompt = ""; break; // built dynamically below from FormFav REST
       case "cashout": prompt = buildCashoutPrompt(body); break;
       case "market":
       default:
         prompt = buildPrompt(body);
     }
 
-    // Horse racing goes through a Claude call with the FormFav MCP server attached
-    // so the model can pull live meetings and race cards on demand.
+    // Horse racing: fetch FormFav REST directly, then pass data to Claude
+    // in the prompt (no MCP). Simpler, faster, and avoids MCP auth issues.
     if (type === "horse-racing") {
-      const supabaseUrl = Deno.env.get("SUPABASE_URL") ?? "";
-      const formfavProxyUrl = `${supabaseUrl}/functions/v1/fetch-formfav-mcp`;
+      const formfavKey = Deno.env.get("FORMFAV_API_KEY") ?? "";
+      if (!formfavKey) {
+        return new Response(JSON.stringify({
+          error: "FORMFAV_API_KEY not configured",
+          code: "NO_FORMFAV_KEY",
+        }), { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+      }
+      const today = new Date().toLocaleDateString("en-CA", { timeZone: "America/New_York" });
+      const date = String(body.date ?? today);
+      const wantTrack = body.track ? String(body.track).toLowerCase() : null;
+      const wantRace = body.race ? Number(body.race) : null;
+      const ffHeaders = { "X-API-Key": formfavKey, "Accept": "application/json" };
+
       try {
+        // 1. meetings
+        const meetingsUrl = `https://api.formfav.com/v1/form/meetings?date=${encodeURIComponent(date)}&race_code=gallops&country=us`;
+        const meetingsRes = await fetch(meetingsUrl, { headers: ffHeaders, signal: AbortSignal.timeout(15000) });
+        if (!meetingsRes.ok) {
+          const txt = await meetingsRes.text();
+          return new Response(JSON.stringify({
+            error: "FormFav meetings fetch failed",
+            code: "FORMFAV_ERROR",
+            upstreamStatus: meetingsRes.status,
+            detail: txt.slice(0, 400),
+          }), { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+        }
+        const meetingsJson = await meetingsRes.json() as { meetings?: any[] };
+        const allMeetings = (meetingsJson.meetings ?? []).filter(
+          (m: any) => String(m?.country ?? "").toLowerCase() === "us",
+        );
+        console.log("[horse-racing] meetings via REST:", allMeetings.length,
+          allMeetings.map((m: any) => m.slug ?? m.track));
+
+        if (allMeetings.length === 0) {
+          return new Response(JSON.stringify({
+            error: "No US meetings today",
+            code: "NO_MEETINGS",
+            date,
+          }), { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+        }
+
+        // 2. pick meeting + race
+        let meeting: any = wantTrack
+          ? allMeetings.find((m: any) => String(m.slug ?? "").toLowerCase() === wantTrack
+              || String(m.track ?? "").toLowerCase() === wantTrack)
+          : allMeetings[0];
+        if (!meeting) meeting = allMeetings[0];
+
+        const meetingRaces: any[] = Array.isArray(meeting.races) ? meeting.races : [];
+        const raceNumber = wantRace
+          ?? meetingRaces[0]?.raceNumber
+          ?? meetingRaces[0]?.race
+          ?? 1;
+
+        // 3. race card
+        const cardUrl = `https://api.formfav.com/v1/form?date=${encodeURIComponent(date)}&track=${encodeURIComponent(meeting.slug)}&race=${encodeURIComponent(String(raceNumber))}&country=us`;
+        const cardRes = await fetch(cardUrl, { headers: ffHeaders, signal: AbortSignal.timeout(15000) });
+        if (!cardRes.ok) {
+          const txt = await cardRes.text();
+          return new Response(JSON.stringify({
+            error: "FormFav race card fetch failed",
+            code: "FORMFAV_ERROR",
+            upstreamStatus: cardRes.status,
+            detail: txt.slice(0, 400),
+          }), { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+        }
+        const card = await cardRes.json();
+        console.log("[horse-racing] race card:", (card as any)?.track, (card as any)?.numberOfRunners, "runners");
+
+        // 4. Claude analysis with data in prompt (no MCP)
+        const analysisPrompt = buildHorseRacingAnalysisPrompt(card as Record<string, unknown>);
         const controller = new AbortController();
-        const timeoutId = setTimeout(() => controller.abort(), 60000);
-        const r = await fetch("https://api.anthropic.com/v1/messages", {
-          method: "POST",
-          signal: controller.signal,
-          headers: {
-            "x-api-key": apiKey,
-            "anthropic-version": "2023-06-01",
-            "anthropic-beta": "mcp-client-2025-04-04",
-            "content-type": "application/json",
-          },
-          body: JSON.stringify({
-            model: "claude-sonnet-4-5",
-            max_tokens: 4000,
-            messages: [{ role: "user", content: prompt }],
-            mcp_servers: [
-              {
-                type: "url",
-                url: formfavProxyUrl,
-                name: "formfav",
-              },
-            ],
-          }),
-        });
-        clearTimeout(timeoutId);
-        if (!r.ok) {
-          const errText = await r.text();
+        const timeoutId = setTimeout(() => controller.abort(), 45000);
+        let anthropicRes: Response;
+        try {
+          anthropicRes = await fetch("https://api.anthropic.com/v1/messages", {
+            method: "POST",
+            signal: controller.signal,
+            headers: {
+              "x-api-key": apiKey,
+              "anthropic-version": "2023-06-01",
+              "content-type": "application/json",
+            },
+            body: JSON.stringify({
+              model: "claude-sonnet-4-5",
+              max_tokens: 1500,
+              messages: [{ role: "user", content: analysisPrompt }],
+            }),
+          });
+        } finally {
+          clearTimeout(timeoutId);
+        }
+        if (!anthropicRes.ok) {
+          const errText = await anthropicRes.text();
           return new Response(JSON.stringify({
             error: "AI provider error",
             code: "UPSTREAM_ERROR",
-            upstreamStatus: r.status,
-            detail: errText,
+            upstreamStatus: anthropicRes.status,
+            detail: errText.slice(0, 400),
           }), { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } });
         }
-        const data = await r.json() as { content?: Array<{ type: string; text?: string }>; stop_reason?: string };
-        const blocks = data.content ?? [];
-        console.log("[horse-racing] content blocks:", blocks.map((b) => b.type));
-        console.log("[horse-racing] stop reason:", data.stop_reason);
-        const allText = blocks
+        const data = await anthropicRes.json() as { content?: Array<{ type: string; text?: string }>; stop_reason?: string };
+        const allText = (data.content ?? [])
           .filter((b) => b.type === "text")
           .map((b) => b.text ?? "")
           .join("\n");
-        console.log("[horse-racing] raw response:", allText.slice(0, 1000));
+        console.log("[horse-racing] claude stop:", data.stop_reason, "text:", allText.slice(0, 300));
 
         let result: Record<string, unknown> | null = null;
-
-        // Method 1: Direct parse after stripping markdown
         try {
-          const cleaned = allText.replace(/```json/gi, "").replace(/```/g, "").trim();
-          result = JSON.parse(cleaned);
-        } catch {
-          console.log("[horse-racing] direct parse failed");
-        }
-
-        // Method 2: Extract JSON block via regex
+          result = JSON.parse(allText.replace(/```json/gi, "").replace(/```/g, "").trim());
+        } catch { /* try regex */ }
         if (!result) {
-          try {
-            const jsonMatch = allText.match(/\{[\s\S]*\}/);
-            if (jsonMatch) result = JSON.parse(jsonMatch[0]);
-          } catch {
-            console.log("[horse-racing] regex parse failed");
-          }
+          const m = allText.match(/\{[\s\S]*\}/);
+          if (m) { try { result = JSON.parse(m[0]); } catch { /* fallback */ } }
         }
-
-        // Method 3: Return raw text as fallback
         if (!result) {
-          console.log("[horse-racing] returning raw text");
           return new Response(JSON.stringify({
-            content: [{ type: "text", text: allText }],
+            error: "Failed to parse model response",
+            code: "PARSE_ERROR",
+            rawText: allText.slice(0, 1000),
           }), { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } });
         }
-
         return new Response(JSON.stringify(result), {
           status: 200,
           headers: { ...corsHeaders, "Content-Type": "application/json" },
