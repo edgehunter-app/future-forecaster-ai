@@ -99,8 +99,8 @@ async function scanDate(date: string): Promise<ScanResult> {
   //   1. Probe race=1 for every track (throttled to CONCURRENCY at a time,
   //      with retry on 429). Tracks whose race=1 404s have no card today.
   //   2. For tracks with a race=1, probe races 2..12 (also throttled).
-  const CONCURRENCY = 6;
-  const BURST_RETRIES = 3;
+  const CONCURRENCY = 3;
+  const BURST_RETRIES = 4;
 
   async function probe(track: string, race: number): Promise<{ race: number; data: unknown } | null> {
     const url = `${FORMFAV_BASE}/form?date=${date}&track=${track}&race=${race}&country=us`;
@@ -170,6 +170,10 @@ async function scanDate(date: string): Promise<ScanResult> {
       // FormFav sometimes returns the most recent card even when the date
       // param is future — filter races whose payload `date` doesn't match
       // what we requested so we never surface yesterday's races as today's.
+    const returnedDate = (first.data as Record<string, unknown>)?.date;
+    if (typeof returnedDate === "string" && returnedDate !== date) {
+      console.log(`[horse-racing] ${track}: FormFav returned card for ${returnedDate}, wanted ${date} — dropping`);
+    }
       const trackRaces = races
         .filter(({ data }) => {
           const d = (data as Record<string, unknown>)?.date;
