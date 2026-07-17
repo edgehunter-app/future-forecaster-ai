@@ -85,7 +85,17 @@ async function scanDate(date: string): Promise<ScanResult> {
     for (let attempt = 0; attempt <= BURST_RETRIES; attempt++) {
       try {
         const res = await fetch(url, { headers, signal: AbortSignal.timeout(8000) });
-        if (res.ok) return { race, data: await res.json() };
+        if (res.ok) {
+          const data = await res.json() as Record<string, any>;
+          if (slug === "delta-downs") {
+            const runners = Array.isArray(data.runners) ? data.runners : [];
+            console.log(`[horse-racing][delta] race=${race} numberOfRunners=${data.numberOfRunners} array=${runners.length}`);
+            console.log(`[horse-racing][delta] scratched=`, runners.filter((r: any) => r?.scratched).map((r: any) => r.name));
+            console.log(`[horse-racing][delta] active=`, runners.filter((r: any) => !r?.scratched).map((r: any) => r.name));
+            console.log(`[horse-racing][delta] raw:`, JSON.stringify(data).slice(0, 1000));
+          }
+          return { race, data };
+        }
         if (res.status === 429) {
           await res.body?.cancel();
           await new Promise((r) => setTimeout(r, 400 * (attempt + 1) + Math.random() * 200));

@@ -316,8 +316,13 @@ function RaceCard({ card, state, onAnalyze }: { card: RaceCardData; state: Analy
   const loading = state.status === "loading";
   const error = state.status === "error" ? state.error ?? "error" : null;
   const style = analysis ? (RATING_STYLES[analysis.trafficLight] ?? RATING_STYLES.YELLOW) : RATING_STYLES.YELLOW;
-  const liveRunners = race.runners.filter((r) => !r.scratched);
-  const scratches = race.runners.filter((r) => r.scratched);
+  const liveRunners = race.runners.filter((r) => r.scratched !== true);
+  const scratches = race.runners.filter((r) => r.scratched === true);
+  if (trackName?.toLowerCase().includes("delta")) {
+    console.log("[horse-racing][delta] race", race.raceNumber, "total=", race.runners.length,
+      "live=", liveRunners.length, "scratched=", scratches.length,
+      "names=", race.runners.map((r) => `${r.name}(${r.scratched})`));
+  }
   const surface = surfaceFromCondition(race.condition);
 
   return (
@@ -568,7 +573,7 @@ export default function HorseRacing() {
     const out: RaceCardData[] = [];
     for (const m of data.meetings) {
       for (const { race, data: rd } of m.races) {
-        const liveRunners = (rd.runners ?? []).filter((r) => !r.scratched);
+        const liveRunners = (rd.runners ?? []).filter((r) => r.scratched !== true);
         if (liveRunners.length < 1) continue;
         out.push({
           id: `${m.track}-r${rd.raceNumber ?? race}`,
