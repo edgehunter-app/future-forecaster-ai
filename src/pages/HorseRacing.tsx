@@ -1,11 +1,11 @@
 import { useEffect, useMemo, useState } from "react";
-import { Sparkles, Trophy, AlertTriangle, Clock, MapPin, Loader2, RefreshCw } from "lucide-react";
+import { Sparkles, Trophy, AlertTriangle, Clock, MapPin, Loader2, RefreshCw, Zap } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { supabase } from "@/integrations/supabase/client";
 
 // deno-lint-ignore no-explicit-any
 type Any = any;
-type Rating = "green" | "yellow" | "red";
+type Rating = "GREEN" | "YELLOW" | "RED";
 
 interface Runner {
   number: number;
@@ -49,33 +49,47 @@ interface FetchResponse {
 }
 
 interface RaceAnalysis {
-  rating: Rating;
-  ratingLabel: string;
-  topPick: string;
-  exacta: string;
-  keyAngles?: Array<{ horse: string; angle: string }>;
-  analysis: string;
+  track?: string;
+  race?: number | string;
+  raceName?: string;
+  distance?: string;
+  surface?: string;
+  trafficLight: Rating;
+  topPick?: {
+    horse?: string;
+    jockey?: string;
+    trainer?: string;
+    morningLine?: string;
+    confidence?: number;
+    reasoning?: string;
+  };
+  valuePlay?: { horse?: string; morningLine?: string; reason?: string };
+  raceSummary?: string;
+  keyFactors?: string[];
+  warningFlags?: string[];
+  exoticSuggestion?: string;
 }
 
 interface RaceCardData {
   id: string;
+  trackSlug: string;
   trackName: string;
   race: RaceData;
   meetingDate: string;
 }
 
 const RATING_STYLES: Record<Rating, { dot: string; chip: string; ring: string }> = {
-  green: {
+  GREEN: {
     dot: "bg-success shadow-[0_0_12px_hsl(var(--success))]",
     chip: "bg-success/15 text-success border-success/30",
     ring: "border-success/40",
   },
-  yellow: {
+  YELLOW: {
     dot: "bg-warning shadow-[0_0_12px_hsl(var(--warning))]",
     chip: "bg-warning/15 text-warning border-warning/30",
     ring: "border-warning/40",
   },
-  red: {
+  RED: {
     dot: "bg-destructive shadow-[0_0_12px_hsl(var(--destructive))]",
     chip: "bg-destructive/15 text-destructive border-destructive/30",
     ring: "border-destructive/40",
