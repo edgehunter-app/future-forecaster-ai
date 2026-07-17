@@ -429,6 +429,8 @@ export default function HorseRacing() {
       const first = await supabase.functions.invoke("fetch-horse-racing", { body: { date: today } });
       if (first.error) { setError(first.error.message); setLoading(false); return; }
       let resp = first.data as FetchResponse;
+      console.log("[horse-racing] hook received:", resp);
+      console.log("[horse-racing] meetings:", resp?.meetings?.length, "meetingCount:", resp?.meetingCount);
       if (!resp || resp.meetingCount === 0) {
         console.log("[horse-racing] today empty, trying tomorrow:", tomorrow);
         const second = await supabase.functions.invoke("fetch-horse-racing", { body: { date: tomorrow } });
@@ -451,10 +453,7 @@ export default function HorseRacing() {
     for (const m of data.meetings) {
       for (const { race, data: rd } of m.races) {
         const liveRunners = (rd.runners ?? []).filter((r) => !r.scratched);
-        if (liveRunners.length < 4) continue;
-        const hasDistance = !!rd.distance && String(rd.distance).trim() !== "";
-        const hasSurface = !!surfaceFromCondition(rd.condition);
-        if (!hasDistance && !hasSurface) continue;
+        if (liveRunners.length < 1) continue;
         out.push({
           id: `${m.track}-r${rd.raceNumber ?? race}`,
           trackName: m.trackName,
@@ -463,6 +462,7 @@ export default function HorseRacing() {
         });
       }
     }
+    console.log("[horse-racing] cards built:", out.length, "from", data.meetings.length, "meetings");
     return out;
   }, [data]);
 
