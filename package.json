@@ -15,9 +15,12 @@
     "cap:open:ios": "cap open ios",
     "cap:open:android": "cap open android",
     "cap:build": "vite build && cap sync",
-    "build:ios": "eas build --platform ios --profile production",
-    "build:android": "eas build --platform android --profile production",
-    "submit:ios": "eas submit --platform ios"
+    "cap:android": "vite build && cap sync && cap open android",
+    "cap:ios": "vite build && cap sync && cap open ios",
+    "cap:build:android": "vite build && cap sync android",
+    "cap:build:ios": "vite build && cap sync ios",
+    "submit:ios": "eas submit --platform ios --profile production",
+    "submit:android": "eas submit --platform android --profile production"
   },
   "dependencies": {
     "@capacitor/android": "^8.4.2",
