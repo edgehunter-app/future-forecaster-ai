@@ -982,24 +982,45 @@ Deno.serve(async (req) => {
             detail: errText,
           }), { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } });
         }
-        const data = await r.json() as { content?: Array<{ type: string; text?: string }> };
-        const text = (data.content ?? [])
+        const data = await r.json() as { content?: Array<{ type: string; text?: string }>; stop_reason?: string };
+        const blocks = data.content ?? [];
+        console.log("[horse-racing] content blocks:", blocks.map((b) => b.type));
+        console.log("[horse-racing] stop reason:", data.stop_reason);
+        const allText = blocks
           .filter((b) => b.type === "text")
           .map((b) => b.text ?? "")
-          .join("");
-        const cleaned = text.replace(/```json/gi, "").replace(/```/g, "").trim();
-        let parsed: Record<string, unknown> = {};
+          .join("\n");
+        console.log("[horse-racing] raw response:", allText.slice(0, 1000));
+
+        let result: Record<string, unknown> | null = null;
+
+        // Method 1: Direct parse after stripping markdown
         try {
-          const m = cleaned.match(/\{[\s\S]*\}/);
-          parsed = JSON.parse(m ? m[0] : cleaned);
+          const cleaned = allText.replace(/```json/gi, "").replace(/```/g, "").trim();
+          result = JSON.parse(cleaned);
         } catch {
+          console.log("[horse-racing] direct parse failed");
+        }
+
+        // Method 2: Extract JSON block via regex
+        if (!result) {
+          try {
+            const jsonMatch = allText.match(/\{[\s\S]*\}/);
+            if (jsonMatch) result = JSON.parse(jsonMatch[0]);
+          } catch {
+            console.log("[horse-racing] regex parse failed");
+          }
+        }
+
+        // Method 3: Return raw text as fallback
+        if (!result) {
+          console.log("[horse-racing] returning raw text");
           return new Response(JSON.stringify({
-            error: "Failed to parse model response",
-            code: "MODEL_PARSE_ERROR",
-            raw: text,
+            content: [{ type: "text", text: allText }],
           }), { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } });
         }
-        return new Response(JSON.stringify(parsed), {
+
+        return new Response(JSON.stringify(result), {
           status: 200,
           headers: { ...corsHeaders, "Content-Type": "application/json" },
         });
