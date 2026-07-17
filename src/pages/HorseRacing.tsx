@@ -413,6 +413,7 @@ export default function HorseRacing() {
   const [data, setData] = useState<FetchResponse | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [lastChecked, setLastChecked] = useState<Date | null>(null);
 
   const load = async () => {
     setLoading(true);
@@ -434,6 +435,7 @@ export default function HorseRacing() {
         if (!second.error && second.data) resp = second.data as FetchResponse;
       }
       setData({ ...resp, date: resp.date ?? today });
+      setLastChecked(new Date());
     } finally {
       setLoading(false);
     }
@@ -507,16 +509,51 @@ export default function HorseRacing() {
       )}
 
       {!loading && cards.length === 0 && !error && (
-        <section className="flex flex-col items-center justify-center rounded-2xl border border-border bg-card p-10 text-center">
-          <div className="text-[64px] leading-none" aria-hidden>🐎</div>
-          <h2 className="mt-5 text-lg font-semibold text-foreground">No races posted yet for today</h2>
-          <p className="mt-2 max-w-xs text-sm text-muted-foreground">
-            Check back later — race cards are typically posted the morning of race day
-          </p>
-          <div className="mt-4 rounded-xl border border-success/20 bg-success/5 px-4 py-3 text-sm text-success">
-            Saratoga and Del Mar open Friday July 17 — big cards coming!
-          </div>
-        </section>
+        <div className="space-y-4">
+          <section className="flex flex-col items-center justify-center rounded-2xl border border-border bg-card p-10 text-center">
+            <div className="text-[64px] leading-none" aria-hidden>🐎</div>
+            <h2 className="mt-5 text-lg font-semibold text-foreground">No races posted yet for today</h2>
+            <p className="mt-2 max-w-xs text-sm text-muted-foreground">
+              Race cards are typically posted 2–3 hours before first post.
+            </p>
+            {lastChecked && (
+              <p className="mt-3 text-xs text-muted-foreground">
+                Last checked {lastChecked.toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" })}
+              </p>
+            )}
+            <button
+              onClick={load}
+              disabled={loading}
+              className="mt-4 flex items-center gap-1.5 rounded-lg border border-info/30 bg-info/10 px-4 py-2 text-sm font-semibold text-info hover:bg-info/15 disabled:opacity-50"
+            >
+              <RefreshCw className={cn("h-3.5 w-3.5", loading && "animate-spin")} />
+              Check again
+            </button>
+          </section>
+
+          <section className="rounded-2xl border border-info/30 bg-info/5 p-4 text-sm">
+            <div className="flex items-center gap-2 font-semibold text-info">
+              <span aria-hidden>🏇</span> Saratoga — Card posts day-of
+            </div>
+            <p className="mt-1 text-foreground/90">
+              Saratoga's full card typically becomes available 2–3 hours before first post. Check back closer to race time.
+            </p>
+          </section>
+
+          <section className="rounded-2xl border border-border bg-muted/30 p-4 text-sm">
+            <div className="flex items-center gap-2 font-semibold text-foreground">
+              <span aria-hidden>📋</span> Coverage Note
+            </div>
+            <p className="mt-1 text-muted-foreground">
+              Some tracks — including <span className="font-medium text-foreground">Del Mar</span> — aren't
+              currently available in our data feed. We're working to add more track coverage.
+            </p>
+            <p className="mt-2 text-muted-foreground">
+              Currently showing: Saratoga, Churchill Downs, Belmont Park, Santa Anita, Gulfstream Park,
+              Keeneland, and other major US tracks when cards are available.
+            </p>
+          </section>
+        </div>
       )}
 
       {cards.length > 0 && <HorseRacingBody cards={cards} />}
