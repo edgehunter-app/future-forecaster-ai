@@ -467,7 +467,7 @@ function BestRaceTodayPanel({ date }: { date: string }) {
                 {a.track ?? "Track"} · Race {a.race ?? "?"}
               </div>
               <div className="text-base font-semibold text-foreground">
-                {a.raceName ?? "Race"} · {a.distance ?? ""} {a.surface ?? ""}
+                {a.startTime ? new Date(a.startTime).toLocaleTimeString([], { hour: "numeric", minute: "2-digit" }) : "Race"}
               </div>
             </div>
             <div className={cn(
