@@ -80,6 +80,15 @@ interface RaceCardData {
   trackName: string;
   race: RaceData;
   meetingDate: string;
+  pending?: boolean;
+}
+
+interface CoverageEntry {
+  trackName: string;
+  slug: string;
+  totalRaces: number;
+  racesWithField: number;
+  status: "live" | "pending";
 }
 
 const RATING_STYLES: Record<Rating, { dot: string; chip: string; ring: string }> = {
@@ -518,15 +527,72 @@ function HorseRacingBody({ cards }: { cards: RaceCardData[] }) {
 
   return (
     <div className="space-y-4">
-      {cards.map((card) => (
-        <RaceCard
-          key={card.id}
-          card={card}
-          state={analyses[card.id] ?? { status: "pending" }}
-          onAnalyze={() => analyze(card)}
-        />
-      ))}
+      {cards.map((card) =>
+        card.pending ? (
+          <PendingRaceCard key={card.id} card={card} />
+        ) : (
+          <RaceCard
+            key={card.id}
+            card={card}
+            state={analyses[card.id] ?? { status: "pending" }}
+            onAnalyze={() => analyze(card)}
+          />
+        ),
+      )}
     </div>
+  );
+}
+
+function PendingRaceCard({ card }: { card: RaceCardData }) {
+  const { race, trackName } = card;
+  return (
+    <article className="rounded-2xl border border-dashed border-border bg-card/60 p-4 sm:p-5">
+      <div className="flex items-center gap-2 text-xs text-muted-foreground">
+        <MapPin className="h-3.5 w-3.5" />
+        <span>{trackName}</span>
+      </div>
+      <h3 className="mt-1 text-base font-semibold text-foreground">Race {race.raceNumber}</h3>
+      <div className="mt-3 flex items-start gap-2 rounded-xl border border-warning/30 bg-warning/5 p-3 text-sm">
+        <span aria-hidden className="text-base">⏳</span>
+        <div>
+          <div className="font-semibold text-warning">Field not yet published</div>
+          <p className="mt-0.5 text-xs text-muted-foreground">
+            Full field typically posts 2–3 hours before first post.
+          </p>
+        </div>
+      </div>
+    </article>
+  );
+}
+
+function CoverageSummary({ entries }: { entries: CoverageEntry[] }) {
+  if (entries.length === 0) return null;
+  const live = entries.filter((e) => e.status === "live");
+  const pending = entries.filter((e) => e.status === "pending");
+  return (
+    <section className="rounded-2xl border border-border bg-card p-4">
+      <div className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+        Today's Coverage
+      </div>
+      <ul className="mt-2 space-y-1 text-sm">
+        {live.map((e) => (
+          <li key={e.slug} className="flex items-center gap-2 text-foreground">
+            <span className="text-success" aria-hidden>✅</span>
+            <span className="font-medium">{e.trackName}</span>
+            <span className="text-muted-foreground">
+              — {e.totalRaces} race{e.totalRaces === 1 ? "" : "s"} · Full fields
+            </span>
+          </li>
+        ))}
+        {pending.map((e) => (
+          <li key={e.slug} className="flex items-center gap-2 text-muted-foreground">
+            <span aria-hidden>⏳</span>
+            <span className="font-medium text-foreground">{e.trackName}</span>
+            <span>— {e.slug === "saratoga" ? "Card posts day-of" : "Field pending"}</span>
+          </li>
+        ))}
+      </ul>
+    </section>
   );
 }
 
@@ -568,24 +634,70 @@ export default function HorseRacing() {
     load();
   }, []);
 
-  const cards: RaceCardData[] = useMemo(() => {
-    if (!data) return [];
+  const { cards, coverage } = useMemo(() => {
+    if (!data) return { cards: [] as RaceCardData[], coverage: [] as CoverageEntry[] };
+
+    const coverageAll: CoverageEntry[] = data.meetings.map((m) => {
+      const races = m.races ?? [];
+      const racesWithField = races.filter(
+        ({ data: rd }) => (rd.numberOfRunners ?? (rd.runners ?? []).length) >= 2,
+      );
+      return {
+        trackName: m.trackName,
+        slug: m.track,
+        totalRaces: races.length,
+        racesWithField: racesWithField.length,
+        status: "live",
+      };
+    });
+
+    const visibleSlugs = new Set<string>();
+    for (const entry of coverageAll) {
+      const enough = entry.totalRaces > 0 && entry.racesWithField >= entry.totalRaces * 0.5;
+      if (enough) {
+        entry.status = "live";
+        visibleSlugs.add(entry.slug);
+      } else {
+        entry.status = "pending";
+        console.log(
+          "[horse-racing] hiding incomplete:",
+          entry.trackName,
+          "only",
+          entry.racesWithField,
+          "of",
+          entry.totalRaces,
+          "races have full fields",
+        );
+      }
+    }
+
     const out: RaceCardData[] = [];
     for (const m of data.meetings) {
+      if (!visibleSlugs.has(m.track)) continue;
       for (const { race, data: rd } of m.races) {
         const liveRunners = (rd.runners ?? []).filter((r) => r.scratched !== true);
-        if (liveRunners.length < 1) continue;
+        const advertised = rd.numberOfRunners ?? liveRunners.length;
+        const pending = advertised < 2 && liveRunners.length < 2;
         out.push({
           id: `${m.track}-r${rd.raceNumber ?? race}`,
           trackSlug: m.track,
           trackName: m.trackName,
           race: rd,
           meetingDate: m.date,
+          pending,
         });
       }
     }
-    console.log("[horse-racing] cards built:", out.length, "from", data.meetings.length, "meetings");
-    return out;
+    console.log(
+      "[horse-racing] cards built:",
+      out.length,
+      "from",
+      visibleSlugs.size,
+      "visible meetings (of",
+      data.meetings.length,
+      "total)",
+    );
+    return { cards: out, coverage: coverageAll };
   }, [data]);
 
   return (
@@ -631,6 +743,8 @@ export default function HorseRacing() {
       )}
 
       <BestRaceTodayPanel date={data?.date ?? todayLocalISO()} />
+
+      {coverage.length > 0 && <CoverageSummary entries={coverage} />}
 
       {!loading && cards.length === 0 && !error && (
         <div className="space-y-4">
