@@ -197,6 +197,13 @@ type AnalysisState = { status: "pending" | "loading" | "done" | "error"; data?: 
 
 function AnalysisPanel({ a }: { a: RaceAnalysis }) {
   const style = RATING_STYLES[a.trafficLight] ?? RATING_STYLES.YELLOW;
+  const clean = (v: unknown): string | null => {
+    if (v == null) return null;
+    const s = String(v).trim();
+    if (!s) return null;
+    if (/^(unknown|n\/a|na|null|undefined|\?|-)$/i.test(s)) return null;
+    return s;
+  };
   return (
     <section className={cn("mt-4 rounded-xl border p-3", style.ring, "bg-info/5")}>
       <div className="flex items-center justify-between gap-2">
@@ -212,10 +219,14 @@ function AnalysisPanel({ a }: { a: RaceAnalysis }) {
       {a.topPick && (
         <div className="mt-3 rounded-lg border border-border bg-card/50 p-3">
           <div className="text-[11px] uppercase tracking-wide text-muted-foreground">Top Pick</div>
-          <div className="text-base font-semibold text-foreground">{a.topPick.horse}</div>
+          <div className="text-base font-semibold text-foreground">{clean(a.topPick.horse) ?? "—"}</div>
           <div className="mt-0.5 text-xs text-muted-foreground">
-            {[a.topPick.jockey && `J: ${a.topPick.jockey}`, a.topPick.trainer && `T: ${a.topPick.trainer}`, a.topPick.morningLine && `ML ${a.topPick.morningLine}`, a.topPick.confidence != null && `${a.topPick.confidence}% conf`]
-              .filter(Boolean).join(" · ")}
+            {[
+              `J: ${clean(a.topPick.jockey) ?? "—"}`,
+              `T: ${clean(a.topPick.trainer) ?? "—"}`,
+              `ML ${clean(a.topPick.morningLine) ?? "—"}`,
+              a.topPick.confidence != null ? `${a.topPick.confidence}% conf` : null,
+            ].filter(Boolean).join(" · ")}
           </div>
           {a.topPick.reasoning && <p className="mt-2 text-sm text-foreground/90">{a.topPick.reasoning}</p>}
         </div>
@@ -224,7 +235,7 @@ function AnalysisPanel({ a }: { a: RaceAnalysis }) {
         <div className="mt-2 rounded-lg border border-warning/30 bg-warning/5 p-3">
           <div className="text-[11px] uppercase tracking-wide text-warning">Value Play</div>
           <div className="text-sm font-semibold text-foreground">
-            {a.valuePlay.horse}{a.valuePlay.morningLine ? ` @ ${a.valuePlay.morningLine}` : ""}
+            {clean(a.valuePlay.horse) ?? "—"}{clean(a.valuePlay.morningLine) ? ` @ ${clean(a.valuePlay.morningLine)}` : ""}
           </div>
           {a.valuePlay.reason && <p className="mt-1 text-xs text-foreground/80">{a.valuePlay.reason}</p>}
         </div>
