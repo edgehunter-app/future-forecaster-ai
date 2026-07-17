@@ -259,6 +259,55 @@ Deno.serve(async (req) => {
       }
       out.saratoga = saratogaResults;
 
+      // Expanded Del Mar slug hunt: casing variants, additional formats,
+      // and no-country probe.
+      const delMarExtra = [
+        "delmar-thoroughbred-club",
+        "del-mar-race-track",
+        "dmtc",
+        "del mar",
+        "Del Mar",
+        "DEL-MAR",
+        "DEL_MAR",
+        "DMR",
+      ];
+      const delMarExtraResults: Record<string, unknown> = {};
+      for (const s of delMarExtra) {
+        delMarExtraResults[s] = await testSlug(s);
+        await new Promise((r) => setTimeout(r, 400));
+      }
+      out.del_mar_extra = delMarExtraResults;
+
+      // No country param
+      try {
+        const u = `${FORMFAV_BASE}/form?date=${testDate}&track=del-mar&race=1`;
+        const r = await fetch(u, { headers, signal: AbortSignal.timeout(8000) });
+        const body = r.ok ? await r.json() : (await r.text()).slice(0, 300);
+        console.log(`[slugs] del-mar no-country: ${r.status}`);
+        out.del_mar_no_country = { status: r.status, body };
+      } catch (e) {
+        out.del_mar_no_country = { error: String(e) };
+      }
+      await new Promise((r) => setTimeout(r, 400));
+
+      // Iterate race numbers 1..5 for del-mar in case race 1 isn't posted.
+      const raceIter: Record<string, unknown> = {};
+      for (let race = 1; race <= 5; race++) {
+        const u = `${FORMFAV_BASE}/form?date=${testDate}&track=del-mar&race=${race}&country=us`;
+        try {
+          const r = await fetch(u, { headers, signal: AbortSignal.timeout(8000) });
+          const body = r.ok ? await r.json() : (await r.text()).slice(0, 200);
+          const returnedDate = r.ok ? (body as Record<string, unknown>)?.date : undefined;
+          console.log(`[slugs] del-mar race=${race}: ${r.status}${returnedDate ? ` returnedDate=${returnedDate}` : ""}`);
+          raceIter[`race_${race}`] = { status: r.status, returnedDate, body };
+          if (r.ok) break;
+        } catch (e) {
+          raceIter[`race_${race}`] = { error: String(e) };
+        }
+        await new Promise((r) => setTimeout(r, 400));
+      }
+      out.del_mar_race_iter = raceIter;
+
       return new Response(JSON.stringify(out, null, 2), { headers: CORS_HEADERS });
     }
 
