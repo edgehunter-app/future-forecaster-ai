@@ -848,64 +848,83 @@ CONSIDER_EXIT if: Significant movement against position, edge now negative or mi
 function buildHorseRacingAnalysisPrompt(card: Record<string, unknown>): string {
   const c = card as Record<string, any>;
   const runners: any[] = Array.isArray(c.runners) ? c.runners : [];
-  const runnerLines = runners.map((r) => {
-    const stats = r?.stats?.overall ?? {};
-    const jockey = r.jockey ?? r.jockeyName ?? r.jockey_name ?? r.rider ?? "N/A";
-    const trainer = r.trainer ?? r.trainerName ?? r.trainer_name ?? "N/A";
-    const ml = r.morningLine ?? r.morning_line ?? r.odds ?? r.price ?? r.ml ?? "N/A";
-    const weight = r.weight ?? r.weightKg ?? r.weight_kg ?? r.weightLbs ?? "N/A";
-    const barrier = r.barrier ?? r.gate ?? r.post ?? r.postPosition ?? r.number ?? "N/A";
-    return `${r.number ?? r.saddle ?? "?"}. ${r.name ?? r.horse ?? "?"} | Jockey: ${jockey} | Trainer: ${trainer} | Form: ${r.form ?? "N/A"} | Weight: ${weight} | Barrier: ${barrier} | ML Odds: ${ml} | Win%: ${stats.winPercent ?? stats.win_percent ?? "N/A"}`;
-  }).join("\n");
-  const distance = c.distance ?? c.distanceMetres ?? c.distance_metres ?? c.distanceFurlongs ?? "N/A";
-  const surface = c.surface ?? c.trackType ?? c.track_type ?? c.condition ?? c.going ?? "N/A";
-  const raceClass = c.raceClass ?? c.class ?? c.raceGrade ?? "N/A";
-  const prize = c.prize ?? c.purse ?? c.prizeMoney ?? "N/A";
-  return `You are EdgeHunter's AI horse racing handicapper.
-Analyze the race below and return ONLY a JSON object.
+  const live = runners.filter((r) => !r?.scratched);
+  const decoratorLabels = (r: any): string[] => {
+    const d = r?.decorators;
+    if (!Array.isArray(d)) return [];
+    return d.map((x: any) => typeof x === "string" ? x : (x?.shortLabel ?? x?.label ?? x?.type)).filter(Boolean);
+  };
+  const runnerLines = live.map((r: any) => {
+    const stats = r?.stats ?? {};
+    const sp = r?.speedMap ?? {};
+    const cls = r?.classProfile ?? {};
+    const decs = decoratorLabels(r);
+    return `#${r.number} ${r.name}
+  Form: ${r.form ?? "N/A"} (last20: ${r.last20Starts ?? "N/A"})
+  Weight: ${r.weight ?? "N/A"}  Barrier: ${r.barrier ?? "N/A"}  Age/Sex: ${r.age ?? ""}${r.sex ?? ""}
+  Class Rating: ${cls.currentRating ?? "N/A"} (Peak: ${cls.peakRating ?? "N/A"}, Highest Won: ${cls.highestClassWon ?? "N/A"}, Trend: ${cls.trend ?? "N/A"})
+  Running Style: ${sp.runningStyle ?? "N/A"}  EarlySpeedIdx: ${sp.earlySpeedIndex ?? "N/A"}  SettlingPos: ${sp.settlingPosition ?? "N/A"}
+  Overall Win%: ${stats.overall?.winPercent ?? "N/A"}  Track Win%: ${stats.track?.winPercent ?? "N/A"}  FirstUp Win%: ${stats.firstUp?.winPercent ?? "N/A"}  SecondUp Win%: ${stats.secondUp?.winPercent ?? "N/A"}
+  Signals: ${decs.length ? decs.join(", ") : "None"}
+  Sire: ${r.sire ?? "N/A"}  Dam: ${r.dam ?? "N/A"}`;
+  }).join("\n\n");
+  const styleNames = (want: string) => live
+    .filter((r: any) => String(r?.speedMap?.runningStyle ?? "").toUpperCase().startsWith(want))
+    .map((r: any) => r.name).join(", ") || "None";
+  return `You are EdgeHunter's AI horse racing handicapper using FormFav data.
+Return ONLY a JSON object (no markdown, no prose).
 
-TODAY'S RACE:
+RACE:
 Track: ${c.track ?? "?"}
-Race: ${c.raceNumber ?? c.race ?? "?"}
-Name: ${c.raceName ?? c.name ?? ""}
-Distance: ${distance}
-Surface/Condition: ${surface}
-Class: ${raceClass}
-Prize: ${prize}
-Runners: ${c.numberOfRunners ?? runners.length}
+Race: ${c.raceNumber ?? "?"}
+Date: ${c.date ?? "?"}
+Start Time: ${c.startTime ?? "N/A"}
+Runners: ${c.numberOfRunners ?? live.length}
 
 FIELD:
 ${runnerLines || "(no runners)"}
 
-Apply the traffic light system:
-🟢 GREEN — Value race, clear overlay
-🟡 YELLOW — Possible value, worth a look
-🔴 RED — Chalk race, skip
+PACE SCENARIO:
+Leaders: ${styleNames("L")}
+Pressers: ${styleNames("P")}
+Closers: ${styleNames("C")}
 
-Return ONLY valid JSON (no markdown, no prose). Start with { and end with }:
+ANALYSIS INSTRUCTIONS:
+1. Apply Rick's Traffic Light System:
+   🟢 GREEN — Clear value horse, significant edge detected
+   🟡 YELLOW — Competitive race, possible value worth watching
+   🔴 RED — Chalk race, short prices, skip it
+2. Key factors: class rating vs field, class trend (rising/declining), pace scenario (lone leader?), recent form string, decorator signals, first-up stats, track win%, weight.
+3. Find overlays: high class rating + improving trend + strong decorator signals that may be overlooked.
+
+Return ONLY valid JSON in this shape:
 {
   "track": "track name",
   "race": race number,
-  "raceName": "race name",
-  "distance": "distance",
-  "surface": "dirt/turf/synthetic",
+  "startTime": "start time",
   "trafficLight": "GREEN" | "YELLOW" | "RED",
+  "trafficLightReason": "one sentence why",
   "topPick": {
-    "horse": "horse name",
-    "jockey": "jockey name",
-    "trainer": "trainer name",
-    "morningLine": "odds",
+    "horse": "name",
+    "number": runner number,
+    "weight": weight,
+    "barrier": barrier,
+    "classRating": rating,
+    "classTrend": "IMPROVING" | "STABLE" | "DECLINING",
+    "runningStyle": "LEADER" | "PRESSER" | "CLOSER",
+    "decorators": ["signal1", "signal2"],
     "confidence": 0-100,
-    "reasoning": "why this horse"
+    "reasoning": "2-3 sentences why"
   },
   "valuePlay": {
     "horse": "longshot name",
-    "morningLine": "odds",
+    "number": runner number,
     "reason": "why value"
   },
-  "raceSummary": "2-3 sentences on the race",
+  "paceScenario": "description of pace",
+  "raceSummary": "2-3 sentences",
   "keyFactors": ["factor1", "factor2"],
-  "warningFlags": ["any concerns"],
+  "warningFlags": ["concern1", "concern2"],
   "exoticSuggestion": "exacta/trifecta tip"
 }`;
 }

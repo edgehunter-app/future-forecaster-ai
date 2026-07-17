@@ -51,19 +51,23 @@ interface FetchResponse {
 interface RaceAnalysis {
   track?: string;
   race?: number | string;
-  raceName?: string;
-  distance?: string;
-  surface?: string;
+  startTime?: string;
   trafficLight: Rating;
+  trafficLightReason?: string;
   topPick?: {
     horse?: string;
-    jockey?: string;
-    trainer?: string;
-    morningLine?: string;
+    number?: number;
+    weight?: number | string;
+    barrier?: number | string;
+    classRating?: number | string;
+    classTrend?: string;
+    runningStyle?: string;
+    decorators?: string[];
     confidence?: number;
     reasoning?: string;
   };
-  valuePlay?: { horse?: string; morningLine?: string; reason?: string };
+  valuePlay?: { horse?: string; number?: number; reason?: string };
+  paceScenario?: string;
   raceSummary?: string;
   keyFactors?: string[];
   warningFlags?: string[];
@@ -204,6 +208,12 @@ function AnalysisPanel({ a }: { a: RaceAnalysis }) {
     if (/^(unknown|n\/a|na|null|undefined|\?|-)$/i.test(s)) return null;
     return s;
   };
+  const trendArrow = (t?: string) => {
+    const s = (t ?? "").toUpperCase();
+    if (s.includes("IMPROV") || s.includes("RIS")) return "↑";
+    if (s.includes("DECLIN") || s.includes("FALL")) return "↓";
+    return "→";
+  };
   return (
     <section className={cn("mt-4 rounded-xl border p-3", style.ring, "bg-info/5")}>
       <div className="flex items-center justify-between gap-2">
@@ -216,17 +226,45 @@ function AnalysisPanel({ a }: { a: RaceAnalysis }) {
           <span>{a.trafficLight}</span>
         </div>
       </div>
+      {a.trafficLightReason && (
+        <p className="mt-1.5 text-xs text-muted-foreground">{a.trafficLightReason}</p>
+      )}
       {a.topPick && (
         <div className="mt-3 rounded-lg border border-border bg-card/50 p-3">
-          <div className="text-[11px] uppercase tracking-wide text-muted-foreground">Top Pick</div>
-          <div className="text-base font-semibold text-foreground">{clean(a.topPick.horse) ?? "—"}</div>
-          <div className="mt-0.5 text-xs text-muted-foreground">
-            {[
-              `J: ${clean(a.topPick.jockey) ?? "—"}`,
-              `T: ${clean(a.topPick.trainer) ?? "—"}`,
-              `ML ${clean(a.topPick.morningLine) ?? "—"}`,
-              a.topPick.confidence != null ? `${a.topPick.confidence}% conf` : null,
-            ].filter(Boolean).join(" · ")}
+          <div className="flex items-center justify-between gap-2">
+            <div>
+              <div className="text-[11px] uppercase tracking-wide text-muted-foreground">Top Pick</div>
+              <div className="text-base font-semibold text-foreground">
+                {a.topPick.number != null && <span className="text-muted-foreground">#{a.topPick.number} </span>}
+                {clean(a.topPick.horse) ?? "—"}
+                {a.topPick.barrier != null && <span className="ml-1 text-xs text-muted-foreground">(Bar {a.topPick.barrier})</span>}
+              </div>
+            </div>
+            {a.topPick.confidence != null && (
+              <div className="rounded-full border border-info/30 bg-info/10 px-2 py-0.5 text-[11px] font-semibold text-info">
+                {a.topPick.confidence}% conf
+              </div>
+            )}
+          </div>
+          <div className="mt-1.5 flex flex-wrap gap-1.5 text-[11px]">
+            {clean(a.topPick.classRating) && (
+              <span className="rounded-full border border-border bg-muted/40 px-2 py-0.5 text-muted-foreground">
+                Class {a.topPick.classRating} {trendArrow(a.topPick.classTrend)}
+              </span>
+            )}
+            {clean(a.topPick.runningStyle) && (
+              <span className="rounded-full border border-border bg-muted/40 px-2 py-0.5 text-muted-foreground">
+                {a.topPick.runningStyle}
+              </span>
+            )}
+            {clean(a.topPick.weight) && (
+              <span className="rounded-full border border-border bg-muted/40 px-2 py-0.5 text-muted-foreground">
+                {a.topPick.weight}
+              </span>
+            )}
+            {(a.topPick.decorators ?? []).map((d, i) => (
+              <span key={i} className="rounded-full border border-success/30 bg-success/10 px-2 py-0.5 text-success">{d}</span>
+            ))}
           </div>
           {a.topPick.reasoning && <p className="mt-2 text-sm text-foreground/90">{a.topPick.reasoning}</p>}
         </div>
@@ -235,9 +273,16 @@ function AnalysisPanel({ a }: { a: RaceAnalysis }) {
         <div className="mt-2 rounded-lg border border-warning/30 bg-warning/5 p-3">
           <div className="text-[11px] uppercase tracking-wide text-warning">Value Play</div>
           <div className="text-sm font-semibold text-foreground">
-            {clean(a.valuePlay.horse) ?? "—"}{clean(a.valuePlay.morningLine) ? ` @ ${clean(a.valuePlay.morningLine)}` : ""}
+            {a.valuePlay.number != null && <span className="text-muted-foreground">#{a.valuePlay.number} </span>}
+            {clean(a.valuePlay.horse) ?? "—"}
           </div>
           {a.valuePlay.reason && <p className="mt-1 text-xs text-foreground/80">{a.valuePlay.reason}</p>}
+        </div>
+      )}
+      {a.paceScenario && (
+        <div className="mt-2 rounded-lg border border-border bg-muted/20 p-2.5">
+          <div className="text-[11px] uppercase tracking-wide text-muted-foreground">Pace Scenario</div>
+          <p className="mt-0.5 text-xs text-foreground/90">{a.paceScenario}</p>
         </div>
       )}
       {a.raceSummary && <p className="mt-3 text-sm text-foreground/90">{a.raceSummary}</p>}
@@ -422,7 +467,7 @@ function BestRaceTodayPanel({ date }: { date: string }) {
                 {a.track ?? "Track"} · Race {a.race ?? "?"}
               </div>
               <div className="text-base font-semibold text-foreground">
-                {a.raceName ?? "Race"} · {a.distance ?? ""} {a.surface ?? ""}
+                {a.startTime ? new Date(a.startTime).toLocaleTimeString([], { hour: "numeric", minute: "2-digit" }) : "Race"}
               </div>
             </div>
             <div className={cn(
