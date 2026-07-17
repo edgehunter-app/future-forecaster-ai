@@ -945,7 +945,8 @@ Deno.serve(async (req) => {
     // Horse racing goes through a Claude call with the FormFav MCP server attached
     // so the model can pull live meetings and race cards on demand.
     if (type === "horse-racing") {
-      const formfavKey = Deno.env.get("FORMFAV_API_KEY") ?? "";
+      const supabaseUrl = Deno.env.get("SUPABASE_URL") ?? "";
+      const formfavProxyUrl = `${supabaseUrl}/functions/v1/fetch-formfav-mcp`;
       try {
         const controller = new AbortController();
         const timeoutId = setTimeout(() => controller.abort(), 60000);
@@ -960,14 +961,13 @@ Deno.serve(async (req) => {
           },
           body: JSON.stringify({
             model: "claude-sonnet-4-5",
-            max_tokens: 2000,
+            max_tokens: 4000,
             messages: [{ role: "user", content: prompt }],
             mcp_servers: [
               {
                 type: "url",
-                url: "https://api.formfav.com/mcp/",
+                url: formfavProxyUrl,
                 name: "formfav",
-                authorization_token: formfavKey,
               },
             ],
           }),
