@@ -569,6 +569,8 @@ export default function HorseRacing() {
         </div>
       )}
 
+      <BestRaceTodayPanel date={data?.date ?? todayLocalISO()} />
+
       {!loading && cards.length === 0 && !error && (
         <div className="space-y-4">
           <section className="flex flex-col items-center justify-center rounded-2xl border border-border bg-card p-10 text-center">
