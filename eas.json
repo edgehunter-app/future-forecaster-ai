@@ -26,11 +26,12 @@
   "submit": {
     "production": {
       "ios": {
-        "ascAppId": "net.edgehunter",
-        "ascApiKeyKeyId": "YOUR_KEY_ID",
-        "ascApiKeyIssuerId": "YOUR_ISSUER_ID",
-        "ascApiKeyPath": "./AuthKey_YOUR_KEY_ID.p8",
-        "appleTeamId": "YOUR_TEAM_ID"
+        "appleId": "mattg@lakeviewfinancial.net",
+        "ascAppId": "net.edgehunter"
+      },
+      "android": {
+        "serviceAccountKeyPath": "./google-services.json",
+        "track": "internal"
       }
     }
   }
