@@ -940,10 +940,6 @@ Deno.serve(async (req) => {
         prompt = buildPrompt(body);
     }
 
-    const callAnthropic = async (): Promise<Response> => {
-      // no-op marker
-      return await _callAnthropic();
-    };
     // Horse racing goes through a Claude call with the FormFav MCP server attached
     // so the model can pull live meetings and race cards on demand.
     if (type === "horse-racing") {
@@ -1014,7 +1010,7 @@ Deno.serve(async (req) => {
       }
     }
 
-    const _callAnthropic = async (): Promise<Response> => {
+    const callAnthropic = async (): Promise<Response> => {
       const maxAttempts = 4;
       let lastResp: Response | null = null;
       for (let attempt = 0; attempt < maxAttempts; attempt++) {
