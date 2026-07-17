@@ -843,28 +843,36 @@ MONITOR if: Edge reduced but still positive, worth watching for more movement.
 CONSIDER_EXIT if: Significant movement against position, edge now negative or minimal, or major shift in market consensus.`;
 }
 
-function buildHorseRacingPrompt(b: AnalyzeBody): string {
-  const today = new Date().toLocaleDateString("en-CA", { timeZone: "America/New_York" });
-  const date = b.date ?? today;
-  const track = b.track ? `Focus on this track/meeting slug: ${b.track}` : "Analyze the best available US race today";
-  const race = b.race ? `Focus on race number: ${b.race}` : "Pick the most competitive US race with the best betting opportunity";
-  return `You are EdgeHunter's AI horse racing handicapper. Use the FormFav tools to analyze today's races.
+// Horse racing analysis is built at call time from live FormFav REST data
+// rather than a pre-built prompt, so no dedicated builder helper here.
+function buildHorseRacingAnalysisPrompt(card: Record<string, unknown>): string {
+  const c = card as Record<string, any>;
+  const runners: any[] = Array.isArray(c.runners) ? c.runners : [];
+  const runnerLines = runners.map((r) => {
+    const stats = r?.stats?.overall ?? {};
+    return `${r.number ?? "?"}. ${r.name ?? "?"} | Jockey: ${r.jockey ?? "?"} | Trainer: ${r.trainer ?? "?"} | ML: ${r.morningLine ?? r.odds ?? "?"} | Form: ${r.form ?? "?"} | Weight: ${r.weight ?? "?"} | Win%: ${stats.winPercent ?? "?"}`;
+  }).join("\n");
+  return `You are EdgeHunter's AI horse racing handicapper.
+Analyze the race below and return ONLY a JSON object.
 
-${track}
-${race}
-Date: ${date}
+TODAY'S RACE:
+Track: ${c.track ?? "?"}
+Race: ${c.raceNumber ?? c.race ?? "?"}
+Name: ${c.raceName ?? c.name ?? ""}
+Distance: ${c.distance ?? "?"}
+Surface/Condition: ${c.surface ?? c.condition ?? "?"}
+Class: ${c.raceClass ?? c.class ?? "?"}
+Runners: ${c.numberOfRunners ?? runners.length}
 
-INSTRUCTIONS:
-1. Use get_meetings to find US race cards for ${date}.
-2. ${b.track ? `Locate the meeting matching "${b.track}"` : "Pick the most competitive US race with the best betting opportunity"}.
-3. Use get_race_card${b.race ? ` for race ${b.race}` : ""} to get full form for each runner (jockey, trainer, morning line, recent starts, class).
-4. Apply the traffic light system:
-   🟢 GREEN — Value race, overlay exists, AI sees edge worth betting
-   🟡 YELLOW — Possible value, worth a closer look
-   🔴 RED — Chalk race, short prices, not worth betting
-5. Return your best selection with clear reasoning.
+FIELD:
+${runnerLines || "(no runners)"}
 
-Respond with ONLY valid JSON (no markdown, no prose):
+Apply the traffic light system:
+🟢 GREEN — Value race, clear overlay
+🟡 YELLOW — Possible value, worth a look
+🔴 RED — Chalk race, skip
+
+Return ONLY valid JSON (no markdown, no prose). Start with { and end with }:
 {
   "track": "track name",
   "race": race number,
@@ -889,9 +897,7 @@ Respond with ONLY valid JSON (no markdown, no prose):
   "keyFactors": ["factor1", "factor2"],
   "warningFlags": ["any concerns"],
   "exoticSuggestion": "exacta/trifecta tip"
-}
-
-CRITICAL: Your final message must be ONLY the JSON object with no other text, no explanation, no markdown code blocks. Start your response with { and end with }. Nothing before or after the JSON.`;
+}`;
 }
 
 Deno.serve(async (req) => {
