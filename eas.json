@@ -16,8 +16,7 @@
     },
     "production": {
       "ios": {
-        "buildConfiguration": "Release",
-        "scheme": "App"
+        "buildConfiguration": "Release"
       },
       "android": {
         "buildType": "app-bundle"
