@@ -760,6 +760,7 @@ async function fetchOddsApiSport(
     const { res, keyName } = await oddsApiFetch(path);
     if (!res) {
       console.warn(`[odds-api] ${sport} no response`);
+      if (anyKeyExhausted()) oddsApiQuotaSports.add(sport);
       return { games: [], remaining: null };
     }
     const remainingHdr = res.headers.get("x-requests-remaining");
@@ -769,6 +770,9 @@ async function fetchOddsApiSport(
     if (!res.ok) {
       const txt = await res.text().catch(() => "");
       console.warn(`[odds-api] ${sport} non-ok body:`, txt.slice(0, 200));
+      if (res.status === 401 || res.status === 429 || anyKeyExhausted()) {
+        oddsApiQuotaSports.add(sport);
+      }
       return { games: [], remaining };
     }
     const json = await res.json();
