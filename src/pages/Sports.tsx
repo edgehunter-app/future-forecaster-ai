@@ -203,7 +203,7 @@ export default function Sports() {
     // (including World Cup/MMA/tennis exceptions), so we only filter by sport here.
     if (!activeSport || activeSport === "all") return list;
     if (activeSport === "soccer_fifa_world_cup") {
-      return fresh.filter((g) => {
+      return list.filter((g) => {
         const s = (g.sport ?? "").toLowerCase();
         const l = (g.league ?? "").toLowerCase();
         const sRaw = g.sport ?? "";
@@ -217,20 +217,20 @@ export default function Sports() {
       });
     }
     if (activeSport === "golf") {
-      return fresh.filter((g) => {
+      return list.filter((g) => {
         const s = (g.sport ?? "").toLowerCase();
         const l = (g.league ?? "").toLowerCase();
         return s.startsWith("golf") || l.includes("golf");
       });
     }
     if (activeSport === "tennis") {
-      return fresh.filter((g) => {
+      return list.filter((g) => {
         const s = (g.sport ?? "").toLowerCase();
         return s.startsWith("tennis") || g.isTennis === true;
       });
     }
     const sportLabel = SPORTS.find((s) => s.key === activeSport)?.label.toLowerCase() ?? "";
-    return fresh.filter(
+    return list.filter(
       (g) =>
         g.sport === activeSport ||
         (sportLabel && g.league?.toLowerCase().includes(sportLabel)),
