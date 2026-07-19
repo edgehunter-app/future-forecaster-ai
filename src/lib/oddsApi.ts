@@ -230,6 +230,10 @@ export async function fetchFullOdds(
     lastRemaining = resp.remainingRequests;
   }
   captureKeyResponse(resp);
+  captureOddsApiStatus(resp);
+  const quotaSports = new Set<string>(
+    (resp?.oddsApiQuotaExhaustedSports ?? resp?.meta?.oddsApiQuotaExhaustedSports ?? []) as string[],
+  );
   const data = resp?.data;
   if (!Array.isArray(data)) return [];
 
