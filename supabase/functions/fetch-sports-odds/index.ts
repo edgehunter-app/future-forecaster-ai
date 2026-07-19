@@ -861,6 +861,7 @@ Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
 
   try {
+    resetOddsApiStatus();
     const body = await req.json().catch(() => ({} as any));
     console.log("fetch-sports-odds called", JSON.stringify({
       ts: new Date().toISOString(),
