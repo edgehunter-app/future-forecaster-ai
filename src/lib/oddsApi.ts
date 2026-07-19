@@ -240,6 +240,8 @@ export async function fetchFullOdds(
   const mapped = data.map((g: any): FullGame => {
     const home = g.home_team ?? "Home";
     const away = g.away_team ?? "Away";
+    const gameSportKey = String(g.sport_key ?? sportKey ?? "");
+    const vegasQuotaExhausted = quotaSports.has(gameSportKey);
 
     // Golf outright tournaments: bookmakers carry a single "outrights"
     // market with one outcome per player. Aggregate into a leaderboard.
