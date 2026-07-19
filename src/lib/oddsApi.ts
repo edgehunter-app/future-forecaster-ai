@@ -168,6 +168,10 @@ export interface FullGame {
   // homeTeam holds the tournament name; players[] holds the leaderboard.
   isOutright?: boolean;
   isTennis?: boolean;
+  /** Set when The Odds API returned no lines for this game's sport because
+   *  every key hit a quota / auth error (e.g. OUT_OF_USAGE_CREDITS). Used
+   *  by the UI to distinguish "quota exhausted" from "lines not posted yet". */
+  vegasQuotaExhausted?: boolean;
   players?: Array<{
     name: string;
     lines: Array<{ book: string; odds: number }>;
@@ -226,12 +230,18 @@ export async function fetchFullOdds(
     lastRemaining = resp.remainingRequests;
   }
   captureKeyResponse(resp);
+  captureOddsApiStatus(resp);
+  const quotaSports = new Set<string>(
+    (resp?.oddsApiQuotaExhaustedSports ?? resp?.meta?.oddsApiQuotaExhaustedSports ?? []) as string[],
+  );
   const data = resp?.data;
   if (!Array.isArray(data)) return [];
 
   const mapped = data.map((g: any): FullGame => {
     const home = g.home_team ?? "Home";
     const away = g.away_team ?? "Away";
+    const gameSportKey = String(g.sport_key ?? sportKey ?? "");
+    const vegasQuotaExhausted = quotaSports.has(gameSportKey);
 
     // Golf outright tournaments: bookmakers carry a single "outrights"
     // market with one outcome per player. Aggregate into a leaderboard.
@@ -277,6 +287,7 @@ export async function fetchFullOdds(
         mispricingGap: null,
         isOutright: true,
         players,
+        vegasQuotaExhausted,
       };
     }
 
@@ -393,6 +404,7 @@ export async function fetchFullOdds(
       polymarketImplied: null,
       mispricingGap: null,
       isTennis: g.isTennis === true || String(g.sport_key ?? "").startsWith("tennis_"),
+      vegasQuotaExhausted,
     };
   });
   if (mapped[0]) {
@@ -406,6 +418,40 @@ export async function fetchFullOdds(
 let lastFullGames: FullGame[] = [];
 export function getLastFullGames(): FullGame[] { return lastFullGames; }
 export function setLastFullGames(g: FullGame[]) { lastFullGames = g; }
+
+// ============= Odds API key/quota status =============
+export type OddsApiKeyStatus = {
+  code: string;
+  message: string;
+  status: number;
+} | null;
+export type OddsApiStatusSnapshot = {
+  keys: { primary: OddsApiKeyStatus; secondary: OddsApiKeyStatus };
+  quotaExhaustedSports: string[];
+  fetchedAt: number;
+};
+let lastOddsApiStatus: OddsApiStatusSnapshot = {
+  keys: { primary: null, secondary: null },
+  quotaExhaustedSports: [],
+  fetchedAt: 0,
+};
+export function getLastOddsApiStatus(): OddsApiStatusSnapshot { return lastOddsApiStatus; }
+function captureOddsApiStatus(resp: any) {
+  if (!resp) return;
+  const keys = resp.oddsApiKeyStatus ?? resp.meta?.oddsApiKeyStatus ?? null;
+  const sports = resp.oddsApiQuotaExhaustedSports
+    ?? resp.meta?.oddsApiQuotaExhaustedSports
+    ?? [];
+  if (!keys && !Array.isArray(sports)) return;
+  lastOddsApiStatus = {
+    keys: {
+      primary: keys?.primary ?? null,
+      secondary: keys?.secondary ?? null,
+    },
+    quotaExhaustedSports: Array.isArray(sports) ? sports : [],
+    fetchedAt: Date.now(),
+  };
+}
 
 // ============= Sportsbook API cross-market gaps =============
 

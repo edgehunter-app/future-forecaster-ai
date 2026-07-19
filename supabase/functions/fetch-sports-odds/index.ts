@@ -67,6 +67,21 @@ const ODDS_API_GOLF_SPORTS = [
 ];
 const oddsApiCache = new Map<string, { expires: number; payload: any[] }>();
 
+// Per-request tracking of Odds API key health + which sports were blocked
+// by quota exhaustion. Reset at the top of each request handler.
+type KeyStatus = { code: string; message: string; status: number };
+let oddsApiKeyStatus: Record<string, KeyStatus | null> = { primary: null, secondary: null };
+const oddsApiQuotaSports = new Set<string>();
+function resetOddsApiStatus() {
+  oddsApiKeyStatus = { primary: null, secondary: null };
+  oddsApiQuotaSports.clear();
+}
+function anyKeyExhausted(): boolean {
+  return Object.values(oddsApiKeyStatus).some(
+    (s) => s && s.code === "OUT_OF_USAGE_CREDITS",
+  );
+}
+
 // Key rotation — try ODDS_API_KEY, fall back to ODDS_API_KEY_2 on 401/429.
 function oddsApiKeys(): Array<{ name: string; key: string }> {
   const out: Array<{ name: string; key: string }> = [];
@@ -91,7 +106,19 @@ async function oddsApiFetch(pathAndQuery: string): Promise<{ res: Response | nul
       lastKeyName = name;
       const remaining = res.headers.get("x-requests-remaining");
       if (res.status === 401 || res.status === 429) {
-        console.warn(`[odds-api] key=${name} status=${res.status} — rotating`);
+        // Peek the body to distinguish quota exhaustion from other 401s.
+        let bodyText = "";
+        try { bodyText = await res.clone().text(); } catch (_) { /* ignore */ }
+        let code = res.status === 429 ? "RATE_LIMITED" : "UNAUTHORIZED";
+        let message = bodyText.slice(0, 200);
+        try {
+          const parsed = JSON.parse(bodyText);
+          if (parsed?.error_code) code = String(parsed.error_code);
+          if (parsed?.message) message = String(parsed.message);
+        } catch (_) { /* not JSON */ }
+        if (/OUT_OF_USAGE_CREDITS/i.test(bodyText)) code = "OUT_OF_USAGE_CREDITS";
+        oddsApiKeyStatus[name] = { code, message, status: res.status };
+        console.warn(`[odds-api] key=${name} status=${res.status} code=${code} — rotating`);
         continue;
       }
       return { res, keyName: name, remaining };
@@ -733,6 +760,7 @@ async function fetchOddsApiSport(
     const { res, keyName } = await oddsApiFetch(path);
     if (!res) {
       console.warn(`[odds-api] ${sport} no response`);
+      if (anyKeyExhausted()) oddsApiQuotaSports.add(sport);
       return { games: [], remaining: null };
     }
     const remainingHdr = res.headers.get("x-requests-remaining");
@@ -742,6 +770,9 @@ async function fetchOddsApiSport(
     if (!res.ok) {
       const txt = await res.text().catch(() => "");
       console.warn(`[odds-api] ${sport} non-ok body:`, txt.slice(0, 200));
+      if (res.status === 401 || res.status === 429 || anyKeyExhausted()) {
+        oddsApiQuotaSports.add(sport);
+      }
       return { games: [], remaining };
     }
     const json = await res.json();
@@ -830,6 +861,7 @@ Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
 
   try {
+    resetOddsApiStatus();
     const body = await req.json().catch(() => ({} as any));
     console.log("fetch-sports-odds called", JSON.stringify({
       ts: new Date().toISOString(),
@@ -1277,6 +1309,8 @@ Deno.serve(async (req) => {
       remaining: Math.max(0, DAILY_LIMIT - usedNow),
       used: usedNow,
       oddsApiRemaining: oddsApiResult?.remaining ?? null,
+      oddsApiKeyStatus,
+      oddsApiQuotaExhaustedSports: Array.from(oddsApiQuotaSports),
       meta: {
         source: "sportsbook-api",
         endpoint: "/v1/competitions/{SHORT}/events + /v0/advantages",
@@ -1289,6 +1323,8 @@ Deno.serve(async (req) => {
         eventsReturned: mergedGames.length,
         oddsApiGames: oddsApiResult?.games?.length ?? 0,
         oddsApiRemaining: oddsApiResult?.remaining ?? null,
+        oddsApiKeyStatus,
+        oddsApiQuotaExhaustedSports: Array.from(oddsApiQuotaSports),
         arbitrageEvents: arbKeys.size,
       },
     }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });

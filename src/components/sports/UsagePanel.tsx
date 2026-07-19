@@ -1,6 +1,8 @@
 import { useEffect, useState } from "react";
 import { cn } from "@/lib/utils";
 import { supabase } from "@/integrations/supabase/client";
+import { getLastOddsApiStatus, type OddsApiStatusSnapshot } from "@/lib/oddsApi";
+import { AlertTriangle } from "lucide-react";
 
 const RAPID_DAILY_LIMIT = 1000;
 const GOLF_LB_MONTHLY_LIMIT = 250;
@@ -22,6 +24,7 @@ export default function UsagePanel() {
   const [oddsApiRemaining, setOddsApiRemaining] = useState<number | null>(null);
   const [golfLbUsedMonth, setGolfLbUsedMonth] = useState<number>(0);
   const [golfLbRemaining, setGolfLbRemaining] = useState<number | null>(null);
+  const [oddsApiStatus, setOddsApiStatus] = useState<OddsApiStatusSnapshot>(getLastOddsApiStatus());
 
   useEffect(() => {
     let cancelled = false;
@@ -57,9 +60,11 @@ export default function UsagePanel() {
     };
     void load();
     const id = setInterval(load, 30_000);
+    const statusId = setInterval(() => setOddsApiStatus(getLastOddsApiStatus()), 5_000);
     return () => {
       cancelled = true;
       clearInterval(id);
+      clearInterval(statusId);
     };
   }, []);
 
@@ -74,8 +79,49 @@ export default function UsagePanel() {
   const golfText = golfRatio >= 0.8 ? "text-destructive" : golfRatio >= 0.5 ? "text-warning" : "text-success";
   const golfResetLabel = nextMonthResetLabel();
 
+  const exhaustedKeys = (["primary", "secondary"] as const).flatMap((name) => {
+    const s = oddsApiStatus.keys[name];
+    if (s && s.code === "OUT_OF_USAGE_CREDITS") return [{ name, ...s }];
+    return [];
+  });
+  const otherKeyErrors = (["primary", "secondary"] as const).flatMap((name) => {
+    const s = oddsApiStatus.keys[name];
+    if (s && s.code !== "OUT_OF_USAGE_CREDITS") return [{ name, ...s }];
+    return [];
+  });
+
   return (
     <div className="space-y-3">
+    {(exhaustedKeys.length > 0 || otherKeyErrors.length > 0) && (
+      <div className="rounded-lg border border-destructive/50 bg-destructive/10 p-3 space-y-1.5">
+        <div className="flex items-center gap-2 text-destructive">
+          <AlertTriangle className="h-4 w-4" />
+          <span className="text-[12px] font-bold uppercase tracking-wide">
+            Odds API key issue detected
+          </span>
+        </div>
+        {exhaustedKeys.map((k) => (
+          <div key={k.name} className="text-[11px] text-destructive/90">
+            <span className="font-semibold uppercase">{k.name} key</span>: quota exhausted
+            (HTTP {k.status} · {k.code}) — {k.message || "OUT_OF_USAGE_CREDITS"}
+          </div>
+        ))}
+        {otherKeyErrors.map((k) => (
+          <div key={k.name} className="text-[11px] text-destructive/90">
+            <span className="font-semibold uppercase">{k.name} key</span>: HTTP {k.status} · {k.code} — {k.message}
+          </div>
+        ))}
+        {oddsApiStatus.quotaExhaustedSports.length > 0 && (
+          <div className="text-[11px] text-destructive/80">
+            Sports affected this scan:{" "}
+            <span className="font-mono">{oddsApiStatus.quotaExhaustedSports.join(", ")}</span>
+          </div>
+        )}
+        <div className="text-[10px] text-destructive/70">
+          Users see "Vegas odds temporarily unavailable" on affected games until a working key returns lines.
+        </div>
+      </div>
+    )}
     <div className="rounded-lg border border-border bg-card p-3 grid grid-cols-1 md:grid-cols-3 gap-3 items-center">
       <div className="space-y-1.5 md:col-span-2">
         <div className="flex items-center justify-between">
