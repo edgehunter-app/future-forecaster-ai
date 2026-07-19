@@ -259,6 +259,7 @@ function GameCard({ game, mispricings }: { game: FullGame; mispricings: SportsMi
 
   const linesPending = vegasBookCount < 2;
   const kalshiBook = bookmakers.find((b) => b.key === "kalshi");
+  const vegasQuotaOut = game.vegasQuotaExhausted === true && vegasBookCount === 0;
 
   const handleAnalyze = () => {
     void fetchOdds();
