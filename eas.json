@@ -17,8 +17,7 @@
     "production": {
       "ios": {
         "buildConfiguration": "Release",
-        "scheme": "App",
-        "sourceDir": "ios/App"
+        "scheme": "App"
       },
       "android": {
         "buildType": "app-bundle"
