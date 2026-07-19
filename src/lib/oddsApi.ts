@@ -287,6 +287,7 @@ export async function fetchFullOdds(
         mispricingGap: null,
         isOutright: true,
         players,
+        vegasQuotaExhausted,
       };
     }
 
@@ -403,6 +404,7 @@ export async function fetchFullOdds(
       polymarketImplied: null,
       mispricingGap: null,
       isTennis: g.isTennis === true || String(g.sport_key ?? "").startsWith("tennis_"),
+      vegasQuotaExhausted,
     };
   });
   if (mapped[0]) {
