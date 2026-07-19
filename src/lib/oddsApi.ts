@@ -411,6 +411,40 @@ let lastFullGames: FullGame[] = [];
 export function getLastFullGames(): FullGame[] { return lastFullGames; }
 export function setLastFullGames(g: FullGame[]) { lastFullGames = g; }
 
+// ============= Odds API key/quota status =============
+export type OddsApiKeyStatus = {
+  code: string;
+  message: string;
+  status: number;
+} | null;
+export type OddsApiStatusSnapshot = {
+  keys: { primary: OddsApiKeyStatus; secondary: OddsApiKeyStatus };
+  quotaExhaustedSports: string[];
+  fetchedAt: number;
+};
+let lastOddsApiStatus: OddsApiStatusSnapshot = {
+  keys: { primary: null, secondary: null },
+  quotaExhaustedSports: [],
+  fetchedAt: 0,
+};
+export function getLastOddsApiStatus(): OddsApiStatusSnapshot { return lastOddsApiStatus; }
+function captureOddsApiStatus(resp: any) {
+  if (!resp) return;
+  const keys = resp.oddsApiKeyStatus ?? resp.meta?.oddsApiKeyStatus ?? null;
+  const sports = resp.oddsApiQuotaExhaustedSports
+    ?? resp.meta?.oddsApiQuotaExhaustedSports
+    ?? [];
+  if (!keys && !Array.isArray(sports)) return;
+  lastOddsApiStatus = {
+    keys: {
+      primary: keys?.primary ?? null,
+      secondary: keys?.secondary ?? null,
+    },
+    quotaExhaustedSports: Array.isArray(sports) ? sports : [],
+    fetchedAt: Date.now(),
+  };
+}
+
 // ============= Sportsbook API cross-market gaps =============
 
 export interface SportsbookGap {
