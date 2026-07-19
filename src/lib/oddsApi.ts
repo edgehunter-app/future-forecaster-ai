@@ -168,6 +168,10 @@ export interface FullGame {
   // homeTeam holds the tournament name; players[] holds the leaderboard.
   isOutright?: boolean;
   isTennis?: boolean;
+  /** Set when The Odds API returned no lines for this game's sport because
+   *  every key hit a quota / auth error (e.g. OUT_OF_USAGE_CREDITS). Used
+   *  by the UI to distinguish "quota exhausted" from "lines not posted yet". */
+  vegasQuotaExhausted?: boolean;
   players?: Array<{
     name: string;
     lines: Array<{ book: string; odds: number }>;
