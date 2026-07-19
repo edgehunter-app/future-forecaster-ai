@@ -17,7 +17,7 @@
     "production": {
       "ios": {
         "buildConfiguration": "Release",
-        "scheme": "CapacitorApp"
+        "scheme": "App"
       },
       "android": {
         "buildType": "app-bundle"
