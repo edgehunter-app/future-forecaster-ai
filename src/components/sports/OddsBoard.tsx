@@ -385,10 +385,12 @@ function GameCard({ game, mispricings }: { game: FullGame; mispricings: SportsMi
         <div className="rounded-md border border-dashed border-border/60 bg-background/30 px-3 py-2 space-y-1.5">
           <div className="flex items-center gap-1.5 text-[11px] font-semibold text-muted-foreground">
             <Clock className="h-3 w-3" />
-            <span>Lines posting soon</span>
+            <span>{vegasQuotaOut ? "Vegas odds temporarily unavailable" : "Lines posting soon"}</span>
           </div>
           <p className="text-[10px] text-muted-foreground/70 leading-snug">
-            Vegas books typically post 24–36h before first pitch.
+            {vegasQuotaOut
+              ? "Our odds provider hit its quota. We're on it — refresh later or check other sports."
+              : "Vegas books typically post 24–36h before first pitch."}
           </p>
           {kalshiBook && (kalshiBook.homeMoneyline !== 0 || kalshiBook.awayMoneyline !== 0) && (
             <div className="mt-1.5 rounded-md border border-info/30 bg-info/5 px-2 py-1.5 space-y-0.5">
