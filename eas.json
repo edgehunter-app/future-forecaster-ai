@@ -16,7 +16,8 @@
     },
     "production": {
       "ios": {
-        "buildConfiguration": "Release"
+        "buildConfiguration": "Release",
+        "scheme": "CapacitorApp"
       },
       "android": {
         "buildType": "app-bundle"
