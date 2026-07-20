@@ -136,6 +136,7 @@ export function useSportsOdds(polymarkets: Market[]) {
   const [loadedSports, setLoadedSports] = useState<Set<string>>(new Set([DEFAULT_SPORT]));
   const [currentSport, setCurrentSport] = useState<string>(DEFAULT_SPORT);
   const fetchingRef = useRef(false);
+  const lastScanAtRef = useRef<number>(0);
   const currentSportRef = useRef(currentSport);
   useEffect(() => { currentSportRef.current = currentSport; }, [currentSport]);
   const [nextScanAt, setNextScanAt] = useState<Date | null>(null);
