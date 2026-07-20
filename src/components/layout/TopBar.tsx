@@ -72,10 +72,25 @@ export function TopBar(_: { onMenuClick?: () => void } = {}) {
   const initials = (user?.email ?? "U").slice(0, 2).toUpperCase();
 
   const signOut = async () => {
-    await supabase.auth.signOut();
-    setDemoMode(false);
     setMenuOpen(false);
-    navigate("/");
+    try {
+      // `local` scope avoids hangs when the refresh token is stale/invalid,
+      // which was leaving the demo session stuck signed in.
+      const { error } = await supabase.auth.signOut({ scope: "local" });
+      if (error) console.error("[signOut] supabase error", error);
+    } catch (e) {
+      console.error("[signOut] threw", e);
+    }
+    // Belt & braces: clear any lingering supabase auth tokens so a stale
+    // localStorage entry can't rehydrate the session on next load.
+    try {
+      Object.keys(localStorage)
+        .filter((k) => k.startsWith("sb-") && k.endsWith("-auth-token"))
+        .forEach((k) => localStorage.removeItem(k));
+    } catch { /* ignore */ }
+    setDemoMode(false);
+    // Hard reload to the landing page so every hook/provider resets cleanly.
+    window.location.assign("/");
   };
 
   const meta = titles[pathname] ?? { title: "EdgeHunter" };
