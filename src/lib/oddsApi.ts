@@ -428,11 +428,13 @@ export type OddsApiKeyStatus = {
 export type OddsApiStatusSnapshot = {
   keys: { primary: OddsApiKeyStatus; secondary: OddsApiKeyStatus };
   quotaExhaustedSports: string[];
+  rateLimitedSports: string[];
   fetchedAt: number;
 };
 let lastOddsApiStatus: OddsApiStatusSnapshot = {
   keys: { primary: null, secondary: null },
   quotaExhaustedSports: [],
+  rateLimitedSports: [],
   fetchedAt: 0,
 };
 export function getLastOddsApiStatus(): OddsApiStatusSnapshot { return lastOddsApiStatus; }
@@ -442,13 +444,17 @@ function captureOddsApiStatus(resp: any) {
   const sports = resp.oddsApiQuotaExhaustedSports
     ?? resp.meta?.oddsApiQuotaExhaustedSports
     ?? [];
-  if (!keys && !Array.isArray(sports)) return;
+  const rateLimited = resp.oddsApiRateLimitedSports
+    ?? resp.meta?.oddsApiRateLimitedSports
+    ?? [];
+  if (!keys && !Array.isArray(sports) && !Array.isArray(rateLimited)) return;
   lastOddsApiStatus = {
     keys: {
       primary: keys?.primary ?? null,
       secondary: keys?.secondary ?? null,
     },
     quotaExhaustedSports: Array.isArray(sports) ? sports : [],
+    rateLimitedSports: Array.isArray(rateLimited) ? rateLimited : [],
     fetchedAt: Date.now(),
   };
 }
