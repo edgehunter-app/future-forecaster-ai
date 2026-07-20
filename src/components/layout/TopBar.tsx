@@ -72,6 +72,7 @@ export function TopBar(_: { onMenuClick?: () => void } = {}) {
   const initials = (user?.email ?? "U").slice(0, 2).toUpperCase();
 
   const signOut = async () => {
+    console.log("[signOut] click handler fired", { isDemoMode, userEmail: user?.email });
     setMenuOpen(false);
     try {
       // `local` scope avoids hangs when the refresh token is stale/invalid,
