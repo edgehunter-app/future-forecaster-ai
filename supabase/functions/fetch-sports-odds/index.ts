@@ -824,6 +824,7 @@ async function fetchOddsApiSport(
     if (!res) {
       console.warn(`[odds-api] ${sport} no response`);
       if (anyKeyExhausted()) oddsApiQuotaSports.add(sport);
+      if (anyKeyRateLimited()) oddsApiRateLimitedSports.add(sport);
       return { games: [], remaining: null };
     }
     const remainingHdr = res.headers.get("x-requests-remaining");
@@ -835,6 +836,9 @@ async function fetchOddsApiSport(
       console.warn(`[odds-api] ${sport} non-ok body:`, txt.slice(0, 200));
       if (res.status === 401 || res.status === 429 || anyKeyExhausted()) {
         oddsApiQuotaSports.add(sport);
+      }
+      if (res.status === 429 || anyKeyRateLimited()) {
+        oddsApiRateLimitedSports.add(sport);
       }
       return { games: [], remaining };
     }
