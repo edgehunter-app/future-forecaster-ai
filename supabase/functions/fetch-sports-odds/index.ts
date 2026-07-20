@@ -1376,6 +1376,7 @@ Deno.serve(async (req) => {
       oddsApiRemaining: oddsApiResult?.remaining ?? null,
       oddsApiKeyStatus,
       oddsApiQuotaExhaustedSports: Array.from(oddsApiQuotaSports),
+      oddsApiRateLimitedSports: Array.from(oddsApiRateLimitedSports),
       meta: {
         source: "sportsbook-api",
         endpoint: "/v1/competitions/{SHORT}/events + /v0/advantages",
@@ -1390,6 +1391,7 @@ Deno.serve(async (req) => {
         oddsApiRemaining: oddsApiResult?.remaining ?? null,
         oddsApiKeyStatus,
         oddsApiQuotaExhaustedSports: Array.from(oddsApiQuotaSports),
+        oddsApiRateLimitedSports: Array.from(oddsApiRateLimitedSports),
         arbitrageEvents: arbKeys.size,
       },
     }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
