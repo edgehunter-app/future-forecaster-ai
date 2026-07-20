@@ -97,7 +97,7 @@ export function TopBar(_: { onMenuClick?: () => void } = {}) {
   const meta = titles[pathname] ?? { title: "EdgeHunter" };
 
   return (
-    <div style={{ paddingTop: "env(safe-area-inset-top)" }}>
+    <div className="relative z-[80]" style={{ paddingTop: "env(safe-area-inset-top)" }}>
       {isDemoMode && !user && (
         <div className="flex items-center justify-center gap-2 bg-warning/15 border-b border-warning/30 px-4 py-1.5 text-xs text-warning">
           <span className="font-semibold">Demo Mode</span>
