@@ -72,14 +72,43 @@ const oddsApiCache = new Map<string, { expires: number; payload: any[] }>();
 type KeyStatus = { code: string; message: string; status: number };
 let oddsApiKeyStatus: Record<string, KeyStatus | null> = { primary: null, secondary: null };
 const oddsApiQuotaSports = new Set<string>();
+const oddsApiRateLimitedSports = new Set<string>();
 function resetOddsApiStatus() {
   oddsApiKeyStatus = { primary: null, secondary: null };
   oddsApiQuotaSports.clear();
+  oddsApiRateLimitedSports.clear();
 }
 function anyKeyExhausted(): boolean {
   return Object.values(oddsApiKeyStatus).some(
     (s) => s && s.code === "OUT_OF_USAGE_CREDITS",
   );
+}
+function anyKeyRateLimited(): boolean {
+  return Object.values(oddsApiKeyStatus).some(
+    (s) => s && s.code === "RATE_LIMITED",
+  );
+}
+
+// Run async tasks with limited concurrency + small stagger between starts,
+// so a scan across ~19 sports doesn't burst The Odds API's freq limit.
+async function runWithConcurrency<T>(
+  tasks: Array<() => Promise<T>>,
+  limit = 3,
+  staggerMs = 250,
+): Promise<T[]> {
+  const out: T[] = new Array(tasks.length);
+  let cursor = 0;
+  const workers = Array.from({ length: Math.min(limit, tasks.length) }, async (_v, w) => {
+    // Stagger each worker's first start so the initial burst is spread out.
+    if (w > 0) await new Promise((r) => setTimeout(r, staggerMs * w));
+    while (cursor < tasks.length) {
+      const my = cursor++;
+      out[my] = await tasks[my]();
+      if (cursor < tasks.length) await new Promise((r) => setTimeout(r, staggerMs));
+    }
+  });
+  await Promise.all(workers);
+  return out;
 }
 
 // Key rotation — try ODDS_API_KEY, fall back to ODDS_API_KEY_2 on 401/429.
