@@ -84,20 +84,50 @@ export default function UsagePanel() {
     if (s && s.code === "OUT_OF_USAGE_CREDITS") return [{ name, ...s }];
     return [];
   });
+  const rateLimitedKeys = (["primary", "secondary"] as const).flatMap((name) => {
+    const s = oddsApiStatus.keys[name];
+    if (s && s.code === "RATE_LIMITED") return [{ name, ...s }];
+    return [];
+  });
   const otherKeyErrors = (["primary", "secondary"] as const).flatMap((name) => {
     const s = oddsApiStatus.keys[name];
-    if (s && s.code !== "OUT_OF_USAGE_CREDITS") return [{ name, ...s }];
+    if (s && s.code !== "OUT_OF_USAGE_CREDITS" && s.code !== "RATE_LIMITED") return [{ name, ...s }];
     return [];
   });
 
   return (
     <div className="space-y-3">
+    {rateLimitedKeys.length > 0 && (
+      <div className="rounded-lg border border-warning/50 bg-warning/10 p-3 space-y-1.5">
+        <div className="flex items-center gap-2 text-warning">
+          <AlertTriangle className="h-4 w-4" />
+          <span className="text-[12px] font-bold uppercase tracking-wide">
+            Odds API rate limit — transient
+          </span>
+        </div>
+        {rateLimitedKeys.map((k) => (
+          <div key={k.name} className="text-[11px] text-warning/90">
+            <span className="font-semibold uppercase">{k.name} key</span>: HTTP 429 EXCEEDED_FREQ_LIMIT
+            {k.message ? ` — ${k.message}` : ""}
+          </div>
+        ))}
+        {oddsApiStatus.rateLimitedSports.length > 0 && (
+          <div className="text-[11px] text-warning/80">
+            Sports affected this scan:{" "}
+            <span className="font-mono">{oddsApiStatus.rateLimitedSports.join(", ")}</span>
+          </div>
+        )}
+        <div className="text-[10px] text-warning/70">
+          Requests were too frequent. Throttling + backoff is applied automatically — the next refresh should recover. This is separate from monthly quota exhaustion.
+        </div>
+      </div>
+    )}
     {(exhaustedKeys.length > 0 || otherKeyErrors.length > 0) && (
       <div className="rounded-lg border border-destructive/50 bg-destructive/10 p-3 space-y-1.5">
         <div className="flex items-center gap-2 text-destructive">
           <AlertTriangle className="h-4 w-4" />
           <span className="text-[12px] font-bold uppercase tracking-wide">
-            Odds API key issue detected
+            Odds API quota exhausted
           </span>
         </div>
         {exhaustedKeys.map((k) => (

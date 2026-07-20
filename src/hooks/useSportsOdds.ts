@@ -136,6 +136,7 @@ export function useSportsOdds(polymarkets: Market[]) {
   const [loadedSports, setLoadedSports] = useState<Set<string>>(new Set([DEFAULT_SPORT]));
   const [currentSport, setCurrentSport] = useState<string>(DEFAULT_SPORT);
   const fetchingRef = useRef(false);
+  const lastScanAtRef = useRef<number>(0);
   const currentSportRef = useRef(currentSport);
   useEffect(() => { currentSportRef.current = currentSport; }, [currentSport]);
   const [nextScanAt, setNextScanAt] = useState<Date | null>(null);
@@ -263,6 +264,15 @@ export function useSportsOdds(polymarkets: Market[]) {
 
   const scan = useCallback(async (trigger: string = "manual") => {
     if (fetchingRef.current) return;
+    // Cooldown: prevent Refresh from being spammed. A full scan hits ~19
+    // Odds API endpoints; back-to-back clicks were tripping 429 rate limits
+    // on both keys. 8s between scans is plenty for a manual click.
+    const sinceLast = Date.now() - lastScanAtRef.current;
+    if (sinceLast < 8000 && trigger === "manual") {
+      console.log("[scan] cooldown active, skipping (", sinceLast, "ms since last)");
+      return;
+    }
+    lastScanAtRef.current = Date.now();
     console.log("Sports scan starting...", {
       trigger,
       dailyCount: `${getDailyCount()}/${DAILY_CAP}`,
