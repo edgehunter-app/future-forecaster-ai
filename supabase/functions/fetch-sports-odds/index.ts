@@ -101,15 +101,49 @@ async function oddsApiFetch(pathAndQuery: string): Promise<{ res: Response | nul
     const sep = pathAndQuery.includes("?") ? "&" : "?";
     const url = `${ODDS_API_BASE}${pathAndQuery}${sep}apiKey=${key}`;
     try {
-      const res = await fetch(url, { signal: AbortSignal.timeout(10000) });
+      let res = await fetch(url, { signal: AbortSignal.timeout(10000) });
       lastRes = res;
       lastKeyName = name;
+
+      // 429 = per-second/minute frequency limit. This is transient — retry
+      // the SAME key with exponential backoff instead of failing over to
+      // the secondary (which is likely being hammered by the same scan).
+      if (res.status === 429) {
+        const bodyPreview = await res.clone().text().catch(() => "");
+        oddsApiKeyStatus[name] = {
+          code: "RATE_LIMITED",
+          message: bodyPreview.slice(0, 200) || "requests too frequent",
+          status: 429,
+        };
+        console.warn(`[odds-api] key=${name} 429 rate-limited — backing off`);
+        let recovered = false;
+        for (let attempt = 1; attempt <= 3; attempt++) {
+          const wait = 400 * Math.pow(2, attempt); // 800ms, 1.6s, 3.2s
+          await new Promise((r) => setTimeout(r, wait));
+          try {
+            res = await fetch(url, { signal: AbortSignal.timeout(10000) });
+          } catch (_e) { continue; }
+          if (res.status !== 429) { recovered = true; break; }
+        }
+        if (recovered && res.ok) {
+          // Clear the transient status on this key.
+          oddsApiKeyStatus[name] = null;
+          return { res, keyName: name, remaining: res.headers.get("x-requests-remaining") };
+        }
+        if (recovered && !res.ok && res.status !== 429) {
+          // Fall through to the 401/other handling below with the new res.
+          lastRes = res;
+        } else {
+          // Still 429 after retries — leave status, try next key.
+          continue;
+        }
+      }
+
       const remaining = res.headers.get("x-requests-remaining");
-      if (res.status === 401 || res.status === 429) {
-        // Peek the body to distinguish quota exhaustion from other 401s.
+      if (res.status === 401) {
         let bodyText = "";
         try { bodyText = await res.clone().text(); } catch (_) { /* ignore */ }
-        let code = res.status === 429 ? "RATE_LIMITED" : "UNAUTHORIZED";
+        let code = "UNAUTHORIZED";
         let message = bodyText.slice(0, 200);
         try {
           const parsed = JSON.parse(bodyText);
@@ -801,22 +835,20 @@ async function fetchOddsApiSport(
 }
 
 async function fetchOddsApiAll(client: any, forceRefresh = false): Promise<{ games: any[]; remaining: number | null }> {
-  // Soccer 3-way (h2h includes Draw) + golf outrights, run in parallel with
-  // ~500ms spacing between calls inside each group to be polite.
-  // Probe /sports first so we only call golf majors flagged active=true.
+  // Throttle: run per-sport calls with limited concurrency + stagger so we
+  // don't trip The Odds API's per-second/minute frequency limit (which
+  // returns 429 EXCEEDED_FREQ_LIMIT on BOTH keys if we burst ~19 calls
+  // at once). Retry-on-429-with-backoff lives inside oddsApiFetch.
   const activeGolfKeys = await getActiveGolfSports(forceRefresh);
   console.log("Fetching golf with keys:", JSON.stringify(activeGolfKeys));
-  const soccerCalls = ODDS_API_SOCCER_SPORTS.map((s) => fetchOddsApiSport(client, s, "h2h,spreads,totals", forceRefresh));
-  const golfCalls = activeGolfKeys.map((s) => fetchOddsApiSport(client, s, "outrights", forceRefresh));
-  // MMA/UFC is moneyline only.
-  const mmaCalls = ODDS_API_MMA_SPORTS.map((s) => fetchOddsApiSport(client, s, "h2h", forceRefresh));
-  // Tennis: moneyline (h2h) only.
-  const tennisCalls = ODDS_API_TENNIS_SPORTS.map((s) => fetchOddsApiSport(client, s, "h2h", forceRefresh));
-  // Full game slates for major leagues (MLB/NBA/NHL/NFL/EPL/MLS).
-  const gameCalls = ODDS_API_GAME_SPORTS.map(({ sport, markets }) =>
-    fetchOddsApiSport(client, sport, markets, forceRefresh),
-  );
-  const results = await Promise.all([...soccerCalls, ...golfCalls, ...mmaCalls, ...tennisCalls, ...gameCalls]);
+  const tasks: Array<() => Promise<{ games: any[]; remaining: number | null }>> = [
+    ...ODDS_API_SOCCER_SPORTS.map((s) => () => fetchOddsApiSport(client, s, "h2h,spreads,totals", forceRefresh)),
+    ...activeGolfKeys.map((s) => () => fetchOddsApiSport(client, s, "outrights", forceRefresh)),
+    ...ODDS_API_MMA_SPORTS.map((s) => () => fetchOddsApiSport(client, s, "h2h", forceRefresh)),
+    ...ODDS_API_TENNIS_SPORTS.map((s) => () => fetchOddsApiSport(client, s, "h2h", forceRefresh)),
+    ...ODDS_API_GAME_SPORTS.map(({ sport, markets }) => () => fetchOddsApiSport(client, sport, markets, forceRefresh)),
+  ];
+  const results = await runWithConcurrency(tasks, 3, 250);
   const games: any[] = [];
   let remaining: number | null = null;
   for (const r of results) {
