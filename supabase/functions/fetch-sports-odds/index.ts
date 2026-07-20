@@ -192,8 +192,10 @@ async function oddsApiFetch(pathAndQuery: string): Promise<{ res: Response | nul
   return { res: lastRes, keyName: lastKeyName, remaining: lastRes?.headers.get("x-requests-remaining") ?? null };
 }
 
-// Probe /sports to find which golf majors are currently active. Cached for
-// 10 minutes per cold start; /sports doesn't count against the daily quota.
+// Probe /sports to find which golf majors are currently active.
+// /sports is FREE per Odds API docs (does not count against the monthly
+// quota), but we still cache the result 6h per warm instance to reduce
+// HTTP volume — active tournament lineups turn over on a weekly cadence.
 let activeGolfCache: { expires: number; keys: string[] } | null = null;
 async function getActiveGolfSports(forceRefresh = false): Promise<string[]> {
   const now = Date.now();
@@ -215,7 +217,7 @@ async function getActiveGolfSports(forceRefresh = false): Promise<string[]> {
       .filter((s: any) => s.active && ODDS_API_GOLF_SPORTS.includes(s.key))
       .map((s: any) => s.key);
     console.log("[odds-api/discovery] active golf keys:", JSON.stringify(active));
-    activeGolfCache = { expires: now + 10 * 60 * 1000, keys: active };
+    activeGolfCache = { expires: now + 6 * 60 * 60 * 1000, keys: active };
     return active;
   } catch (e) {
     console.warn("[odds-api/discovery] failed:", e);
