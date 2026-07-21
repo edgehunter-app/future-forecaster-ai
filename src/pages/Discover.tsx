@@ -1,7 +1,7 @@
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import HeroBestEdgeCard from "@/components/discover/HeroBestEdgeCard";
-import BestEdgeAnalysisSheet from "@/components/discover/BestEdgeAnalysisSheet";
+import BestEdgeDetailSheet from "@/components/discover/BestEdgeDetailSheet";
 import TodaySignalsList from "@/components/discover/TodaySignalsList";
 import AIInsightStrip from "@/components/discover/AIInsightStrip";
 import GamblingDisclaimer from "@/components/sports/GamblingDisclaimer";
@@ -16,21 +16,16 @@ export default function Discover() {
   usePageTitle("Discover");
   const navigate = useNavigate();
   const { suggestions } = useSuggestionsDB(["active"]);
-  // Ensure games are loaded so the best-edge scan has data
+  // Ensure games are loaded so the shared engine has data.
   useSportsOdds([]);
-  const { result, loading, findBestBet, availability, scannedSoFar } = useBestBet();
-  const fullGames = useAppStore((s) => s.fullGames);
+  // Shared engine: findBestBet writes into store.lastBestBet, which is the
+  // single source of truth read by both Discover and Sports so the two
+  // surfaces cannot disagree on "the best pick".
+  const { loading, findBestBet, availability, scannedSoFar, clear } = useBestBet();
   const lastBestBet = useAppStore((s) => s.lastBestBet);
   const [sheetOpen, setSheetOpen] = useState(false);
 
-  const displayed = result ?? lastBestBet ?? null;
-
-  // Auto-run once games are loaded and we have no prior result.
-  useEffect(() => {
-    if (!displayed && !loading && (fullGames?.length ?? 0) > 0) {
-      findBestBet();
-    }
-  }, [displayed, loading, fullGames, findBestBet]);
+  const displayed = lastBestBet;
 
   const insight =
     displayed
@@ -45,8 +40,8 @@ export default function Discover() {
           0
         }%.`
       : availability === "none"
-        ? "No games in the next 24 hours. Signals and prediction markets are still worth a look."
-        : "Scanning for edges across sportsbooks, prediction markets, and sharp wallets…";
+        ? "No games in the next 24 hours. Tap Scan Now to check signals and prediction markets."
+        : "Tap Scan Now to run the AI edge scan across sportsbooks, prediction markets, and sharp wallets.";
 
   const emptyMessage =
     availability === "none"
@@ -74,13 +69,16 @@ export default function Discover() {
         </button>
       </div>
 
-      {/* Hero */}
+      {/* Hero — lightweight preview only. Full analysis lives in the shared sheet. */}
       <HeroBestEdgeCard
         result={displayed}
         loading={loading}
         scannedLines={scannedSoFar}
         onOpen={() => displayed && setSheetOpen(true)}
-        onHunt={() => findBestBet()}
+        onHunt={() => {
+          if (displayed) setSheetOpen(true);
+          else void findBestBet();
+        }}
         emptyMessage={emptyMessage}
       />
 
@@ -105,10 +103,18 @@ export default function Discover() {
 
       <GamblingDisclaimer />
 
-      <BestEdgeAnalysisSheet
+      {/* Shared full-analysis detail view — renders the SAME BestBetCard
+          used on the Sports page, which enforces Elite gating for
+          Devil's Advocate + Risk AI via useSubscription() at render time. */}
+      <BestEdgeDetailSheet
         open={sheetOpen}
         onClose={() => setSheetOpen(false)}
         result={displayed}
+        onRescan={() => findBestBet()}
+        onClear={() => {
+          clear();
+          setSheetOpen(false);
+        }}
       />
     </div>
   );

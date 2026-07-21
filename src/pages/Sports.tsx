@@ -152,11 +152,14 @@ export default function Sports() {
     loading: bestBetLoading,
     scannedSoFar,
     scanProgress,
-    result: bestBetResult,
+    result: bestBetLocalResult,
     error: bestBetError,
     clear: clearBestBet,
     availability: bestBetAvailability,
   } = useBestBet();
+  // Prefer the shared store copy so Sports mirrors whatever Discover
+  // most recently produced (and vice-versa) — one canonical pick.
+  const bestBetResult = useAppStore((s) => s.lastBestBet) ?? bestBetLocalResult;
 
   const handleBestBet = async () => {
     await findBestBet();
