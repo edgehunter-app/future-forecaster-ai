@@ -401,6 +401,7 @@ export type Database = {
           id: string
           key_signals: string[]
           market_id: string
+          origin: string
           pnl: number | null
           question: string
           reasoning: string
@@ -423,6 +424,7 @@ export type Database = {
           id?: string
           key_signals?: string[]
           market_id: string
+          origin?: string
           pnl?: number | null
           question: string
           reasoning?: string
@@ -445,6 +447,7 @@ export type Database = {
           id?: string
           key_signals?: string[]
           market_id?: string
+          origin?: string
           pnl?: number | null
           question?: string
           reasoning?: string
@@ -526,6 +529,63 @@ export type Database = {
           id?: string
           role?: Database["public"]["Enums"]["app_role"]
           user_id?: string
+        }
+        Relationships: []
+      }
+      wallet_scan_runs: {
+        Row: {
+          cap_hit: boolean
+          claude_calls: number
+          id: string
+          notes: string | null
+          ran_at: string
+          signals_created: number
+          trades_seen: number
+          users_scanned: number
+        }
+        Insert: {
+          cap_hit?: boolean
+          claude_calls?: number
+          id?: string
+          notes?: string | null
+          ran_at?: string
+          signals_created?: number
+          trades_seen?: number
+          users_scanned?: number
+        }
+        Update: {
+          cap_hit?: boolean
+          claude_calls?: number
+          id?: string
+          notes?: string | null
+          ran_at?: string
+          signals_created?: number
+          trades_seen?: number
+          users_scanned?: number
+        }
+        Relationships: []
+      }
+      wallet_signal_cursors: {
+        Row: {
+          last_processed_at: string | null
+          last_processed_trade_id: string | null
+          updated_at: string
+          user_id: string
+          wallet_address: string
+        }
+        Insert: {
+          last_processed_at?: string | null
+          last_processed_trade_id?: string | null
+          updated_at?: string
+          user_id: string
+          wallet_address: string
+        }
+        Update: {
+          last_processed_at?: string | null
+          last_processed_trade_id?: string | null
+          updated_at?: string
+          user_id?: string
+          wallet_address?: string
         }
         Relationships: []
       }
