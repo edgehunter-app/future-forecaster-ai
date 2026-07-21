@@ -262,23 +262,38 @@ export default function GameAnalysisPanel({ result, game, onClear }: Props) {
       </div>
 
       {/* Save to suggestions */}
-      {canSave && !saved && (
+      {!saved && (
         <div className="flex items-center justify-between rounded-md border border-info/30 bg-info/5 px-3 py-2">
           <span className="text-[11px] font-semibold text-foreground">Save to Suggestions?</span>
-          <div className="flex gap-1.5">
-            <button
-              onClick={handleSave}
-              className="inline-flex items-center gap-1 rounded-md bg-info px-3 py-1 text-[11px] font-semibold text-white hover:bg-info/90"
-            >
-              <Save className="h-3 w-3" />
-              Save
-            </button>
-            <button
-              onClick={() => setSaved(true)}
-              className="rounded-md border border-border px-3 py-1 text-[11px] font-semibold text-muted-foreground hover:bg-muted"
-            >
-              Skip
-            </button>
+          <div className="flex items-center gap-1.5">
+            {!canSave && (
+              <span className="max-w-[180px] text-[10px] leading-tight text-muted-foreground">
+                {noEdge
+                  ? "No edge detected — nothing to save"
+                  : `Below your confidence threshold (${result.confidence.toFixed(0)}% vs your ${settings.minConfidence?.toFixed(0) ?? 50}% minimum) — adjust in Settings to save lower-confidence picks`}
+              </span>
+            )}
+            <div className="flex gap-1.5">
+              <button
+                onClick={handleSave}
+                disabled={!canSave}
+                className={cn(
+                  "inline-flex items-center gap-1 rounded-md px-3 py-1 text-[11px] font-semibold",
+                  canSave
+                    ? "bg-info text-white hover:bg-info/90"
+                    : "cursor-not-allowed border border-border bg-muted/30 text-muted-foreground"
+                )}
+              >
+                <Save className="h-3 w-3" />
+                Save
+              </button>
+              <button
+                onClick={() => setSaved(true)}
+                className="rounded-md border border-border px-3 py-1 text-[11px] font-semibold text-muted-foreground hover:bg-muted"
+              >
+                Skip
+              </button>
+            </div>
           </div>
         </div>
       )}
