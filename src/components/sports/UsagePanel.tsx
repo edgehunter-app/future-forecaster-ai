@@ -18,6 +18,26 @@ function nextMonthResetLabel(): string {
   return next.toLocaleDateString(undefined, { month: "long", day: "numeric" });
 }
 
+function relTime(iso?: string | null): string {
+  if (!iso) return "—";
+  const diff = Date.now() - new Date(iso).getTime();
+  if (diff < 60_000) return "just now";
+  const m = Math.floor(diff / 60_000);
+  if (m < 60) return `${m}m ago`;
+  const h = Math.floor(m / 60);
+  if (h < 24) return `${h}h ago`;
+  return `${Math.floor(h / 24)}d ago`;
+}
+
+function Stat({ label, value, valueClass }: { label: string; value: string; valueClass?: string }) {
+  return (
+    <div className="rounded border border-border/60 p-2">
+      <div className="text-[10px] uppercase tracking-wide text-muted-foreground">{label}</div>
+      <div className={cn("text-sm font-bold text-foreground", valueClass)}>{value}</div>
+    </div>
+  );
+}
+
 export default function UsagePanel() {
   const [usedToday, setUsedToday] = useState<number>(0);
   const [oddsApiUsedToday, setOddsApiUsedToday] = useState<number>(0);
