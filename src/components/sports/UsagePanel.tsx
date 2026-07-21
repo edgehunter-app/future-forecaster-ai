@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { cn } from "@/lib/utils";
 import { supabase } from "@/integrations/supabase/client";
 import { getLastOddsApiStatus, type OddsApiStatusSnapshot } from "@/lib/oddsApi";
-import { AlertTriangle } from "lucide-react";
+import { AlertTriangle, Sparkles } from "lucide-react";
 
 const RAPID_DAILY_LIMIT = 1000;
 const GOLF_LB_MONTHLY_LIMIT = 250;
@@ -28,6 +28,16 @@ export default function UsagePanel() {
   const [keyInfo, setKeyInfo] = useState<any>(null);
   const [keyInfoErr, setKeyInfoErr] = useState<string | null>(null);
   const [keyInfoLoading, setKeyInfoLoading] = useState(false);
+  const [scanRun, setScanRun] = useState<{
+    ran_at: string;
+    claude_calls: number;
+    signals_created: number;
+    trades_seen: number;
+    users_scanned: number;
+    cap_hit: boolean;
+    notes: string | null;
+  } | null>(null);
+  const [scanStale, setScanStale] = useState(false);
 
   const loadKeyInfo = async () => {
     setKeyInfoLoading(true);
@@ -44,6 +54,27 @@ export default function UsagePanel() {
   };
 
   useEffect(() => { void loadKeyInfo(); }, []);
+
+  useEffect(() => {
+    let cancelled = false;
+    const load = async () => {
+      const { data } = await supabase
+        .from("wallet_scan_runs")
+        .select("ran_at, claude_calls, signals_created, trades_seen, users_scanned, cap_hit, notes")
+        .order("ran_at", { ascending: false })
+        .limit(1)
+        .maybeSingle();
+      if (cancelled) return;
+      setScanRun(data ?? null);
+      setScanStale(
+        !!data?.ran_at &&
+          Date.now() - new Date(data.ran_at).getTime() > 36 * 60 * 60 * 1000,
+      );
+    };
+    void load();
+    const id = setInterval(load, 60_000);
+    return () => { cancelled = true; clearInterval(id); };
+  }, []);
 
   useEffect(() => {
     let cancelled = false;
@@ -98,6 +129,8 @@ export default function UsagePanel() {
   const golfText = golfRatio >= 0.8 ? "text-destructive" : golfRatio >= 0.5 ? "text-warning" : "text-success";
   const golfResetLabel = nextMonthResetLabel();
 
+  const scanFailed = !!scanRun?.notes && scanRun.notes.startsWith("error:");
+
   const exhaustedKeys = (["primary"] as const).flatMap((name) => {
     const s = oddsApiStatus.keys[name];
     if (s && s.code === "OUT_OF_USAGE_CREDITS") return [{ name, ...s }];
@@ -116,6 +149,60 @@ export default function UsagePanel() {
 
   return (
     <div className="space-y-3">
+    {(scanFailed || scanStale) && (
+      <div className={cn(
+        "rounded-lg border p-3 space-y-1",
+        scanFailed ? "border-destructive/50 bg-destructive/10" : "border-warning/50 bg-warning/10",
+      )}>
+        <div className={cn(
+          "flex items-center gap-2",
+          scanFailed ? "text-destructive" : "text-warning",
+        )}>
+          <AlertTriangle className="h-4 w-4" />
+          <span className="text-[12px] font-bold uppercase tracking-wide">
+            {scanFailed ? "Wallet signal scan failed" : "Wallet signal scan overdue"}
+          </span>
+        </div>
+        <div className={cn("text-[11px]", scanFailed ? "text-destructive/90" : "text-warning/90")}>
+          {scanFailed
+            ? (scanRun?.notes ?? "Last run reported an error.")
+            : `No successful run in the last 36h — last was ${relTime(scanRun?.ran_at)}. Daily cron may be misfiring.`}
+        </div>
+      </div>
+    )}
+    <div className="rounded-lg border border-border bg-card p-3 space-y-2">
+      <div className="flex items-center justify-between">
+        <span className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground flex items-center gap-1.5">
+          <Sparkles className="h-3 w-3 text-purple-400" />
+          Wallet signal scan (daily cron)
+        </span>
+        <span className="text-[11px] font-mono text-muted-foreground">
+          {scanRun?.ran_at ? relTime(scanRun.ran_at) : "no runs yet"}
+        </span>
+      </div>
+      {scanRun ? (
+        <div className="grid grid-cols-2 md:grid-cols-5 gap-2 text-[11px]">
+          <Stat label="Claude calls" value={`${scanRun.claude_calls} / 20`} />
+          <Stat label="Signals created" value={String(scanRun.signals_created)} />
+          <Stat label="Trades seen" value={String(scanRun.trades_seen)} />
+          <Stat label="Elite users" value={String(scanRun.users_scanned)} />
+          <Stat
+            label="Cap hit"
+            value={scanRun.cap_hit ? "YES" : "no"}
+            valueClass={scanRun.cap_hit ? "text-warning" : "text-muted-foreground"}
+          />
+        </div>
+      ) : (
+        <div className="text-[11px] text-muted-foreground">
+          No runs recorded yet. First scheduled run: 12:00 UTC daily.
+        </div>
+      )}
+      {scanRun?.cap_hit && (
+        <div className="text-[10px] text-warning/80">
+          {scanRun.notes || "20-call cap reached — remaining wallet buckets carry over via cursors."}
+        </div>
+      )}
+    </div>
     <div className="rounded-lg border border-border bg-card p-3 space-y-2">
       <div className="flex items-center justify-between">
         <span className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
