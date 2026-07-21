@@ -73,13 +73,14 @@ function isRowStale(row: any): boolean {
 export function useSuggestionsDB(statuses: string[] = ["active"]) {
   const { user } = useAuth();
   const isDemoMode = useAppStore((s) => s.isDemoMode);
-  const { isElite } = useSubscription();
+  const { isElite, loading: subscriptionLoading } = useSubscription();
   const [suggestions, setSuggestions] = useState<Suggestion[]>(
     isDemoMode ? MOCK_SUGGESTIONS : [],
   );
   const [loading, setLoading] = useState(true);
 
   const load = useCallback(async () => {
+    if (subscriptionLoading) return;
     if (isDemoMode) {
       setSuggestions(MOCK_SUGGESTIONS);
       setLoading(false);
@@ -125,7 +126,7 @@ export function useSuggestionsDB(statuses: string[] = ["active"]) {
     setSuggestions(visible);
     setLoading(false);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isDemoMode, user, isElite, statuses.join(",")]);
+  }, [isDemoMode, user, isElite, subscriptionLoading, statuses.join(",")]);
 
   const saveSuggestion = async (s: Suggestion) => {
     if (isDemoMode || !user) return;
