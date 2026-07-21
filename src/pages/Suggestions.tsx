@@ -38,7 +38,7 @@ export default function Suggestions() {
     filters.status === "expired" ? ["expired"] :
     filters.status === "won" ? ["won"] :
     filters.status === "lost" ? ["lost"] : ["active"];
-  const { suggestions, dismissSuggestion, markOutcome } = useSuggestionsDB(statuses);
+  const { suggestions, dismissSuggestion, markOutcome, reload } = useSuggestionsDB(statuses);
   const bankroll = useAppStore((s) => s.settings.bankroll);
   const [activeTiers, setActiveTiers] = useState<ConfidenceTier[]>(["strong", "moderate", "weak"]);
   const toggleTier = (t: ConfidenceTier) =>
