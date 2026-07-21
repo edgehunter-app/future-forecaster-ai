@@ -45,6 +45,8 @@ export default function Suggestions() {
   const bankroll = useAppStore((s) => s.settings.bankroll);
   const { isElite } = useSubscription();
   const [lastScanAt, setLastScanAt] = useState<string | null>(null);
+  const [refreshing, setRefreshing] = useState(false);
+  const [justRefreshedAt, setJustRefreshedAt] = useState<number | null>(null);
   useEffect(() => {
     if (!isElite) return;
     let cancelled = false;
@@ -99,17 +101,21 @@ export default function Suggestions() {
         </div>
         <div className="flex items-center gap-3">
           <button
+            disabled={refreshing}
             onClick={async () => {
-              console.log("[Suggestions] Refresh clicked, calling reload()");
-              const t0 = performance.now();
-              await reload();
-              console.log(
-                `[Suggestions] reload() done in ${(performance.now() - t0).toFixed(0)}ms — visible suggestions: ${suggestions.length}`,
-              );
+              if (refreshing) return;
+              setRefreshing(true);
+              try {
+                await reload();
+                setJustRefreshedAt(Date.now());
+              } finally {
+                setRefreshing(false);
+              }
             }}
-            className="inline-flex items-center gap-1.5 rounded-md border border-border bg-card px-3 py-1.5 text-xs font-semibold text-muted-foreground hover:text-foreground transition-colors"
+            className="inline-flex items-center gap-1.5 rounded-md border border-border bg-card px-3 py-1.5 text-xs font-semibold text-muted-foreground hover:text-foreground transition-colors disabled:opacity-60"
           >
-            <RotateCw className="h-3.5 w-3.5" /> Refresh
+            <RotateCw className={cn("h-3.5 w-3.5", refreshing && "animate-spin")} />
+            {refreshing ? "Refreshing…" : justRefreshedAt ? "Refreshed" : "Refresh"}
           </button>
           <span className="inline-flex items-center gap-1.5 rounded-full border border-success/30 bg-success/10 px-3 py-1 text-xs font-semibold text-success">
             <span className="relative flex h-2 w-2">
