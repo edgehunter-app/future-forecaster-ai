@@ -178,6 +178,24 @@ export type Database = {
         }
         Relationships: []
       }
+      internal_cron_secrets: {
+        Row: {
+          name: string
+          updated_at: string
+          value: string
+        }
+        Insert: {
+          name: string
+          updated_at?: string
+          value: string
+        }
+        Update: {
+          name?: string
+          updated_at?: string
+          value?: string
+        }
+        Relationships: []
+      }
       markets_cache: {
         Row: {
           category: string
