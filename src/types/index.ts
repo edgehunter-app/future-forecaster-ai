@@ -104,6 +104,7 @@ export interface Suggestion {
   status: SuggestionStatus | "active";
   createdAt: string;
   expiresAt: string;
+  origin?: "manual" | "wallet_auto";
 }
 
 export interface Settings {

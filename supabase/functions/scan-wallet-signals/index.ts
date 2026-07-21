@@ -77,15 +77,20 @@ async function fetchActivityFor(address: string): Promise<Trade[]> {
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: CORS });
 
-  const cronSecret = Deno.env.get("CRON_SECRET");
-  const header = req.headers.get("x-cron-secret") ?? req.headers.get("X-Cron-Secret");
-  if (!cronSecret || header !== cronSecret) {
-    return new Response(JSON.stringify({ error: "Unauthorized" }), { status: 401, headers: CORS });
-  }
-
   const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
   const SERVICE_ROLE = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
   const admin = createClient(SUPABASE_URL, SERVICE_ROLE, { auth: { persistSession: false } });
+
+  // Authorize: header must match the token stored in internal_cron_secrets.
+  const header = req.headers.get("x-cron-secret") ?? req.headers.get("X-Cron-Secret");
+  const { data: secretRow } = await admin
+    .from("internal_cron_secrets")
+    .select("value")
+    .eq("name", "scan_wallet_signals")
+    .maybeSingle();
+  if (!secretRow?.value || header !== secretRow.value) {
+    return new Response(JSON.stringify({ error: "Unauthorized" }), { status: 401, headers: CORS });
+  }
 
   const counters = {
     users_scanned: 0,

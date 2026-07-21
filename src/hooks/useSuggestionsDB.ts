@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "./useAuth";
 import { useAppStore } from "@/store/useAppStore";
+import { useSubscription } from "./useSubscription";
 import { MOCK_SUGGESTIONS } from "@/data/mockData";
 import type { Suggestion, Direction, SuggestionStatus } from "@/types";
 
@@ -25,6 +26,7 @@ function mapSuggestionRow(row: any): Suggestion {
     status: row.status as SuggestionStatus,
     createdAt: new Date(row.created_at).toLocaleString(),
     expiresAt: `${expiresHrs}h`,
+    origin: (row.origin as "manual" | "wallet_auto") ?? "manual",
   };
 }
 
@@ -71,6 +73,7 @@ function isRowStale(row: any): boolean {
 export function useSuggestionsDB(statuses: string[] = ["active"]) {
   const { user } = useAuth();
   const isDemoMode = useAppStore((s) => s.isDemoMode);
+  const { isElite } = useSubscription();
   const [suggestions, setSuggestions] = useState<Suggestion[]>(
     isDemoMode ? MOCK_SUGGESTIONS : [],
   );
@@ -98,6 +101,10 @@ export function useSuggestionsDB(statuses: string[] = ["active"]) {
     if (statuses.includes("active")) {
       query = query.or(`expires_at.is.null,expires_at.gt.${nowIso}`);
     }
+    // Non-Elite users never see auto-generated wallet signals.
+    if (!isElite) {
+      query = query.eq("origin", "manual");
+    }
     const { data } = await query;
     const rows = data ?? [];
 
@@ -118,7 +125,7 @@ export function useSuggestionsDB(statuses: string[] = ["active"]) {
     setSuggestions(visible);
     setLoading(false);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isDemoMode, user, statuses.join(",")]);
+  }, [isDemoMode, user, isElite, statuses.join(",")]);
 
   const saveSuggestion = async (s: Suggestion) => {
     if (isDemoMode || !user) return;

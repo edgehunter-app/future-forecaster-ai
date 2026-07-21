@@ -6,7 +6,10 @@ import { cn, fmtUSD } from "@/lib/utils";
 import type { DirectionFilter, SortBy, StatusFilter } from "@/store/useAppStore";
 import { useSuggestionsDB } from "@/hooks/useSuggestionsDB";
 import { usePageTitle } from "@/hooks/usePageTitle";
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import { supabase } from "@/integrations/supabase/client";
+import { useSubscription } from "@/hooks/useSubscription";
+import { Sparkles } from "lucide-react";
 import {
   getConfidenceTier,
   getConfidenceColor,
@@ -40,6 +43,22 @@ export default function Suggestions() {
     filters.status === "lost" ? ["lost"] : ["active"];
   const { suggestions, dismissSuggestion, markOutcome, reload } = useSuggestionsDB(statuses);
   const bankroll = useAppStore((s) => s.settings.bankroll);
+  const { isElite } = useSubscription();
+  const [lastScanAt, setLastScanAt] = useState<string | null>(null);
+  useEffect(() => {
+    if (!isElite) return;
+    let cancelled = false;
+    (async () => {
+      const { data } = await supabase
+        .from("wallet_scan_runs")
+        .select("ran_at")
+        .order("ran_at", { ascending: false })
+        .limit(1)
+        .maybeSingle();
+      if (!cancelled) setLastScanAt(data?.ran_at ?? null);
+    })();
+    return () => { cancelled = true; };
+  }, [isElite, suggestions.length]);
   const [activeTiers, setActiveTiers] = useState<ConfidenceTier[]>(["strong", "moderate", "weak"]);
   const toggleTier = (t: ConfidenceTier) =>
     setActiveTiers((prev) => (prev.includes(t) ? prev.filter((x) => x !== t) : [...prev, t]));
@@ -69,6 +88,14 @@ export default function Suggestions() {
         <div>
           <h1 className="font-sans text-[22px] font-extrabold tracking-tight text-foreground">Trade Suggestions</h1>
           <p className="text-sm text-muted-foreground">AI-powered analysis — manual execution only</p>
+          {isElite && (
+            <p className="mt-1 inline-flex items-center gap-1.5 text-[11px] text-muted-foreground">
+              <Sparkles className="h-3 w-3 text-purple-400" />
+              {lastScanAt
+                ? `Last wallet scan: ${formatRelative(lastScanAt)}`
+                : "Wallet scan: awaiting first daily run"}
+            </p>
+          )}
         </div>
         <div className="flex items-center gap-3">
           <button
@@ -218,4 +245,15 @@ function SumStat({ label, value, color }: { label: string; value: string; color?
 
 function Divider() {
   return <span className="hidden h-8 w-px bg-border md:inline-block" />;
+}
+
+function formatRelative(iso: string): string {
+  const diffMs = Date.now() - new Date(iso).getTime();
+  if (diffMs < 60_000) return "just now";
+  const mins = Math.floor(diffMs / 60_000);
+  if (mins < 60) return `${mins}m ago`;
+  const hrs = Math.floor(mins / 60);
+  if (hrs < 24) return `${hrs}h ago`;
+  const days = Math.floor(hrs / 24);
+  return `${days}d ago`;
 }
