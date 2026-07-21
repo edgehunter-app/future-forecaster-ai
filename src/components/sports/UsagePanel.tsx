@@ -25,6 +25,25 @@ export default function UsagePanel() {
   const [golfLbUsedMonth, setGolfLbUsedMonth] = useState<number>(0);
   const [golfLbRemaining, setGolfLbRemaining] = useState<number | null>(null);
   const [oddsApiStatus, setOddsApiStatus] = useState<OddsApiStatusSnapshot>(getLastOddsApiStatus());
+  const [keyInfo, setKeyInfo] = useState<any>(null);
+  const [keyInfoErr, setKeyInfoErr] = useState<string | null>(null);
+  const [keyInfoLoading, setKeyInfoLoading] = useState(false);
+
+  const loadKeyInfo = async () => {
+    setKeyInfoLoading(true);
+    setKeyInfoErr(null);
+    try {
+      const { data, error } = await supabase.functions.invoke("odds-api-keyinfo");
+      if (error) throw error;
+      setKeyInfo(data);
+    } catch (e: any) {
+      setKeyInfoErr(e?.message ?? String(e));
+    } finally {
+      setKeyInfoLoading(false);
+    }
+  };
+
+  useEffect(() => { void loadKeyInfo(); }, []);
 
   useEffect(() => {
     let cancelled = false;
@@ -97,6 +116,56 @@ export default function UsagePanel() {
 
   return (
     <div className="space-y-3">
+    <div className="rounded-lg border border-border bg-card p-3 space-y-2">
+      <div className="flex items-center justify-between">
+        <span className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
+          Odds API key fingerprints (runtime)
+        </span>
+        <button
+          onClick={() => void loadKeyInfo()}
+          disabled={keyInfoLoading}
+          className="text-[11px] px-2 py-1 rounded border border-border hover:bg-background/60 disabled:opacity-50"
+        >
+          {keyInfoLoading ? "Checking…" : "Recheck"}
+        </button>
+      </div>
+      {keyInfoErr && <div className="text-[11px] text-destructive">Error: {keyInfoErr}</div>}
+      {keyInfo && (
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-2 text-[11px] font-mono">
+          {(["primary", "secondary"] as const).map((slot) => {
+            const k = keyInfo[slot];
+            if (!k?.present) {
+              return (
+                <div key={slot} className="rounded border border-border/60 p-2">
+                  <div className="font-semibold uppercase">{slot}</div>
+                  <div className="text-muted-foreground">not configured</div>
+                </div>
+              );
+            }
+            const p = k.probe ?? {};
+            const okColor = p.ok ? "text-success" : "text-destructive";
+            return (
+              <div key={slot} className="rounded border border-border/60 p-2 space-y-0.5">
+                <div className="font-semibold uppercase text-foreground">{slot} key</div>
+                <div>fingerprint: {k.head}…{k.tail} <span className="text-muted-foreground">(len {k.length})</span></div>
+                <div className={okColor}>
+                  probe: HTTP {p.status ?? "—"} {p.ok ? "OK" : (p.code || "ERROR")}
+                </div>
+                <div className="text-muted-foreground">
+                  remaining: {p.remaining ?? "—"} · used: {p.used ?? "—"}
+                </div>
+                {p.message && !p.ok && (
+                  <div className="text-destructive/80 break-all">{p.message}</div>
+                )}
+              </div>
+            );
+          })}
+        </div>
+      )}
+      <div className="text-[10px] text-muted-foreground">
+        Compare the fingerprint (last 6 chars) against the key shown in the Odds API dashboard. Probe hits /v4/sports, which does not consume quota.
+      </div>
+    </div>
     {rateLimitedKeys.length > 0 && (
       <div className="rounded-lg border border-warning/50 bg-warning/10 p-3 space-y-1.5">
         <div className="flex items-center gap-2 text-warning">
