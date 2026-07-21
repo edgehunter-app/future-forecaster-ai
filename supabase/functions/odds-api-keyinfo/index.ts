@@ -87,13 +87,11 @@ Deno.serve(async (req) => {
     }
 
     const k1 = Deno.env.get("ODDS_API_KEY");
-    const k2 = Deno.env.get("ODDS_API_KEY_2");
-    const [p1, p2] = await Promise.all([probe(k1), probe(k2)]);
+    const p1 = await probe(k1);
 
     return new Response(
       JSON.stringify({
         primary: { ...mask(k1), probe: p1 },
-        secondary: { ...mask(k2), probe: p2 },
         checkedAt: new Date().toISOString(),
       }),
       { headers: { ...corsHeaders, "Content-Type": "application/json" } },
