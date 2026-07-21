@@ -98,17 +98,17 @@ export default function UsagePanel() {
   const golfText = golfRatio >= 0.8 ? "text-destructive" : golfRatio >= 0.5 ? "text-warning" : "text-success";
   const golfResetLabel = nextMonthResetLabel();
 
-  const exhaustedKeys = (["primary", "secondary"] as const).flatMap((name) => {
+  const exhaustedKeys = (["primary"] as const).flatMap((name) => {
     const s = oddsApiStatus.keys[name];
     if (s && s.code === "OUT_OF_USAGE_CREDITS") return [{ name, ...s }];
     return [];
   });
-  const rateLimitedKeys = (["primary", "secondary"] as const).flatMap((name) => {
+  const rateLimitedKeys = (["primary"] as const).flatMap((name) => {
     const s = oddsApiStatus.keys[name];
     if (s && s.code === "RATE_LIMITED") return [{ name, ...s }];
     return [];
   });
-  const otherKeyErrors = (["primary", "secondary"] as const).flatMap((name) => {
+  const otherKeyErrors = (["primary"] as const).flatMap((name) => {
     const s = oddsApiStatus.keys[name];
     if (s && s.code !== "OUT_OF_USAGE_CREDITS" && s.code !== "RATE_LIMITED") return [{ name, ...s }];
     return [];
@@ -131,8 +131,8 @@ export default function UsagePanel() {
       </div>
       {keyInfoErr && <div className="text-[11px] text-destructive">Error: {keyInfoErr}</div>}
       {keyInfo && (
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-2 text-[11px] font-mono">
-          {(["primary", "secondary"] as const).map((slot) => {
+        <div className="grid grid-cols-1 gap-2 text-[11px] font-mono">
+          {(["primary"] as const).map((slot) => {
             const k = keyInfo[slot];
             if (!k?.present) {
               return (
@@ -146,7 +146,7 @@ export default function UsagePanel() {
             const okColor = p.ok ? "text-success" : "text-destructive";
             return (
               <div key={slot} className="rounded border border-border/60 p-2 space-y-0.5">
-                <div className="font-semibold uppercase text-foreground">{slot} key</div>
+                <div className="font-semibold uppercase text-foreground">Odds API key</div>
                 <div>fingerprint: {k.head}…{k.tail} <span className="text-muted-foreground">(len {k.length})</span></div>
                 <div className={okColor}>
                   probe: HTTP {p.status ?? "—"} {p.ok ? "OK" : (p.code || "ERROR")}

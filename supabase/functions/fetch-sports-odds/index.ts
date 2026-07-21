@@ -111,13 +111,11 @@ async function runWithConcurrency<T>(
   return out;
 }
 
-// Key rotation — try ODDS_API_KEY, fall back to ODDS_API_KEY_2 on 401/429.
+// Single-key setup: ODDS_API_KEY only. (Secondary free-tier key removed.)
 function oddsApiKeys(): Array<{ name: string; key: string }> {
   const out: Array<{ name: string; key: string }> = [];
   const k1 = Deno.env.get("ODDS_API_KEY");
-  const k2 = Deno.env.get("ODDS_API_KEY_2");
   if (k1) out.push({ name: "primary", key: k1 });
-  if (k2) out.push({ name: "secondary", key: k2 });
   return out;
 }
 
