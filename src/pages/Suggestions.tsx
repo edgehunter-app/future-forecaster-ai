@@ -88,6 +88,14 @@ export default function Suggestions() {
         <div>
           <h1 className="font-sans text-[22px] font-extrabold tracking-tight text-foreground">Trade Suggestions</h1>
           <p className="text-sm text-muted-foreground">AI-powered analysis — manual execution only</p>
+          {isElite && (
+            <p className="mt-1 inline-flex items-center gap-1.5 text-[11px] text-muted-foreground">
+              <Sparkles className="h-3 w-3 text-purple-400" />
+              {lastScanAt
+                ? `Last wallet scan: ${formatRelative(lastScanAt)}`
+                : "Wallet scan: awaiting first daily run"}
+            </p>
+          )}
         </div>
         <div className="flex items-center gap-3">
           <button
