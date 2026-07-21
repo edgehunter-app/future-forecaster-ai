@@ -152,8 +152,8 @@ export default function Suggestions() {
         <EmptyState
           icon={Lightbulb}
           title="No suggestions yet"
-          subtitle="Click Run Analysis on the Dashboard to generate your first AI-powered suggestions"
-          action={{ label: "Go to Dashboard", onClick: () => { window.location.href = "/"; } }}
+          subtitle="Analyze a game on Sports or check a bet on Search to generate your first AI-powered signals here."
+          action={{ label: "Go to Sports", onClick: () => { window.location.href = "/sports"; } }}
         />
       ) : filtered.length === 0 ? (
         <EmptyState
