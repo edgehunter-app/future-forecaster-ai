@@ -550,6 +550,47 @@ export type Database = {
         }
         Relationships: []
       }
+      wallet_scan_run_users: {
+        Row: {
+          buckets_generated: number
+          buckets_selected: number
+          created_at: string
+          id: string
+          run_id: string
+          signals_created: number
+          trades_seen: number
+          user_id: string
+        }
+        Insert: {
+          buckets_generated?: number
+          buckets_selected?: number
+          created_at?: string
+          id?: string
+          run_id: string
+          signals_created?: number
+          trades_seen?: number
+          user_id: string
+        }
+        Update: {
+          buckets_generated?: number
+          buckets_selected?: number
+          created_at?: string
+          id?: string
+          run_id?: string
+          signals_created?: number
+          trades_seen?: number
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "wallet_scan_run_users_run_id_fkey"
+            columns: ["run_id"]
+            isOneToOne: false
+            referencedRelation: "wallet_scan_runs"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       wallet_scan_runs: {
         Row: {
           cap_hit: boolean

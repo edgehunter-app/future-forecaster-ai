@@ -153,6 +153,17 @@ Deno.serve(async (req) => {
     const buckets: MarketBucket[] = [];
     const newestPerWallet = new Map<string, Trade>(); // key user:address
 
+    // Per-user diagnostic counters
+    const perUser = new Map<
+      string,
+      { trades_seen: number; buckets_generated: number; buckets_selected: number; signals_created: number }
+    >();
+    const bumpUser = (uid: string, field: "trades_seen" | "buckets_generated" | "buckets_selected" | "signals_created", n = 1) => {
+      const row = perUser.get(uid) ?? { trades_seen: 0, buckets_generated: 0, buckets_selected: 0, signals_created: 0 };
+      row[field] += n;
+      perUser.set(uid, row);
+    };
+
     for (const userId of eliteUserIds) {
       const uWallets = walletsByUser.get(userId) ?? [];
       if (uWallets.length === 0) continue;
@@ -162,6 +173,7 @@ Deno.serve(async (req) => {
       for (const w of uWallets) {
         const trades = await fetchActivityFor(w.address);
         counters.trades_seen += trades.length;
+        bumpUser(userId, "trades_seen", trades.length);
         const key = `${userId}:${w.address}`;
         const cur = cursor.get(key);
         const curTs = cur?.ts ? new Date(cur.ts).getTime() : 0;
@@ -205,6 +217,7 @@ Deno.serve(async (req) => {
           }
         }
       }
+      bumpUser(userId, "buckets_generated", userBuckets.size);
       buckets.push(...userBuckets.values());
     }
 
@@ -220,6 +233,7 @@ Deno.serve(async (req) => {
 
     const selected = buckets.slice(0, MAX_CLAUDE_CALLS);
     counters.cap_hit = buckets.length > MAX_CLAUDE_CALLS;
+    for (const b of selected) bumpUser(b.userId, "buckets_selected", 1);
 
     // 6. Load user profiles for bankroll/kelly/maxPct — reuse defaults if missing
     const { data: userProfiles } = await admin
@@ -325,6 +339,7 @@ Deno.serve(async (req) => {
       });
       if (!insErr) counters.signals_created++;
       else console.warn("insert failed:", insErr.message);
+      if (!insErr) bumpUser(b.userId, "signals_created", 1);
     }
 
     // 8. Advance cursors — but only for wallets whose new trades were within `selected`
@@ -354,7 +369,19 @@ Deno.serve(async (req) => {
     }
 
     if (counters.cap_hit) counters.notes = `capped at ${MAX_CLAUDE_CALLS} of ${buckets.length}`;
-    await admin.from("wallet_scan_runs").insert(counters);
+    const { data: runRow } = await admin
+      .from("wallet_scan_runs")
+      .insert(counters)
+      .select("id")
+      .single();
+    if (runRow?.id && perUser.size > 0) {
+      const rows = Array.from(perUser.entries()).map(([user_id, v]) => ({
+        run_id: runRow.id,
+        user_id,
+        ...v,
+      }));
+      await admin.from("wallet_scan_run_users").insert(rows);
+    }
     return new Response(JSON.stringify({ ok: true, ...counters }), { headers: CORS });
   } catch (err) {
     console.error("scan-wallet-signals failed:", err);
