@@ -71,7 +71,7 @@ export default function Suggestions() {
           <p className="text-sm text-muted-foreground">AI-powered analysis — manual execution only</p>
         </div>
         <div className="flex items-center gap-3">
-          <button className="inline-flex items-center gap-1.5 rounded-md border border-border bg-card px-3 py-1.5 text-xs font-semibold text-muted-foreground hover:text-foreground transition-colors">
+          <button onClick={() => reload()} className="inline-flex items-center gap-1.5 rounded-md border border-border bg-card px-3 py-1.5 text-xs font-semibold text-muted-foreground hover:text-foreground transition-colors">
             <RotateCw className="h-3.5 w-3.5" /> Refresh
           </button>
           <span className="inline-flex items-center gap-1.5 rounded-full border border-success/30 bg-success/10 px-3 py-1 text-xs font-semibold text-success">
