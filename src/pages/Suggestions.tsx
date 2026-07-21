@@ -71,7 +71,17 @@ export default function Suggestions() {
           <p className="text-sm text-muted-foreground">AI-powered analysis — manual execution only</p>
         </div>
         <div className="flex items-center gap-3">
-          <button onClick={() => reload()} className="inline-flex items-center gap-1.5 rounded-md border border-border bg-card px-3 py-1.5 text-xs font-semibold text-muted-foreground hover:text-foreground transition-colors">
+          <button
+            onClick={async () => {
+              console.log("[Suggestions] Refresh clicked, calling reload()");
+              const t0 = performance.now();
+              await reload();
+              console.log(
+                `[Suggestions] reload() done in ${(performance.now() - t0).toFixed(0)}ms — visible suggestions: ${suggestions.length}`,
+              );
+            }}
+            className="inline-flex items-center gap-1.5 rounded-md border border-border bg-card px-3 py-1.5 text-xs font-semibold text-muted-foreground hover:text-foreground transition-colors"
+          >
             <RotateCw className="h-3.5 w-3.5" /> Refresh
           </button>
           <span className="inline-flex items-center gap-1.5 rounded-full border border-success/30 bg-success/10 px-3 py-1 text-xs font-semibold text-success">
