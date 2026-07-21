@@ -219,7 +219,7 @@ Deno.serve(async (req) => {
     // 6. Load user profiles for bankroll/kelly/maxPct — reuse defaults if missing
     const { data: userProfiles } = await admin
       .from("profiles")
-      .select("id, bankroll, kelly_multiplier, max_position_pct")
+      .select("id, bankroll, kelly_multiplier, max_position")
       .in("id", Array.from(new Set(selected.map((b) => b.userId))));
     const profileMap = new Map((userProfiles ?? []).map((p: any) => [p.id, p]));
 
@@ -228,7 +228,7 @@ Deno.serve(async (req) => {
       const prof = profileMap.get(b.userId) ?? {};
       const bankroll = Number((prof as any).bankroll ?? 1000);
       const kellyMultiplier = Number((prof as any).kelly_multiplier ?? 0.25);
-      const maxPositionPct = Number((prof as any).max_position_pct ?? 5);
+      const maxPositionPct = Number((prof as any).max_position ?? 5);
 
       const yesPrice = b.direction === "YES" ? b.newest.price : 1 - b.newest.price;
       const market = {
