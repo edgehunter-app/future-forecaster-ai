@@ -2,6 +2,7 @@ import { ArrowRight, Loader2, Zap } from "lucide-react";
 import type { BestBetResult } from "@/types";
 import { cn } from "@/lib/utils";
 import { sportEmoji } from "@/lib/sportEmoji";
+import { buildBetHeadline } from "@/lib/betHeadline";
 
 function formatOdds(v: number | string | undefined | null): string {
   if (v === undefined || v === null || v === "") return "—";
@@ -89,7 +90,9 @@ export default function HeroBestEdgeCard({
 
   const betName =
     result.source === "sports" && result.analysis
-      ? `${result.analysis.recommendedTeam ?? ""} ${result.analysis.betType ?? ""}`.trim() || "Recommended"
+      ? (result.game
+          ? buildBetHeadline(result.analysis, result.game).headline
+          : "Recommended")
       : result.source === "prediction_market" && result.prediction
         ? `${result.prediction.favoredSide} on ${result.prediction.bestPlatform}`
         : result.source === "wallet_signal" && result.wallet
@@ -98,7 +101,13 @@ export default function HeroBestEdgeCard({
 
   const book =
     result.source === "sports"
-      ? result.analysis?.bestBook ?? "Best Book"
+      ? (result.analysis?.bestBook
+          ?? (result.analysis?.recommendation === "HOME"
+                ? result.game?.moneyline?.bestHomeBook
+                : result.analysis?.recommendation === "AWAY"
+                  ? result.game?.moneyline?.bestAwayBook
+                  : "")
+          ?? "Best Book")
       : result.source === "prediction_market"
         ? result.prediction!.bestPlatform
         : "Polymarket";
@@ -111,7 +120,18 @@ export default function HeroBestEdgeCard({
 
   const oddsDisplay =
     result.source === "sports"
-      ? formatOdds(result.analysis?.odds)
+      ? formatOdds(
+          result.analysis?.betType === "spread" || result.analysis?.betType === "total"
+            ? (result.analysis?.odds
+                ?? (result.analysis?.recommendation === "HOME"
+                      ? result.game?.moneyline?.bestHomeOdds
+                      : result.game?.moneyline?.bestAwayOdds))
+            : (result.analysis?.recommendation === "HOME"
+                ? result.game?.moneyline?.bestHomeOdds
+                : result.analysis?.recommendation === "AWAY"
+                  ? result.game?.moneyline?.bestAwayOdds
+                  : result.analysis?.odds),
+        )
       : result.source === "prediction_market"
         ? `${result.prediction!.bestPriceCents}¢`
         : "—";
