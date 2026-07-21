@@ -1,158 +1,75 @@
-# EdgeHunter UI Redesign Plan
+# Scan for Signals — Daily Wallet Auto-Signals
 
-Scope: **frontend / presentation only**. No changes to edge functions, Supabase queries, Stripe, auth, or Horse Racing page. All existing data hooks (`useBestBet`, `useSportsOdds`, `useSuggestionsDB`, `useAIAnalysis`, `useGameAnalysis`, etc.) stay as-is — we re-skin what consumes them.
+## Approach
 
----
+A scheduled Supabase edge function runs once every 24h via `pg_cron` + `pg_net`. It scans every distinct Elite user's tracked wallets, pulls new Polymarket activity, dedupes against a new table, and asks Claude to convert qualifying trades into rows in the existing `suggestions` table. Elite-only visibility is enforced on the Signals page by filtering the auto-generated rows for non-Elite users.
 
-## 1. Global color + token pass
+## Data model changes (migration)
 
-Update `src/index.css` design tokens so the new palette is enforced through semantic classes (no hardcoded hex in components):
+1. New table `public.wallet_signal_cursors`
+   - `user_id uuid` (FK to auth.users)
+   - `wallet_address text`
+   - `last_processed_trade_id text` — dedupe token from Polymarket activity
+   - `last_processed_at timestamptz`
+   - PK: `(user_id, wallet_address)`
+   - RLS: user can select own; service_role full.
 
-- `--background` → `#0a0b0f`
-- `--card` → `#12141a`
-- `--surface-2` (new) → `#1a1d26`
-- `--border` → `rgba(255,255,255,0.07)`
-- Confirm existing semantic tokens map to: primary/info `#3b82f6`, purple `#8b5cf6`, success `#10b981`, warning/amber `#f59e0b`, destructive `#ef4444`.
-- Add gradient tokens: `--gradient-hero` (slate-900 → slate-800), `--gradient-cta` (blue), `--gradient-action-bar` (green).
-- Add `--glow-blue: 0 0 40px rgba(59,130,246,0.12)`.
-- Extend `tailwind.config.ts` to expose `surface2`, `purple`, gradient utilities, and a `rounded-2xl` default for card variants.
-- Global padding bump: introduce a `.card-pad` utility (`p-5 sm:p-6`) — 25% more than current `p-4`.
+2. New table `public.wallet_scan_runs`
+   - `id uuid pk`, `ran_at timestamptz default now()`
+   - `users_scanned int`, `trades_seen int`, `signals_created int`, `claude_calls int`, `cap_hit bool`, `notes text`
+   - RLS: authenticated can select (used for "Last wallet scan: X ago"); service_role writes.
 
-Add new shared primitives:
-- `src/components/ui/AICard.tsx` — wrapper with `border-l-2 border-purple-500` for any AI-generated block.
-- `src/components/ui/StickyActionBar.tsx` — fixed bottom bar, 80px above tab bar, green gradient variant.
-- Reuse existing `BottomSheet` for all mobile "page" transitions triggered from Discover/Search.
+3. Extend `public.suggestions` with `source text default 'manual'` (values: `manual` | `wallet_auto`) so the Signals page can filter/label. Backfill existing rows to `'manual'`.
 
----
+Grants + RLS as usual. No changes to existing suggestion policies beyond adding source column.
 
-## 2. Flow 1 — Discover (Home)
+## Edge function: `scan-wallet-signals`
 
-Rebuild `src/pages/Dashboard.tsx` (route `/`) as the Discover screen.
+- `verify_jwt = false`, invoked by cron with a shared secret header (`X-Cron-Secret`) validated inside the function.
+- Uses `SUPABASE_SERVICE_ROLE_KEY` to bypass RLS.
+- Steps:
+  1. Load distinct `(user_id, wallet_address)` from `tracked_wallets` where `user_id` has Elite entitlement — join `profiles` and filter `subscription_tier = 'elite' AND subscription_status = 'active'` OR `is_beta_tester = true`. Skips free/Pro/trial users entirely (no cost for them).
+  2. For each wallet, call existing `fetch-wallet-activity` logic (reuse Polymarket data-api). Fetch last ~25 trades.
+  3. Read cursor from `wallet_signal_cursors`; keep only trades newer than `last_processed_trade_id` / `last_processed_at`.
+  4. Group new trades by market so we don't re-analyze the same market multiple times per cycle; aggregate wallet labels per market for `walletSignals`.
+  5. Global cap: `MAX_CLAUDE_CALLS_PER_RUN = 20`. Prioritize markets touched by more/higher-tier wallets. If more remain, set `cap_hit = true` and log; leave cursor un-advanced for skipped trades so they get picked up next cycle.
+  6. For each selected market, call `analyze-market` (existing function) with wallet context. Threshold: `confidence >= 60 AND edge >= 0.03`. Insert into `suggestions` with `source='wallet_auto'`, 48h `expires_at`, `status='active'`, `wallet_signals` populated.
+  7. Advance cursor to newest processed trade per wallet.
+  8. Insert one row into `wallet_scan_runs` summarizing the cycle.
 
-Structure (top → bottom):
+## Scheduling
 
-```text
-┌─────────────────────────────────────┐
-│ [Logo]                    [🔔•]     │  TopBar (existing, restyled)
-├─────────────────────────────────────┤
-│ ┌─ HERO CARD (60% above fold) ────┐ │
-│ │ ⚡ Today's Best Edge      [NBA] │ │
-│ │ Lakers vs Celtics               │ │
-│ │ ┌ Lakers +4.5 · DraftKings ──┐  │ │
-│ │ └────────────────────────────┘  │ │
-│ │ Edge 4.2%   +185   Conf 78%     │ │
-│ │ ▓▓▓▓▓▓▓▓░░ (progress)           │ │
-│ │ [ Hunt This Edge → ]            │ │
-│ │ Scanned 47 lines across 9 books │ │
-│ └─────────────────────────────────┘ │
-│                                     │
-│ Today's Signals                     │
-│  ✅ Game A · Spread · +3.1% · DK    │
-│  ⚠️ Game B · Total · +2.4% · FD     │
-│  ...                                │
-│                                     │
-│ │🤖 AI pattern insight (1 line)    │ │  purple left border
-└─────────────────────────────────────┘
-```
+Enable `pg_cron` + `pg_net`. Register a job via `supabase--insert` (not migration, per knowledge) that hits `scan-wallet-signals` daily at 12:00 UTC with the cron secret header. Add `CRON_SECRET` via `generate_secret`.
 
-Components:
-- `HeroBestEdgeCard.tsx` — consumes `useBestBet()`. Dark gradient `from-slate-900 to-slate-800`, blue glow shadow, amber "⚡ Today's Best Edge" pill top-left, sport tag top-right. 22px bold matchup. Nested recommendation box (`bg-black/40 rounded-xl`). 3-column stat row (Edge green, Best Odds white, Confidence amber). Confidence bar (green fill). Full-width blue-gradient CTA with subtext showing scanned counts (from `useSportsOdds` totals).
-- Tap → opens `BottomSheet` with `BestEdgeAnalysisSheet.tsx` — reuses existing `useAIAnalysis` output rendered as 4 labeled sections: **Why it has value / What could go wrong / Verdict / Supporting data**. Devil's Advocate block uses `border-l-2 border-destructive`. Drag handle + close button already in `BottomSheet`.
-- `TodaySignalsList.tsx` — consumes `useSuggestionsDB` (or existing signals source). Each row: colored rounded square with verdict emoji (✅ green / ⚠️ amber), game, bet type, edge% (color-graded), book pill. Sorted by edge desc.
-- `AIInsightStrip.tsx` — purple left border, 🤖 icon, one-sentence pattern text from existing analysis feed (fallback to static copy if none).
+## Frontend
 
-Fallback/loading states: skeleton hero, "No qualifying edge right now" empty state matching current `useBestBet` availability messaging.
+- `src/pages/Suggestions.tsx`
+  - New hook/query for latest `wallet_scan_runs.ran_at`; render "Last wallet scan: X ago" chip (Elite only; hidden for free/Pro).
+  - For non-Elite users: filter query to `source = 'manual'` so auto rows never appear. Elite users see both.
+  - Optional badge on cards where `source = 'wallet_auto'` ("Smart wallet signal").
+- No manual trigger button (per spec).
+- `src/hooks/useSuggestionsDB.ts` extended to accept/return `source` and to gate by tier via `useSubscription().isElite`.
 
----
+## Cost & safety guardrails
 
-## 3. Flow 2 — Search ("Check a Bet")
+- Elite-only user set keeps blast radius small.
+- Hard `MAX_CLAUDE_CALLS_PER_RUN = 20` per cycle across all users; overflow deferred.
+- Cursor-based dedupe means a trade is never re-analyzed.
+- Suggestion insert deduped by `(user_id, market_id, direction, source)` upsert to guard against replays.
+- Runs logged in `wallet_scan_runs` including `cap_hit` for observability; admin panel can surface later if needed (not in this change).
 
-New route `/search` (added to `src/App.tsx`) backed by new `src/pages/CheckBet.tsx`.
+## Files touched
 
-Layout:
-- Title "Check a Bet" + subtitle "Enter a team, game, or market".
-- `SearchBox.tsx` — input with `focus:border-info` (blue) transition.
-- On submit → inline result card renders **below the input** (no navigation, no modal).
+- Migration: cursors table, runs table, `suggestions.source` column + grants/RLS.
+- New edge function: `supabase/functions/scan-wallet-signals/index.ts`.
+- Cron job insert via `supabase--insert`.
+- Secret: `CRON_SECRET` via `generate_secret`.
+- `src/pages/Suggestions.tsx`, `src/hooks/useSuggestionsDB.ts` — tier gate + last-scan chip + source label.
 
-`InlineBetResult.tsx` sections:
-1. **Header** — matchup, sport · time · venue, "Your bet" row (bet + odds).
-2. **Verdict banner** — full-width, `bg-success/15` / `bg-warning/15` / `bg-destructive/15`, verdict word + 1-sentence reason.
-3. **Analysis trio** — 3 stacked `AICard`s:
-   - Why it has value (green badge with edge %)
-   - What could go wrong (amber badge with risk level)
-   - Verdict (green badge: Investigate / Validate / Track / Ignore)
-4. **Book comparison table** — ranked best→worst. Best row `bg-success/10` + "BEST" pill, worst row `bg-muted/40 text-muted-foreground`.
+## Out of scope
 
-Data: reuse `useGameAnalysis` / `useAIAnalysis` for the analysis payload; search matching against `useAppStore().fullGames`. No backend changes.
+- Manual "Scan now" button.
+- Admin UI for `wallet_scan_runs` (data is queryable; UI later if needed).
+- Changing existing manual save flow or scoring formulas.
 
-`StickyActionBar` appears once a result is loaded: green gradient, "Bet at [Book] →" left, odds pill right, sits 80px above tab bar.
-
----
-
-## 4. Tab bar
-
-Update `src/components/layout/BottomTabBar.tsx`:
-
-New 5 tabs (max):
-1. Discover → `/`
-2. Search → `/search`
-3. Sports → `/sports`
-4. Tracker → `/tracker`
-5. Profile → `/settings` (or new `/profile` alias)
-
-Rules:
-- Inactive: icon only.
-- Active: icon + label + accent underline.
-- Racing stays reachable via **More** sheet (Racing must not be removed from the app per prior constraint — but per this redesign it moves out of the main bar; keep it in More).
-- Line-alert count badge moves onto Tracker tab.
-
-Desktop `Sidebar` mirrors the same 5 primary items with the rest under a collapsible "More" section — no functional loss.
-
----
-
-## 5. Component-wide rules applied in this pass
-
-- Every AI-generated card/section wrapped in `AICard` (purple left border).
-- Analysis output always rendered as **4 structured sections** — refactor `GameAnalysisPanel`, `GolfAnalysisPanel`, `DevilsAdvocatePanel` consumers to fit the 4-section shape (keep existing data, restructure presentation).
-- All cards: `rounded-2xl border border-white/5`, no hard 1px opaque borders.
-- Padding: swap `p-3`/`p-4` → `p-4`/`p-5` (approx +25%) in touched components only.
-- Bottom sheets replace push-navigation for: Best Edge details, Signal detail, Search result deep-dive.
-
----
-
-## 6. Explicitly untouched
-
-- `supabase/functions/**` — no edits.
-- `src/hooks/**` data hooks — consumed as-is.
-- Stripe (`create-checkout`, `billing-portal`, `stripe-webhook`, `useSubscription`).
-- Auth (`useAuth`, `Auth.tsx`).
-- Horse Racing (`src/pages/HorseRacing.tsx`, `fetch-horse-racing`) — untouched.
-- `src/integrations/supabase/*` auto-generated files.
-
----
-
-## Technical notes
-
-- New files:
-  - `src/pages/CheckBet.tsx`
-  - `src/components/discover/HeroBestEdgeCard.tsx`
-  - `src/components/discover/BestEdgeAnalysisSheet.tsx`
-  - `src/components/discover/TodaySignalsList.tsx`
-  - `src/components/discover/AIInsightStrip.tsx`
-  - `src/components/search/SearchBox.tsx`
-  - `src/components/search/InlineBetResult.tsx`
-  - `src/components/ui/AICard.tsx`
-  - `src/components/ui/StickyActionBar.tsx`
-- Modified:
-  - `src/index.css`, `tailwind.config.ts` (tokens + utilities)
-  - `src/pages/Dashboard.tsx` (rebuilt as Discover)
-  - `src/App.tsx` (add `/search` route)
-  - `src/components/layout/BottomTabBar.tsx` + `Sidebar.tsx` (5-tab structure)
-- Delivered in phases so each is independently verifiable:
-  1. Tokens + shared primitives (`AICard`, `StickyActionBar`, updated tab bar).
-  2. Discover page + hero + analysis sheet.
-  3. Signals list + AI insight strip.
-  4. Check-a-Bet page + inline result + sticky action bar.
-  5. Typecheck + preview verification via Playwright screenshots at 402×717.
-
-Confirm and I'll build phase-by-phase.
+Confirm and I'll build it.
