@@ -79,6 +79,24 @@ export type Database = {
         }
         Relationships: []
       }
+      beta_tester_allowlist: {
+        Row: {
+          created_at: string
+          email: string
+          note: string | null
+        }
+        Insert: {
+          created_at?: string
+          email: string
+          note?: string | null
+        }
+        Update: {
+          created_at?: string
+          email?: string
+          note?: string | null
+        }
+        Relationships: []
+      }
       bets: {
         Row: {
           amount: number
