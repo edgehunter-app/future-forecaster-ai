@@ -66,6 +66,9 @@ export default function Admin() {
   });
   const [grantEmail, setGrantEmail] = useState("");
   const [granting, setGranting] = useState(false);
+  const [betaEmails, setBetaEmails] = useState("");
+  const [grantingBeta, setGrantingBeta] = useState(false);
+  const [betaResults, setBetaResults] = useState<Array<{ email: string; ok: boolean; already?: boolean; error?: string }>>([]);
   const [research, setResearch] = useState<{
     total_rows: number;
     earliest: string | null;
@@ -200,6 +203,38 @@ export default function Admin() {
     } finally {
       setGranting(false);
     }
+  };
+
+  const handleGrantBeta = async () => {
+    const emails = Array.from(new Set(
+      betaEmails
+        .split(/[\s,;]+/)
+        .map((e) => e.trim().toLowerCase())
+        .filter((e) => e.includes("@"))
+    ));
+    if (emails.length === 0) {
+      toast.error("Paste at least one email");
+      return;
+    }
+    setGrantingBeta(true);
+    setBetaResults([]);
+    const results: Array<{ email: string; ok: boolean; already?: boolean; error?: string }> = [];
+    for (const email of emails) {
+      try {
+        const { data, error } = await supabase.rpc("grant_beta_tester_by_email", { _email: email });
+        if (error) throw error;
+        const r = data as { ok: boolean; email: string; already?: boolean; error?: string };
+        results.push({ email, ok: r.ok, already: r.already, error: r.error });
+      } catch (err) {
+        results.push({ email, ok: false, error: err instanceof Error ? err.message : "Failed" });
+      }
+    }
+    setBetaResults(results);
+    const granted = results.filter((r) => r.ok && !r.already).length;
+    const already = results.filter((r) => r.ok && r.already).length;
+    const failed = results.filter((r) => !r.ok).length;
+    toast.success(`Beta grants: ${granted} new · ${already} already · ${failed} failed`);
+    setGrantingBeta(false);
   };
 
   return (
@@ -438,6 +473,52 @@ export default function Admin() {
             Grant Admin Access
           </button>
         </div>
+      </section>
+
+      {/* Grant beta tester (complimentary Elite) */}
+      <section className="rounded-lg border border-purple/40 bg-purple/5 p-5 space-y-3">
+        <div className="flex items-center gap-2">
+          <ShieldCheck className="h-4 w-4 text-purple" />
+          <h2 className="text-sm font-bold uppercase tracking-wide text-foreground">Grant Beta Tester (Complimentary Elite)</h2>
+        </div>
+        <p className="text-xs text-muted-foreground">
+          Marks each user as <span className="font-mono text-purple">is_beta_tester = true</span> with permanent Elite tier.
+          Bypasses Stripe checkout and is protected from webhook downgrades. Users must already have an account.
+          Paste emails separated by commas, spaces, or newlines.
+        </p>
+        <textarea
+          value={betaEmails}
+          onChange={(e) => setBetaEmails(e.target.value)}
+          placeholder={"tester1@example.com\ntester2@example.com"}
+          rows={6}
+          className="w-full rounded-md border border-border bg-background px-3 py-2 text-sm font-mono text-foreground placeholder:text-muted-foreground/60 focus:border-purple focus:outline-none"
+        />
+        <div className="flex justify-end">
+          <button
+            onClick={handleGrantBeta}
+            disabled={grantingBeta || !betaEmails.trim()}
+            className="inline-flex items-center justify-center gap-2 rounded-md bg-purple px-4 py-2 text-sm font-semibold text-white hover:bg-purple/90 disabled:opacity-50"
+          >
+            {grantingBeta ? <Loader2 className="h-4 w-4 animate-spin" /> : <ShieldCheck className="h-4 w-4" />}
+            Grant Beta Elite
+          </button>
+        </div>
+        {betaResults.length > 0 && (
+          <div className="rounded-md border border-border bg-background/40 p-3 space-y-1 max-h-64 overflow-auto">
+            {betaResults.map((r) => (
+              <div key={r.email} className="flex items-center justify-between text-[11px] font-mono">
+                <span className="text-foreground">{r.email}</span>
+                <span className={cn(
+                  r.ok && !r.already && "text-success",
+                  r.ok && r.already && "text-muted-foreground",
+                  !r.ok && "text-destructive",
+                )}>
+                  {r.ok ? (r.already ? "already elite beta" : "granted") : (r.error ?? "failed")}
+                </span>
+              </div>
+            ))}
+          </div>
+        )}
       </section>
 
       {/* Developer Tools */}
