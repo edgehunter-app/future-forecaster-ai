@@ -10,29 +10,6 @@ import { signInAsDemo } from "@/lib/signInAsDemo";
 
 type Mode = "signup" | "signin";
 
-const DEFAULT_TRIAL_PRICE_ID = "price_1Ts6wq5MCjCsVPzSQYekGmmZ";
-const DEFAULT_TRIAL_TIER = "pro";
-
-function ensurePendingUpgrade() {
-  try {
-    const urlParams = new URLSearchParams(window.location.search);
-    const hasUrl = urlParams.get("priceId") && urlParams.get("tier");
-    const hasSession =
-      sessionStorage.getItem("pending_upgrade_price") &&
-      sessionStorage.getItem("pending_upgrade_tier");
-    const hasLocal =
-      localStorage.getItem("pending_upgrade_price") &&
-      localStorage.getItem("pending_upgrade_tier");
-    if (!hasUrl && !hasSession && !hasLocal) {
-      sessionStorage.setItem("pending_upgrade_price", DEFAULT_TRIAL_PRICE_ID);
-      sessionStorage.setItem("pending_upgrade_tier", DEFAULT_TRIAL_TIER);
-      console.log("[auth] defaulted pending upgrade to Pro trial");
-    }
-  } catch {
-    // ignore
-  }
-}
-
 export default function Auth() {
   const navigate = useNavigate();
   const { showToast } = useToast();
@@ -163,8 +140,6 @@ export default function Auth() {
       showToast("Passwords do not match", "error");
       return;
     }
-    // Ensure a pending upgrade is set so SIGNED_IN handler redirects to Stripe.
-    ensurePendingUpgrade();
     setLoading(true);
     try {
       const { error } = await supabase.auth.signUp({
@@ -267,7 +242,6 @@ export default function Auth() {
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 mb-5">
                 <button
                   onClick={() => {
-                    ensurePendingUpgrade();
                     setMode("signup");
                   }}
                   className={cn(
@@ -277,8 +251,8 @@ export default function Auth() {
                       : "bg-gradient-to-r from-blue-600/70 to-purple-600/70 text-white opacity-80 hover:opacity-100",
                   )}
                 >
-                  <div className="leading-tight">Start Free Trial</div>
-                  <div className="text-[10px] font-medium opacity-90">5 days free · card required</div>
+                  <div className="leading-tight">Create Account</div>
+                  <div className="text-[10px] font-medium opacity-90">Free · no card required</div>
                 </button>
                 <button
                   onClick={() => setMode("signin")}
@@ -298,22 +272,18 @@ export default function Auth() {
                 <form onSubmit={submitSignup} className="space-y-3">
                   <div className="rounded-lg border border-blue-500/30 bg-gradient-to-br from-blue-600/10 via-indigo-600/10 to-purple-600/10 p-3">
                     <div className="text-[11px] font-bold uppercase tracking-wide text-blue-300">
-                      ⚡ Start your 5-day free trial
+                      ⚡ Create your free EdgeHunter account
                     </div>
                     <p className="mt-1 text-[12px] text-foreground">
-                      Enter your card — you won't be charged for 5 days.
+                      No card required. Browse markets and try the app for free.
                     </p>
                     <ul className="mt-2 space-y-1 text-[12px] text-foreground">
-                      <li>✓ 5 days of full Pro access</li>
-                      <li>✓ Unlimited AI analysis</li>
-                      <li>✓ Best Bet Today</li>
-                      <li>✓ Full book comparison</li>
+                      <li>✓ Free access to core features</li>
+                      <li>✓ Optional 5-day Pro trial when you upgrade</li>
+                      <li>✓ Cancel or upgrade anytime</li>
                     </ul>
                     <p className="mt-2 text-[11px] text-muted-foreground">
-                      Cancel anytime · No commitment
-                    </p>
-                    <p className="mt-1 text-[11px] text-muted-foreground">
-                      Card is entered after account creation on the Upgrade page.
+                      You can start a Pro trial later from the Upgrade page — card is only entered then.
                     </p>
                   </div>
                   <div>
