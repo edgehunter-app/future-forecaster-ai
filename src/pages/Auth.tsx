@@ -186,6 +186,13 @@ export default function Auth() {
     if (result.error) showToast(result.error.message, "error");
   };
 
+  const apple = async () => {
+    const result = await lovable.auth.signInWithOAuth("apple", {
+      redirect_uri: window.location.origin,
+    });
+    if (result.error) showToast(result.error.message, "error");
+  };
+
   const forgotPassword = async () => {
     if (!email) {
       showToast("Enter your email above first", "error");
@@ -407,6 +414,21 @@ export default function Auth() {
               >
                 Continue with Google
               </button>
+
+              <button
+                onClick={apple}
+                className="mt-2 w-full min-h-[44px] inline-flex items-center justify-center gap-2 rounded-md border border-border bg-foreground px-4 py-2 text-sm font-semibold text-background hover:opacity-90 transition-opacity"
+              >
+                <svg viewBox="0 0 384 512" aria-hidden="true" className="h-4 w-4 fill-current">
+                  <path d="M318.7 268.7c-.2-36.7 16.4-64.4 50-84.8-18.8-26.9-47.2-41.7-84.7-44.6-36.8-2.8-77 21.3-91.7 21.3-15.6 0-51.2-20.3-79.4-20.3C61.4 141.7 8 184.5 8 271.4c0 25.7 4.7 52.2 14.1 79.5 12.6 35.9 51.5 124.4 92.1 123.2 21.2-.5 36.2-15.1 63.8-15.1 26.8 0 40.7 15.1 64.4 15.1 41 .6 76.2-79.9 88.2-115.9-53.6-25.3-51.9-88.9-51.9-89.5zM255.7 78.4c17.3-21.1 26.5-46.3 26.5-72.4 0-3.6-.3-7.2-.9-10.6-26.9 1.3-57.1 18.4-74.1 39.7-15.8 19.7-27.1 45-24.8 72.4 29.9 2.3 57-13.1 73.3-29.1z" />
+                </svg>
+                Continue with Apple
+              </button>
+
+              <p className="mt-3 text-center text-[11px] leading-relaxed text-muted-foreground">
+                We only use your name and email to create your account. You can choose to hide
+                your email with Apple's private relay. We never use your activity for advertising.
+              </p>
 
             </>
           )}

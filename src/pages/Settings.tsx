@@ -494,6 +494,97 @@ export default function Settings() {
           </Card>
         </div>
       </div>
+
+      {/* Danger Zone — self-service account deletion */}
+      <DeleteAccountCard email={user?.email ?? null} />
+    </div>
+  );
+}
+
+function DeleteAccountCard({ email }: { email: string | null }) {
+  const { showToast } = useToast();
+  const [open, setOpen] = useState(false);
+  const [confirm, setConfirm] = useState("");
+  const [busy, setBusy] = useState(false);
+
+  const canDelete = confirm.trim().toUpperCase() === "DELETE";
+
+  const doDelete = async () => {
+    if (!canDelete) return;
+    setBusy(true);
+    try {
+      const { data, error } = await supabase.functions.invoke("delete-account", { body: {} });
+      if (error) throw error;
+      if (data && (data as any).error) throw new Error((data as any).error);
+      try {
+        await supabase.auth.signOut({ scope: "local" });
+      } catch {
+        // ignore
+      }
+      try {
+        localStorage.clear();
+        sessionStorage.clear();
+      } catch {
+        // ignore
+      }
+      window.location.assign("/auth?deleted=1");
+    } catch (err: any) {
+      showToast(err?.message ?? "Could not delete account", "error");
+      setBusy(false);
+    }
+  };
+
+  return (
+    <div className="rounded-lg border border-destructive/40 bg-destructive/5 p-4">
+      <div className="text-sm font-bold text-destructive">Delete Account</div>
+      <p className="mt-1 text-xs text-muted-foreground">
+        Permanently delete {email ? <span className="font-semibold text-foreground">{email}</span> : "your account"} and
+        all associated data — profile, tracked wallets, saved signals, and bet history. This happens
+        immediately, cannot be undone, and does not require contacting support.
+      </p>
+
+      {!open ? (
+        <button
+          onClick={() => setOpen(true)}
+          className="mt-3 min-h-[44px] rounded-md border border-destructive/60 bg-transparent px-4 py-2 text-sm font-bold text-destructive hover:bg-destructive/10 transition-colors"
+        >
+          Delete My Account
+        </button>
+      ) : (
+        <div className="mt-3 space-y-3">
+          <div>
+            <label className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
+              Type DELETE to confirm
+            </label>
+            <input
+              value={confirm}
+              onChange={(e) => setConfirm(e.target.value)}
+              placeholder="DELETE"
+              autoFocus
+              className="mt-1 w-full min-h-[44px] rounded-md border border-border bg-background px-3 py-2 text-base text-foreground focus:border-destructive focus:outline-none"
+            />
+          </div>
+          <div className="flex flex-col sm:flex-row gap-2">
+            <button
+              onClick={doDelete}
+              disabled={!canDelete || busy}
+              className="min-h-[44px] flex-1 rounded-md bg-destructive px-4 py-2 text-sm font-bold text-destructive-foreground hover:opacity-90 transition disabled:opacity-50"
+            >
+              {busy ? "Deleting…" : "Permanently Delete Account"}
+            </button>
+            <button
+              onClick={() => {
+                setOpen(false);
+                setConfirm("");
+              }}
+              disabled={busy}
+              className="min-h-[44px] flex-1 rounded-md border border-border bg-card px-4 py-2 text-sm font-semibold text-muted-foreground hover:text-foreground disabled:opacity-50"
+            >
+              Cancel
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
