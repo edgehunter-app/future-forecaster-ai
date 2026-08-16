@@ -10,6 +10,7 @@ import { getAnalysisCounts } from "@/lib/analysisCounter";
 import { cn } from "@/lib/utils";
 import { useAppStore } from "@/store/useAppStore";
 import Toggle from "@/components/ui/AppToggle";
+import PickPerformancePanel from "@/components/admin/PickPerformancePanel";
 const CLAUDE_COST_PER_RUN = 0.006; // Elite analysis: main + Devil's Advocate second pass
 // 0 = Manual refresh only (no setInterval). Other values are minutes.
 const REFRESH_OPTIONS = [0, 15, 30, 60, 120];
@@ -245,6 +246,8 @@ export default function Admin() {
       </div>
 
       {/* 1. API Usage */}
+      <PickPerformancePanel />
+
       <section className="rounded-lg border border-border bg-card p-5 space-y-4">
         <div className="flex items-center gap-2">
           <Activity className="h-4 w-4 text-info" />
