@@ -5,6 +5,7 @@ import type { FullGame } from "@/lib/oddsApi";
 import type { FullBookmakerLine } from "@/lib/oddsApi";
 import type { GameAnalysisResult } from "@/types";
 import { bumpSportsAnalyses } from "@/lib/analysisCounter";
+import { logAiPick } from "@/lib/pickLog";
 
 
 export interface PolymarketGapInput {
@@ -155,6 +156,8 @@ export function useGameAnalysis() {
 
         setResults((prev) => ({ ...prev, [gameId]: result }));
         bumpSportsAnalyses();
+        // Internal outcome tracking: log every AI pick for later grading.
+        void logAiPick(game, result);
       } catch (err) {
         const msg = err instanceof Error ? err.message : "Analysis failed — try again";
         setErrors((prev) => ({ ...prev, [gameId]: msg }));
