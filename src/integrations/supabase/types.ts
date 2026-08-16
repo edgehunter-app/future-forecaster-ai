@@ -322,6 +322,120 @@ export type Database = {
         }
         Relationships: []
       }
+      pick_log: {
+        Row: {
+          away_team: string
+          bet_type: string
+          book_at_pick: string
+          closing_book: string | null
+          closing_captured_at: string | null
+          closing_implied: number | null
+          closing_line: number | null
+          closing_odds: number | null
+          clv: number | null
+          commence_time: string | null
+          confidence: number | null
+          confidence_tier: string
+          created_at: string
+          edge: number | null
+          event_key: string
+          event_name: string
+          final_away_score: number | null
+          final_home_score: number | null
+          grade_notes: string
+          graded_at: string | null
+          home_team: string
+          id: string
+          implied_at_pick: number | null
+          league: string
+          line: number | null
+          model: string
+          odds_at_pick: number | null
+          origin: string
+          payout_flat_100: number | null
+          picked_at: string
+          result: string | null
+          selection: string
+          selection_side: string
+          sport_key: string
+          user_id: string | null
+        }
+        Insert: {
+          away_team?: string
+          bet_type?: string
+          book_at_pick?: string
+          closing_book?: string | null
+          closing_captured_at?: string | null
+          closing_implied?: number | null
+          closing_line?: number | null
+          closing_odds?: number | null
+          clv?: number | null
+          commence_time?: string | null
+          confidence?: number | null
+          confidence_tier?: string
+          created_at?: string
+          edge?: number | null
+          event_key: string
+          event_name?: string
+          final_away_score?: number | null
+          final_home_score?: number | null
+          grade_notes?: string
+          graded_at?: string | null
+          home_team?: string
+          id?: string
+          implied_at_pick?: number | null
+          league?: string
+          line?: number | null
+          model?: string
+          odds_at_pick?: number | null
+          origin?: string
+          payout_flat_100?: number | null
+          picked_at?: string
+          result?: string | null
+          selection?: string
+          selection_side?: string
+          sport_key?: string
+          user_id?: string | null
+        }
+        Update: {
+          away_team?: string
+          bet_type?: string
+          book_at_pick?: string
+          closing_book?: string | null
+          closing_captured_at?: string | null
+          closing_implied?: number | null
+          closing_line?: number | null
+          closing_odds?: number | null
+          clv?: number | null
+          commence_time?: string | null
+          confidence?: number | null
+          confidence_tier?: string
+          created_at?: string
+          edge?: number | null
+          event_key?: string
+          event_name?: string
+          final_away_score?: number | null
+          final_home_score?: number | null
+          grade_notes?: string
+          graded_at?: string | null
+          home_team?: string
+          id?: string
+          implied_at_pick?: number | null
+          league?: string
+          line?: number | null
+          model?: string
+          odds_at_pick?: number | null
+          origin?: string
+          payout_flat_100?: number | null
+          picked_at?: string
+          result?: string | null
+          selection?: string
+          selection_side?: string
+          sport_key?: string
+          user_id?: string | null
+        }
+        Relationships: []
+      }
       profiles: {
         Row: {
           alert_email: string
