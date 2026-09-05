@@ -123,7 +123,7 @@ export default function Sports() {
   }
 
   const [activeSport, setActiveSport] = useState<string>("all");
-  const [wcBannerDismissed, _setWcBannerDismissed] = useState(false);
+  
 
   const handleClearGolfAndReload = () => {
     clearGolfCache();
@@ -135,17 +135,6 @@ export default function Sports() {
     void loadGamesForSport("golf", true);
   };
 
-  // Detect whether the Sportsbook API is actually returning any World Cup
-  // events right now. The competition exists upstream (FIFA_WC) but the
-  // provider doesn't always have games listed.
-  const worldCupAvailable = useMemo(() => {
-    return (fullGames ?? []).some((g) => {
-      const s = (g.sport ?? "").toLowerCase();
-      const l = (g.league ?? "").toLowerCase();
-      return s.includes("world") || s.includes("fifa")
-        || l.includes("world") || l.includes("fifa");
-    });
-  }, [fullGames]);
 
   const {
     findBestBet,
@@ -205,20 +194,6 @@ export default function Sports() {
     // Time-window filtering is handled upstream by useSportsOdds.filterRelevantGames
     // (including World Cup/MMA/tennis exceptions), so we only filter by sport here.
     if (!activeSport || activeSport === "all") return list;
-    if (activeSport === "soccer_fifa_world_cup") {
-      return list.filter((g) => {
-        const s = (g.sport ?? "").toLowerCase();
-        const l = (g.league ?? "").toLowerCase();
-        const sRaw = g.sport ?? "";
-        const lRaw = g.league ?? "";
-        return s.includes("world") || s.includes("fifa")
-          || l.includes("world") || l.includes("fifa")
-          || sRaw.toUpperCase() === "FIFA_WC"
-          || lRaw.toUpperCase() === "FIFA_WC"
-          || sRaw.toUpperCase().includes("FIFA")
-          || lRaw.toUpperCase().includes("FIFA");
-      });
-    }
     if (activeSport === "golf") {
       return list.filter((g) => {
         const s = (g.sport ?? "").toLowerCase();
