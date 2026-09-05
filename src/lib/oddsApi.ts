@@ -641,13 +641,15 @@ export function getBestMoneyline(
   bookmakers: FullBookmakerLine[],
   side: "home" | "away",
 ): { odds: number; book: string } {
-  let best = { odds: -99999, book: "" };
+  let best = { odds: 0, book: "" };
   for (const b of bookmakers) {
     const odds = side === "home" ? b.homeMoneyline : b.awayMoneyline;
-    if (odds > best.odds) best = { odds, book: b.name };
+    if (!isValidOdds(odds)) continue;
+    if (!best.book || odds > best.odds) best = { odds, book: b.name };
   }
   return best;
 }
+
 
 // ============= Player Props =============
 
