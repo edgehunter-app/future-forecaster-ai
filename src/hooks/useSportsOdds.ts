@@ -25,7 +25,7 @@ const DEFAULT_SPORT = "americanfootball_nfl";
 const GOLF_CACHE_VERSION_KEY = "eh.sportsOddsCacheVersion";
 const GOLF_CACHE_VERSION = "wc-7day-filter-v2";
 const SPORTS_CACHE_VERSION_KEY = "eh_cache_version";
-const SPORTS_CACHE_VERSION = "v4";
+const SPORTS_CACHE_VERSION = "v5-no-world-cup";
 const GOLF_CACHE_KEYS = [
   "golf",
   "golf_pga_tour",
@@ -161,8 +161,9 @@ export function useSportsOdds(polymarkets: Market[]) {
       // Must not have started more than 3 hours ago
       if (gameTime < threeHoursAgo) return false;
 
-      // World Cup: keep games even without posted odds — lines populate later.
-      if (isWorldCupGame(game)) return gameTime <= daysOut(7);
+      // World Cup 2026 is archived (tournament over) — never display, even
+      // if a stale cached game somehow survives.
+      if (isWorldCupGame(game)) return false;
 
       // College football: heavy mismatches often have NO moneyline posted at
       // all, only a spread and a total. Keep those games (7-day window).
@@ -197,7 +198,6 @@ export function useSportsOdds(polymarkets: Market[]) {
 
   const sortGamesForDisplay = useCallback((games: FullGame[]): FullGame[] => {
     const rank = (g: FullGame) => {
-      if (isWorldCupGame(g)) return 0; // World Cup pinned to top
       const t = new Date(g.commenceTime).getTime();
       const now = Date.now();
       const endOfToday = new Date();
@@ -388,27 +388,8 @@ export function useSportsOdds(polymarkets: Market[]) {
       try {
         if (force && sportKey === "golf") clearGolfCache();
         const raw = await fetchOneSport(sportKey, force ? "force-reload" : "tab-click", force);
-        const isWC = sportKey === "soccer_fifa_world_cup";
-        if (isWC) {
-          console.log("[WC] games fetched:", raw?.length);
-          console.log("[WC] raw game fields:", raw?.map((g) => ({
-            sport: g.sport,
-            league: g.league,
-            homeTeam: g.homeTeam,
-            awayTeam: g.awayTeam,
-            commenceTime: g.commenceTime,
-            bookmakerCount: g.bookmakers?.length ?? 0,
-            hasOdds: g.bookmakers?.some((b) => b.homeMoneyline !== 0 || b.awayMoneyline !== 0) ?? false,
-          })));
-          console.log("[WC] game dates:", raw?.map((g) => ({
-            teams: `${g.awayTeam} vs ${g.homeTeam}`,
-            time: g.commenceTime,
-            daysOut: Math.round((new Date(g.commenceTime).getTime() - Date.now()) / 86400000),
-          })));
-        }
         const got = filterRelevantGames(raw);
         const gotForSport = sportKey === "golf" ? got.filter(isGolfGame) : got;
-        if (isWC) console.log("[WC] after filter:", gotForSport.length);
         if (gotForSport.length || force) {
           const current = useAppStore.getState().fullGames ?? [];
           // Always drop any existing games for this sport before merging in
@@ -416,7 +397,6 @@ export function useSportsOdds(polymarkets: Market[]) {
           // duplicates on top of what the initial scan already stored.
           const base = current.filter((game) => {
             if (sportKey === "golf") return !isGolfGame(game);
-            if (sportKey === "soccer_fifa_world_cup") return !isWorldCupGame(game);
             return game.sport !== sportKey;
           });
           const merged = dedupeGames([...base, ...gotForSport]);

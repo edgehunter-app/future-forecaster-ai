@@ -154,7 +154,7 @@ export default function OddsBoard({ games, loading, mispricings = [], onRefresh,
       <div className="rounded-lg border border-dashed border-border bg-card/40 p-8 text-center space-y-3">
         <p className="text-sm font-semibold text-foreground">No games today</p>
         <p className="text-sm text-muted-foreground">
-          Try the World Cup or MMA tab — those slates run up to 7 days out. Otherwise check
+          Try the MMA tab — those slates run up to 7 days out. Otherwise check
           back later today for tonight's odds.
         </p>
         {onRefresh && (

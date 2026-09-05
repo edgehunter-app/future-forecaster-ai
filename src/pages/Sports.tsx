@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import { Trophy, RotateCw, AlertTriangle, Zap, Loader2, Globe2, X, Bell, BellRing } from "lucide-react";
+import { Trophy, RotateCw, AlertTriangle, Zap, Loader2, Bell, BellRing } from "lucide-react";
 import { useAppStore } from "@/store/useAppStore";
 import { useSportsOdds } from "@/hooks/useSportsOdds";
 import SportsMispricingCard from "@/components/sports/SportsMispricingCard";
