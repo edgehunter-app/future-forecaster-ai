@@ -15,6 +15,9 @@ import { cn } from "@/lib/utils";
 import { usePageTitle } from "@/hooks/usePageTitle";
 import { useIsAdmin } from "@/hooks/useIsAdmin";
 import UsagePanel from "@/components/sports/UsagePanel";
+import CfbFilterBar, { type CfbView } from "@/components/sports/CfbFilterBar";
+import { useCfbRankings } from "@/hooks/useCfbRankings";
+import { cfbTeamMeta } from "@/lib/cfbTeams";
 
 const GOLF_NOTIFY_KEY = "eh.golfNotify";
 
@@ -214,6 +217,57 @@ export default function Sports() {
         (sportLabel && g.league?.toLowerCase().includes(sportLabel)),
     );
   }, [fullGames, activeSport]);
+
+  // --- College football segmentation -------------------------------------
+  const isCfbTab = activeSport === "americanfootball_ncaaf";
+  const [cfbView, setCfbView] = useState<CfbView>("top25");
+  const [cfbConference, setCfbConference] = useState<string | null>(null);
+  const { poll: cfbPoll, rankOf: cfbRankOf } = useCfbRankings(isCfbTab);
+
+  const cfbTagged = useMemo(() => {
+    if (!isCfbTab) return [];
+    return filteredGames.map((g) => {
+      const home = cfbTeamMeta(g.homeTeam);
+      const away = cfbTeamMeta(g.awayTeam);
+      const homeRank = cfbRankOf(g.homeTeam);
+      const awayRank = cfbRankOf(g.awayTeam);
+      return {
+        game: g,
+        ranked: !!(homeRank || awayRank),
+        bothFbs: home?.division === "FBS" && away?.division === "FBS",
+        hasFcs: home?.division === "FCS" || away?.division === "FCS",
+        conferences: [home?.conference, away?.conference].filter(Boolean) as string[],
+      };
+    });
+  }, [isCfbTab, filteredGames, cfbRankOf]);
+
+  const cfbViewCounts = useMemo(() => {
+    const c: Record<CfbView, number> = { top25: 0, fbs: 0, fcs: 0, all: cfbTagged.length };
+    for (const t of cfbTagged) {
+      if (t.ranked) c.top25 += 1;
+      if (t.bothFbs) c.fbs += 1;
+      if (t.hasFcs) c.fcs += 1;
+    }
+    return c;
+  }, [cfbTagged]);
+
+  const cfbConferenceCounts = useMemo(() => {
+    const c: Record<string, number> = {};
+    for (const t of cfbTagged) {
+      for (const conf of new Set(t.conferences)) c[conf] = (c[conf] ?? 0) + 1;
+    }
+    return c;
+  }, [cfbTagged]);
+
+  const boardGames = useMemo(() => {
+    if (!isCfbTab) return filteredGames;
+    let list = cfbTagged;
+    if (cfbView === "top25") list = list.filter((t) => t.ranked);
+    else if (cfbView === "fbs") list = list.filter((t) => t.bothFbs);
+    else if (cfbView === "fcs") list = list.filter((t) => t.hasFcs);
+    if (cfbConference) list = list.filter((t) => t.conferences.includes(cfbConference));
+    return list.map((t) => t.game);
+  }, [isCfbTab, filteredGames, cfbTagged, cfbView, cfbConference]);
 
   if (typeof window !== "undefined") {
     console.log("Full games:", fullGames);
@@ -534,8 +588,24 @@ export default function Sports() {
               </div>
             </div>
           )}
+          {isCfbTab && filteredGames.length > 0 && (
+            <CfbFilterBar
+              view={cfbView}
+              onViewChange={setCfbView}
+              conference={cfbConference}
+              onConferenceChange={setCfbConference}
+              viewCounts={cfbViewCounts}
+              conferenceCounts={cfbConferenceCounts}
+              poll={cfbPoll}
+            />
+          )}
+          {isCfbTab && filteredGames.length > 0 && boardGames.length === 0 && (
+            <div className="rounded-lg border border-border bg-card px-4 py-3 text-sm text-muted-foreground">
+              No games match this filter. Try “All games” or a different conference.
+            </div>
+          )}
           <OddsBoard
-            games={filteredGames}
+            games={boardGames}
             loading={loading}
             mispricings={mispricings}
             onRefresh={() => void scan("manual")}
