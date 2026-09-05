@@ -345,13 +345,18 @@ export async function fetchFullOdds(
       };
     });
 
-    const homeBest = books
+    // Moneyline display must come from traditional sportsbooks only.
+    // Prediction-market quotes (Kalshi / Polymarket) are excluded — a 1c
+    // contract converts to +9900 and would masquerade as a real line.
+    const sportsbookBooks = books.filter((b) => b.category !== "prediction_market");
+
+    const homeBest = sportsbookBooks
       .filter((b) => isValidOdds(b.homeMoneyline))
       .reduce(
         (best, b) => (b.homeMoneyline > best.odds ? { odds: b.homeMoneyline, book: b.name } : best),
         { odds: -Infinity, book: "" },
       );
-    const awayBest = books
+    const awayBest = sportsbookBooks
       .filter((b) => isValidOdds(b.awayMoneyline))
       .reduce(
         (best, b) => (b.awayMoneyline > best.odds ? { odds: b.awayMoneyline, book: b.name } : best),
@@ -360,8 +365,8 @@ export async function fetchFullOdds(
     const bestHomeOdds = isValidOdds(homeBest.odds) ? homeBest.odds : 0;
     const bestAwayOdds = isValidOdds(awayBest.odds) ? awayBest.odds : 0;
 
-    // Consensus only over books that actually posted a moneyline.
-    const mlBooks = books.filter(
+    // Consensus only over sportsbooks that actually posted a moneyline.
+    const mlBooks = sportsbookBooks.filter(
       (b) => isValidOdds(b.homeMoneyline) && isValidOdds(b.awayMoneyline),
     );
     const consensus = mlBooks.length
@@ -415,10 +420,11 @@ export async function fetchFullOdds(
         }
       : null;
 
-    // Headline moneyline: first book with a real two-way price (Vegas first),
-    // never an arbitrary book that only carries a placeholder.
+    // Headline moneyline: first sportsbook with a real two-way price. Never a
+    // prediction market — a missing sportsbook line must render as N/A.
     const headlineBook =
       vegasBooks[0] ?? mlBooks[0] ?? null;
+
 
     const commenceTime = g.commence_time ?? "";
     const isLive = commenceTime ? new Date(commenceTime).getTime() <= Date.now() : false;
