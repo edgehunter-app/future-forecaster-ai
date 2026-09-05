@@ -23,7 +23,15 @@ Deno.serve(async (req) => {
       });
     }
 
-    const res = await fetch(ENDPOINT);
+    const res = await fetch(ENDPOINT, {
+      headers: {
+        "User-Agent":
+          "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0 Safari/537.36",
+        Accept: "application/json,text/plain,*/*",
+        "Accept-Language": "en-US,en;q=0.9",
+        Referer: "https://www.espn.com/",
+      },
+    });
     if (!res.ok) throw new Error(`espn ${res.status}`);
     const json = await res.json();
     const polls: any[] = Array.isArray(json?.rankings) ? json.rankings : [];
