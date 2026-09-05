@@ -262,9 +262,11 @@ export default function Sports() {
   const boardGames = useMemo(() => {
     if (!isCfbTab) return filteredGames;
     let list = cfbTagged;
-    if (cfbView === "top25") list = list.filter((t) => t.ranked);
-    else if (cfbView === "fbs") list = list.filter((t) => t.bothFbs);
-    else if (cfbView === "fcs") list = list.filter((t) => t.hasFcs);
+    const effectiveView =
+      cfbView === "top25" && !cfbTagged.some((t) => t.ranked) ? "fbs" : cfbView;
+    if (effectiveView === "top25") list = list.filter((t) => t.ranked);
+    else if (effectiveView === "fbs") list = list.filter((t) => t.bothFbs);
+    else if (effectiveView === "fcs") list = list.filter((t) => t.hasFcs);
     if (cfbConference) list = list.filter((t) => t.conferences.includes(cfbConference));
     return list.map((t) => t.game);
   }, [isCfbTab, filteredGames, cfbTagged, cfbView, cfbConference]);
