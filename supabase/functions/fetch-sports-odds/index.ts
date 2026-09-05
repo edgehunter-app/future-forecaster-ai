@@ -23,11 +23,12 @@ const ODDS_TTL_MS = 90_000;
 
 // ============ Secondary source: The Odds API ============
 // Used ONLY for sports the Sportsbook API doesn't cover well — currently
-// FIFA World Cup (soccer 3-way) and golf majors (outrights).
+// golf majors (outrights). FIFA World Cup 2026 is ARCHIVED: the tournament
+// ended, so it is deliberately NOT fetched here (zero quota spent on it).
 const ODDS_API_BASE = "https://api.the-odds-api.com/v4";
 const ODDS_API_PROVIDER = "the-odds-api";
 const ODDS_API_REMAINING_SENTINEL = "9999-12-31"; // used_at row that stores latest "remaining" header
-const ODDS_API_SOCCER_SPORTS = ["soccer_fifa_world_cup"];
+const ODDS_API_SOCCER_SPORTS: string[] = [];
 // MMA has one global feed on The Odds API — covers UFC, PFL, Bellator, etc.
 const ODDS_API_MMA_SPORTS = ["mma_mixed_martial_arts"];
 // Tennis: The Odds API exposes ATP/WTA feeds keyed by tournament. We try
@@ -304,14 +305,9 @@ const SPORT_KEY_TO_SHORT: Record<string, string> = {
 
 // Some sports map to MULTIPLE possible competition short names — we try
 // each until one returns events. Discovered via logged advantages payload.
-const SPORT_KEY_TO_SHORT_CANDIDATES: Record<string, string[]> = {
-  soccer_fifa_world_cup: [
-    // FIFA_WC is the only valid competition short on this provider — the
-    // others 404. We keep the working key here in case more variants get
-    // added later.
-    "FIFA_WC",
-  ],
-};
+// (World Cup / FIFA_WC used to live here; archived after the 2026 final —
+// no Sportsbook calls are made for it anymore.)
+const SPORT_KEY_TO_SHORT_CANDIDATES: Record<string, string[]> = {};
 
 // On-demand competition shorts: reachable via shortNamesFor(sportKey) when the
 // client explicitly requests that tab, but deliberately NOT part of the
@@ -1317,7 +1313,7 @@ Deno.serve(async (req) => {
             : []),
         ];
 
-    // Run Sportsbook API (primary) + The Odds API (secondary for WC/golf)
+    // Run Sportsbook API (primary) + The Odds API (secondary for golf/MMA/tennis)
     // in parallel. Odds API failures must NOT block the primary response.
     const [advantages, oddsApiResult, ...perSport] = await Promise.all([
       getAdvantages(client),

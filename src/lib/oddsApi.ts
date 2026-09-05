@@ -47,7 +47,7 @@ export const SPORTS = [
   { key: "icehockey_nhl", label: "NHL", icon: "circle" },
   { key: "soccer_epl", label: "EPL", icon: "circle" },
   { key: "soccer_usa_mls", label: "MLS", icon: "circle" },
-  { key: "soccer_fifa_world_cup", label: "🌍 World Cup", icon: "trophy" },
+  
   { key: "golf", label: "⛳ Golf", icon: "trophy" },
   { key: "mma_mixed_martial_arts", label: "MMA", icon: "zap" },
   { key: "tennis", label: "🎾 Tennis", icon: "circle" },
