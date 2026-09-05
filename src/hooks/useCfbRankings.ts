@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { cfbTeamMeta } from "@/lib/cfbTeams";
+import { supabase } from "@/integrations/supabase/client";
 
 /**
  * Odds providers do not include poll rankings, so the Top 25 list comes from
@@ -9,8 +10,6 @@ import { cfbTeamMeta } from "@/lib/cfbTeams";
 
 const CACHE_KEY = "eh.cfbRankings.v1";
 const TTL_MS = 6 * 60 * 60 * 1000;
-const ENDPOINT =
-  "https://site.api.espn.com/apis/site/v2/sports/football/college-football/rankings";
 
 export interface CfbRankings {
   poll: string;
@@ -37,27 +36,13 @@ function readCache(): CfbRankings | null {
 }
 
 async function fetchRankings(): Promise<CfbRankings | null> {
-  const res = await fetch(ENDPOINT);
-  if (!res.ok) throw new Error(`rankings ${res.status}`);
-  const json = await res.json();
-  const polls: any[] = Array.isArray(json?.rankings) ? json.rankings : [];
-  // Prefer AP, fall back to the Coaches poll.
-  const poll =
-    polls.find((p) => /ap/i.test(p?.shortName ?? "")) ??
-    polls.find((p) => /coaches/i.test(p?.shortName ?? "") && !/fcs|div/i.test(p?.shortName ?? "")) ??
-    polls[0];
-  if (!poll) return null;
-  const ranks: Record<string, number> = {};
-  for (const entry of poll.ranks ?? []) {
-    const rank = Number(entry?.current);
-    const team = entry?.team ?? {};
-    if (!Number.isFinite(rank)) continue;
-    for (const name of [team.location, team.displayName, team.shortDisplayName, team.name && team.location ? `${team.location} ${team.name}` : null]) {
-      if (name) ranks[norm(String(name))] = rank;
-    }
-  }
+  // ESPN blocks browser requests (no CORS), so the feed is proxied by an edge function.
+  const { data, error } = await supabase.functions.invoke("cfb-rankings");
+  if (error) throw error;
+  const ranks = (data?.ranks ?? {}) as Record<string, number>;
+  if (!Object.keys(ranks).length) return null;
   const out: CfbRankings = {
-    poll: poll.shortName ?? poll.name ?? "AP Poll",
+    poll: (data?.poll as string) ?? "AP Poll",
     ranks,
     fetchedAt: Date.now(),
   };
