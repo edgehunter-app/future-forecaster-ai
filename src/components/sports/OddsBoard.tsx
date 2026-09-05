@@ -19,6 +19,8 @@ import {
   type PlayerProp,
   type SportsMispricing,
 } from "@/lib/oddsApi";
+import { useCfbRankings } from "@/hooks/useCfbRankings";
+import { cfbTeamMeta } from "@/lib/cfbTeams";
 import GamblingDisclaimer from "./GamblingDisclaimer";
 import PlayerPropsPanel from "./PlayerPropsPanel";
 import { useGameProps } from "@/hooks/useGameProps";
@@ -221,6 +223,16 @@ export default function OddsBoard({ games, loading, mispricings = [], onRefresh,
 
 function GameCard({ game, mispricings }: { game: FullGame; mispricings: SportsMispricing[] }) {
   const [expanded, setExpanded] = useState(false);
+  const isCfb = game.sport === "americanfootball_ncaaf";
+  const { rankOf: cfbRankOf } = useCfbRankings(isCfb);
+  const cfbHome = isCfb ? cfbTeamMeta(game.homeTeam) : null;
+  const cfbAway = isCfb ? cfbTeamMeta(game.awayTeam) : null;
+  const homeRank = isCfb ? cfbRankOf(game.homeTeam) : null;
+  const awayRank = isCfb ? cfbRankOf(game.awayTeam) : null;
+  const isBuyGame =
+    isCfb &&
+    ((cfbHome?.division === "FBS" && cfbAway?.division === "FCS") ||
+      (cfbHome?.division === "FCS" && cfbAway?.division === "FBS"));
   const [showProps, setShowProps] = useState(false);
   const { bookmakers, loading: oddsLoading, fetched: oddsFetched, fetchOdds } = useGameOdds(game);
   if (import.meta.env.DEV) {
@@ -319,6 +331,16 @@ function GameCard({ game, mispricings }: { game: FullGame; mispricings: SportsMi
               LIVE
             </span>
           )}
+          {isBuyGame && (
+            <span className="rounded-full border border-warning/40 bg-warning/10 px-2 py-0.5 text-[9px] font-bold uppercase text-warning">
+              FBS vs FCS
+            </span>
+          )}
+          {isCfb && cfbHome?.conference && cfbHome.conference === cfbAway?.conference && (
+            <span className="rounded-full border border-border bg-background/40 px-2 py-0.5 text-[9px] font-bold uppercase text-muted-foreground">
+              {cfbHome.conference}
+            </span>
+          )}
           <span className="text-[11px] font-mono text-muted-foreground">{formatGameTime(game.commenceTime)}</span>
         </div>
       </div>
@@ -338,7 +360,13 @@ function GameCard({ game, mispricings }: { game: FullGame; mispricings: SportsMi
       {/* Matchup row */}
       <div className="grid grid-cols-[1fr_auto_1fr] items-center gap-3">
         <div className="text-center">
-          <div className="text-sm font-bold text-foreground">{displayTeamName(game, "away")}</div>
+          <div className="text-sm font-bold text-foreground">
+            {awayRank && <span className="text-info">#{awayRank} </span>}
+            {displayTeamName(game, "away")}
+            {isCfb && cfbAway?.division === "FCS" && (
+              <span className="ml-1 text-[9px] font-bold uppercase text-muted-foreground">FCS</span>
+            )}
+          </div>
           <div className={cn("text-xl font-extrabold mt-1", oddsClass(awayOdds))}>
             {formatOdds(awayOdds)}
           </div>
@@ -358,7 +386,13 @@ function GameCard({ game, mispricings }: { game: FullGame; mispricings: SportsMi
           )}
         </div>
         <div className="text-center">
-          <div className="text-sm font-bold text-foreground">{displayTeamName(game, "home")}</div>
+          <div className="text-sm font-bold text-foreground">
+            {homeRank && <span className="text-info">#{homeRank} </span>}
+            {displayTeamName(game, "home")}
+            {isCfb && cfbHome?.division === "FCS" && (
+              <span className="ml-1 text-[9px] font-bold uppercase text-muted-foreground">FCS</span>
+            )}
+          </div>
           <div className={cn("text-xl font-extrabold mt-1", oddsClass(homeOdds))}>
             {formatOdds(homeOdds)}
           </div>
