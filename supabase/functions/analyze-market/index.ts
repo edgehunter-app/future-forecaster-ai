@@ -191,6 +191,40 @@ ${wallets.map((w: Any) => `- ${w.label} (Tier ${w.tier}): ${(w.winRate * 100).to
   const isGolf = /golf|pga|masters|open championship|u\.?s\.? open/i.test(leagueStr);
   const isTennis = /tennis|atp|wta|wimbledon|roland garros|french open|us open|australian open/i.test(leagueStr)
     || String(p.sport ?? "").toLowerCase().includes("tennis");
+  const isCollegeFootball = /ncaaf|ncaafb|\bcfb\b|college\s*football/i.test(leagueStr)
+    || String(p.sport ?? "").toLowerCase().includes("ncaaf");
+
+  const collegeFootballBlock = isCollegeFootball
+    ? `
+COLLEGE FOOTBALL (NCAAF) CONTEXT:
+This is a college football game, NOT the NFL. Analyze it accordingly:
+- Talent gaps between programs are enormous. Blue-chip rosters routinely
+  overwhelm lower-tier opponents in ways that never happen in the NFL.
+- Wide spreads are NORMAL, not a market error. A -28 or -35 line can be
+  perfectly efficient — do not treat a large spread as automatic value on
+  the underdog, and do not flag it as a mispricing by itself.
+- Totals swing much wider than the NFL (30s to 70s+) depending on tempo,
+  scheme (air raid vs run-heavy triple option) and defensive quality.
+- Weather matters more: many stadiums are open-air with no dome, and wind
+  above ~15 mph or heavy rain meaningfully suppresses passing and totals.
+- Home-crowd effect is far stronger than the NFL — hostile night games at
+  elite venues are worth roughly 1-3 extra points versus a neutral site.
+- Motivation and situational spots are real: rivalry games, letdown after a
+  ranked win, lookahead to a bigger opponent, bowl-eligibility clinchers,
+  and opt-outs/transfer-portal departures late in the season.
+- Backup/freshman quarterbacks and roster attrition move lines sharply;
+  depth is much thinner than the NFL.
+- Key numbers on the spread differ: 3, 7, 10, 14, 17 and 21 all matter.
+- Sharp money hits Saturday morning; big line moves off an opening number
+  are a stronger signal here than in the NFL.
+- Sample sizes are small (12-game seasons) — recent form is noisy, so weigh
+  roster/talent and efficiency over win-loss records.
+
+When explaining the pick, reference these college-specific dynamics rather
+than NFL-style parity assumptions.
+`
+    : "";
+
 
   const worldCupBlock = isWorldCup
     ? `
@@ -326,6 +360,7 @@ ${worldCupBlock}
 ${golfBlock}
 ${mmaBlock}
 ${tennisBlock}
+${collegeFootballBlock}
 USER RISK PROFILE:
   Bankroll: $${bankroll}
   Kelly multiplier: ${kelly}x

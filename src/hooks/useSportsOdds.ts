@@ -164,11 +164,24 @@ export function useSportsOdds(polymarkets: Market[]) {
       // World Cup: keep games even without posted odds — lines populate later.
       if (isWorldCupGame(game)) return gameTime <= daysOut(7);
 
+      // College football: heavy mismatches often have NO moneyline posted at
+      // all, only a spread and a total. Keep those games (7-day window).
+      if (game.sport === "americanfootball_ncaaf") {
+        const hasAnyCfbLine = game.bookmakers?.some(
+          (b) => b.homeMoneyline !== 0 || b.awayMoneyline !== 0
+            || b.homeSpread !== 0 || b.totalLine !== 0,
+        );
+        if (!hasAnyCfbLine) return false;
+        return gameTime <= daysOut(7);
+      }
+
+
       // Must have at least 1 book with odds
       const hasOdds = game.bookmakers?.some(
         (b) => b.homeMoneyline !== 0 || b.awayMoneyline !== 0,
       );
       if (!hasOdds) return false;
+
 
       const sport = (game.sport ?? "").toLowerCase();
 
@@ -316,8 +329,14 @@ export function useSportsOdds(polymarkets: Market[]) {
       setLoadedSports(() => {
         const loaded = new Set(SPORTS.map((s) => s.key));
         if (!allFull.some(isGolfGame)) loaded.delete("golf");
+        // College football is fetched on tab-select only. The default scan can
+        // surface a stray game or two from the Sportsbook feed, so never treat
+        // it as loaded here — otherwise the tab shows those strays and never
+        // fetches the real slate.
+        loaded.delete("americanfootball_ncaaf");
         return loaded;
       });
+
 
       const polySports = polymarkets.filter((m) => isSportsMarket(m));
       for (const game of allFull) {
