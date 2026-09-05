@@ -233,12 +233,18 @@ function GameCard({ game, mispricings }: { game: FullGame; mispricings: SportsMi
   );
   const vegasBookCount = booksWithOdds.filter((b) => b.category !== "prediction_market").length;
   const hasBookmakers = booksWithOdds.length > 0;
-  const homeOdds = game.moneyline?.home ?? 0;
-  const awayOdds = game.moneyline?.away ?? 0;
+  const bestHome = hasBookmakers ? getBestMoneyline(booksWithOdds, "home") : { odds: 0, book: "" };
+  const bestAway = hasBookmakers ? getBestMoneyline(booksWithOdds, "away") : { odds: 0, book: "" };
+  // Show a real price if any book has one; otherwise 0 → renders "N/A".
+  const homeOdds = isValidOdds(game.moneyline?.home)
+    ? (game.moneyline!.home as number)
+    : isValidOdds(bestHome.odds) ? bestHome.odds : 0;
+  const awayOdds = isValidOdds(game.moneyline?.away)
+    ? (game.moneyline!.away as number)
+    : isValidOdds(bestAway.odds) ? bestAway.odds : 0;
   const homeImplied = game.moneyline?.homeImplied ?? 0;
   const awayImplied = game.moneyline?.awayImplied ?? 0;
-  const bestHome = hasBookmakers ? getBestMoneyline(booksWithOdds, "home") : { odds: homeOdds, book: "" };
-  const bestAway = hasBookmakers ? getBestMoneyline(booksWithOdds, "away") : { odds: awayOdds, book: "" };
+
   const { analyzeGame, clearResult, isAnalyzing, getResult, getError } = useGameAnalysis();
   const result = getResult(game.id);
   const analyzing = isAnalyzing(game.id);
