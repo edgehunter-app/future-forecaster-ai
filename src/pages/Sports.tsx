@@ -123,7 +123,7 @@ export default function Sports() {
   }
 
   const [activeSport, setActiveSport] = useState<string>("all");
-  const [wcBannerDismissed, setWcBannerDismissed] = useState(false);
+  const [wcBannerDismissed, _setWcBannerDismissed] = useState(false);
 
   const handleClearGolfAndReload = () => {
     clearGolfCache();

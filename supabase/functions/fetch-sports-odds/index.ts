@@ -1313,7 +1313,7 @@ Deno.serve(async (req) => {
             : []),
         ];
 
-    // Run Sportsbook API (primary) + The Odds API (secondary for WC/golf)
+    // Run Sportsbook API (primary) + The Odds API (secondary for golf/MMA/tennis)
     // in parallel. Odds API failures must NOT block the primary response.
     const [advantages, oddsApiResult, ...perSport] = await Promise.all([
       getAdvantages(client),
