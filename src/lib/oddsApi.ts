@@ -608,9 +608,10 @@ export function gapToMispricing(g: SportsbookGap): SportsMispricing {
 // ============= Formatting helpers =============
 
 export function formatOdds(american: number): string {
-  if (!american || american === 0) return "N/A";
+  if (!isValidOdds(american)) return "N/A";
   return american > 0 ? `+${american}` : `${american}`;
 }
+
 
 export function formatSpread(spread: number): string {
   if (spread === 0) return "PK";
