@@ -401,52 +401,6 @@ export default function Sports() {
 
       {isAdmin && <UsagePanel />}
 
-      {/* FIFA World Cup 2026 banner — only show when games are actually
-          available in the live feed. */}
-      {!wcBannerDismissed && worldCupAvailable && (
-        <div className="relative overflow-hidden rounded-xl border border-amber-400/40 bg-gradient-to-r from-amber-500/20 via-yellow-500/15 to-amber-600/20 px-4 py-3 sm:px-5 sm:py-4">
-          <button
-            onClick={() => setWcBannerDismissed(true)}
-            className="absolute right-2 top-2 rounded-md p-1 text-amber-200/80 hover:bg-amber-500/10 hover:text-amber-100"
-            aria-label="Dismiss"
-          >
-            <X className="h-3.5 w-3.5" />
-          </button>
-          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
-            <div className="flex items-start sm:items-center gap-3">
-              <Globe2 className="h-6 w-6 shrink-0 text-amber-300" />
-              <div>
-                <div className="flex items-center gap-2 flex-wrap">
-                  <span className="text-sm font-extrabold text-amber-100">
-                    🌍 FIFA World Cup 2026 — LIVE NOW
-                  </span>
-                  <span className="inline-flex items-center gap-1 rounded-full bg-destructive/20 px-1.5 py-0.5 text-[9px] font-bold uppercase text-destructive">
-                    <span className="h-1.5 w-1.5 rounded-full bg-destructive animate-pulse" />
-                    Live
-                  </span>
-                </div>
-                <p className="text-[11px] text-amber-200/80">
-                  48 teams · Group Stage · Through June 27
-                </p>
-              </div>
-            </div>
-            <button
-              onClick={() => {
-                setActiveSport("soccer_fifa_world_cup");
-                if (!selectedSports.includes("soccer_fifa_world_cup")) {
-                  setSelectedSports([...selectedSports, "soccer_fifa_world_cup"]);
-                }
-                setCurrentSport("soccer_fifa_world_cup");
-                void loadGamesForSport("soccer_fifa_world_cup", true);
-              }}
-              className="inline-flex items-center gap-1.5 self-start sm:self-auto rounded-md bg-amber-500 px-3 py-1.5 text-xs font-bold text-amber-950 hover:bg-amber-400"
-            >
-              View World Cup Games →
-            </button>
-          </div>
-        </div>
-      )}
-
       {/* Sport selector */}
       <div className="flex gap-1 overflow-x-auto scrollbar-thin pb-1 sm:gap-1.5">
         {(() => {
