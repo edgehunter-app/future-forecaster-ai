@@ -10,6 +10,17 @@ const MULTI_WORD_NICKNAMES = [
   "Maple Leafs",
 ];
 
+/**
+ * Words that are never a usable standalone team name. College programs are
+ * full of them ("Colorado State", "Georgia Tech", "Texas A&M"), and reducing
+ * to the last word would show a meaningless "State" or "Tech".
+ */
+const NON_NICKNAME_WORDS = [
+  "state", "tech", "a&m", "university", "college", "st.", "st",
+  "southern", "northern", "central", "eastern", "western", "atlantic",
+  "international", "am",
+];
+
 /** Returns the team nickname (last word, or known multi-word nickname). */
 export function teamNickname(fullName: string): string {
   if (!fullName) return "";
@@ -22,8 +33,12 @@ export function teamNickname(fullName: string): string {
     if (fullName.endsWith(nick)) return nick;
   }
   const parts = fullName.trim().split(/\s+/);
-  return parts[parts.length - 1] || fullName;
+  const last = parts[parts.length - 1] || fullName;
+  // Keep the full name when the last word alone is not identifying.
+  if (NON_NICKNAME_WORDS.includes(last.toLowerCase())) return fullName.trim();
+  return last;
 }
+
 
 function formatSpread(n: number | null | undefined): string {
   if (n === null || n === undefined || !Number.isFinite(n)) return "";

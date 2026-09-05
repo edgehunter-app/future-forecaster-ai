@@ -55,6 +55,14 @@ const ODDS_API_GAME_SPORTS: Array<{ sport: string; markets: string }> = [
   { sport: "soccer_epl", markets: "h2h,spreads,totals" },
   { sport: "soccer_usa_mls", markets: "h2h,spreads,totals" },
 ];
+// ON-DEMAND ONLY: fetched exclusively when the client asks for that tab
+// (body.onDemandSport). College football has 60+ games on a Saturday but the
+// Odds API bills per request, not per game, so a CFB slate is still ONE
+// request — we simply keep it out of the default scan so a normal refresh
+// doesn't pay for it.
+const ODDS_API_ON_DEMAND_SPORTS: Record<string, { sport: string; markets: string }> = {
+  americanfootball_ncaaf: { sport: "americanfootball_ncaaf", markets: "h2h,spreads,totals" },
+};
 // The Odds API only carries major-winner outrights on the current plan —
 // no weekly PGA Tour or LIV feed. Real keys all use the `_winner` suffix.
 // We probe /sports first and only call the ones flagged active=true to
@@ -251,6 +259,9 @@ const SPORT_TO_SHORT: Record<string, (s: string) => boolean> = {
   icehockey_nhl:        (s) => s === "NHL",
   soccer_epl:           (s) => s === "EPL" || /premier league/i.test(s),
   soccer_usa_mls:       (s) => s === "MLS",
+  americanfootball_ncaaf: (s) =>
+    s === "NCAAF" || s === "NCAAFB" || s === "CFB" || s === "NCAA_FB"
+    || /college\s*football/i.test(s) || /ncaa.*f(oot)?b/i.test(s),
   soccer_fifa_world_cup: (s) =>
     s === "WC" || s === "WORLD_CUP" || /world\s*cup/i.test(s) || /fifa/i.test(s),
 };
@@ -302,10 +313,156 @@ const SPORT_KEY_TO_SHORT_CANDIDATES: Record<string, string[]> = {
   ],
 };
 
+// On-demand competition shorts: reachable via shortNamesFor(sportKey) when the
+// client explicitly requests that tab, but deliberately NOT part of the
+// default "fetch everything" list.
+const ON_DEMAND_SHORT_CANDIDATES: Record<string, string[]> = {
+  americanfootball_ncaaf: ["NCAAF", "NCAAFB", "CFB"],
+};
+
 function shortNamesFor(sportKey: string): string[] {
   if (SPORT_KEY_TO_SHORT_CANDIDATES[sportKey]) return SPORT_KEY_TO_SHORT_CANDIDATES[sportKey];
+  if (ON_DEMAND_SHORT_CANDIDATES[sportKey]) return ON_DEMAND_SHORT_CANDIDATES[sportKey];
   return SPORT_KEY_TO_SHORT[sportKey] ? [SPORT_KEY_TO_SHORT[sportKey]] : [];
 }
+
+// ============ College football team-name canonicalization ============
+// CFB naming is the messiest in sports: the same school appears as
+// "Ole Miss" / "Mississippi Rebels", "Miami (OH)" vs "Miami (FL)",
+// "NC State" vs "North Carolina". Loose substring matching across providers
+// caused real cross-merge bugs with the World Cup, so college games use an
+// explicit alias table plus a GUARDED prefix match — never blind substring.
+export const CFB_ALIASES: Record<string, string> = {
+  thecitadel: "citadel",
+  citadel: "citadel",
+  samhouston: "samhoustonstate",
+  samhoustonstate: "samhoustonstate",
+  houstonbaptist: "houstonchristian",
+  houstonchristian: "houstonchristian",
+  olemiss: "olemiss",
+  mississippi: "olemiss",
+  mississippirebels: "olemiss",
+  universityofmississippi: "olemiss",
+  mississippistate: "mississippistate",
+  mississippistatebulldogs: "mississippistate",
+  missstate: "mississippistate",
+  ncstate: "northcarolinastate",
+  northcarolinastate: "northcarolinastate",
+  ncstatewolfpack: "northcarolinastate",
+  unc: "northcarolina",
+  northcarolinatarheels: "northcarolina",
+  usc: "southerncalifornia",
+  southerncal: "southerncalifornia",
+  southerncalifornia: "southerncalifornia",
+  usctrojans: "southerncalifornia",
+  southcarolina: "southcarolina",
+  southcarolinagamecocks: "southcarolina",
+  lsu: "louisianastate",
+  louisianastate: "louisianastate",
+  lsutigers: "louisianastate",
+  ucf: "centralflorida",
+  centralflorida: "centralflorida",
+  usf: "southflorida",
+  southflorida: "southflorida",
+  fau: "floridaatlantic",
+  fiu: "floridainternational",
+  fsu: "floridastate",
+  floridastate: "floridastate",
+  smu: "southernmethodist",
+  tcu: "texaschristian",
+  byu: "brighamyoung",
+  utsa: "texassanantonio",
+  utep: "texaselpaso",
+  uab: "alabamabirmingham",
+  umass: "massachusetts",
+  uconn: "connecticut",
+  unlv: "nevadalasvegas",
+  pitt: "pittsburgh",
+  pittpanthers: "pittsburgh",
+  vatech: "virginiatech",
+  gatech: "georgiatech",
+  ulm: "louisianamonroe",
+  ull: "louisiana",
+  hawai: "hawaii",
+  sanjosestate: "sanjosestate",
+  appstate: "appalachianstate",
+  appalachianstate: "appalachianstate",
+};
+
+// Tokens that make a longer name a DIFFERENT school from its prefix.
+// "michigan" vs "michigan state", "florida" vs "florida atlantic", etc.
+// Tokens that mean "a DIFFERENT school", not a mascot. Bare "a"/"and" are
+// deliberately absent: they blocked legitimate mascots ("Aggies", "Aztecs"),
+// and "am" already covers the A&M schools.
+const CFB_QUALIFIERS = [
+  "state", "am", "tech", "atlantic", "international", "southern", "northern",
+  "central", "eastern", "western", "monroe", "lafayette", "birmingham",
+  "chattanooga", "charlotte", "elpaso", "sanantonio", "lasvegas", "christian",
+  "young", "methodist", "st",
+];
+
+const flatten = (s: any) =>
+  String(s ?? "")
+    .normalize("NFKD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase()
+    .replace(/[^a-z]/g, "");
+
+export function canonicalCollegeTeam(raw: any): string {
+  const lower = String(raw ?? "")
+    .normalize("NFKD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase();
+  // Miami is the classic trap — decide BEFORE punctuation is stripped.
+  if (/\bmiami\b/.test(lower) || /^miami/.test(lower)) {
+    if (/\b(oh|ohio)\b/.test(lower) || /redhawks/.test(lower)) return "miamiohio";
+    if (/\b(fl|florida)\b/.test(lower) || /hurricanes/.test(lower)) return "miamiflorida";
+    return "miamiflorida"; // bare "Miami" is the FBS ACC program
+  }
+  const flat = flatten(lower);
+  if (CFB_ALIASES[flat]) return CFB_ALIASES[flat];
+  // Provider names often append a mascot ("UCF Knights", "App State
+  // Mountaineers"). Match the LONGEST alias that prefixes the name, and only
+  // when what follows isn't a qualifier token (so "Mississippi State" can
+  // never resolve to Ole Miss via the shorter "mississippi" alias).
+  const keys = Object.keys(CFB_ALIASES).sort((a, b) => b.length - a.length);
+  for (const k of keys) {
+    if (k.length < 3 || !flat.startsWith(k)) continue;
+    const rest = flat.slice(k.length);
+    if (rest && CFB_QUALIFIERS.some((q) => rest.startsWith(q))) continue;
+    return CFB_ALIASES[k];
+  }
+  return flat;
+}
+
+// Exact canonical match, or a school-prefix match that is NOT separated by a
+// qualifier token (so "Alabama" == "Alabama Crimson Tide" but
+// "Michigan" != "Michigan State Spartans").
+export function cfbTeamsMatch(a: any, b: any): boolean {
+  const ca = canonicalCollegeTeam(a);
+  const cb = canonicalCollegeTeam(b);
+  if (!ca || !cb) return false;
+  if (ca === cb) return true;
+  const [short, long] = ca.length <= cb.length ? [ca, cb] : [cb, ca];
+  // 4 chars is the floor: real schools are this short ("Rice", "Duke", "Ohio",
+  // "Iowa", "Utah", "Navy"). The qualifier guard below is what keeps
+  // "Ohio" from swallowing "Ohio State".
+  if (short.length < 4 || !long.startsWith(short)) return false;
+  const rest = long.slice(short.length);
+  return !CFB_QUALIFIERS.some((q) => rest.startsWith(q));
+}
+
+export function isCollegeFootballGame(g: any): boolean {
+  const sk = String(g?.sport_key ?? "").toLowerCase();
+  const league = String(g?.league ?? "").toUpperCase();
+  const title = String(g?.sport_title ?? "").toUpperCase();
+  return sk === "americanfootball_ncaaf"
+    || sk.includes("ncaaf")
+    || league === "NCAAF" || league === "NCAAFB" || league === "CFB"
+    || title === "NCAAF" || title === "NCAAFB" || title === "CFB"
+    || /COLLEGE FOOTBALL/.test(title) || /COLLEGE FOOTBALL/.test(league);
+}
+
 
 function getServiceClient() {
   const url = Deno.env.get("SUPABASE_URL")!;
@@ -867,20 +1024,30 @@ async function fetchOddsApiSport(
   }
 }
 
-async function fetchOddsApiAll(client: any, forceRefresh = false): Promise<{ games: any[]; remaining: number | null }> {
+async function fetchOddsApiAll(
+  client: any,
+  forceRefresh = false,
+  onDemandSport: string | null = null,
+): Promise<{ games: any[]; remaining: number | null }> {
   // Throttle: run per-sport calls with limited concurrency + stagger so we
   // don't trip The Odds API's per-second/minute frequency limit (which
   // returns 429 EXCEEDED_FREQ_LIMIT on BOTH keys if we burst ~19 calls
   // at once). Retry-on-429-with-backoff lives inside oddsApiFetch.
   const activeGolfKeys = await getActiveGolfSports(forceRefresh);
   console.log("Fetching golf with keys:", JSON.stringify(activeGolfKeys));
+  const onDemand = onDemandSport ? ODDS_API_ON_DEMAND_SPORTS[onDemandSport] : null;
+  if (onDemandSport) {
+    console.log(`[odds-api] on-demand sport requested=${onDemandSport} matched=${onDemand ? onDemand.sport : "none"}`);
+  }
   const tasks: Array<() => Promise<{ games: any[]; remaining: number | null }>> = [
     ...ODDS_API_SOCCER_SPORTS.map((s) => () => fetchOddsApiSport(client, s, "h2h,spreads,totals", forceRefresh)),
     ...activeGolfKeys.map((s) => () => fetchOddsApiSport(client, s, "outrights", forceRefresh)),
     ...ODDS_API_MMA_SPORTS.map((s) => () => fetchOddsApiSport(client, s, "h2h", forceRefresh)),
     ...ODDS_API_TENNIS_SPORTS.map((s) => () => fetchOddsApiSport(client, s, "h2h", forceRefresh)),
     ...ODDS_API_GAME_SPORTS.map(({ sport, markets }) => () => fetchOddsApiSport(client, sport, markets, forceRefresh)),
+    ...(onDemand ? [() => fetchOddsApiSport(client, onDemand.sport, onDemand.markets, forceRefresh)] : []),
   ];
+
   const results = await runWithConcurrency(tasks, 3, 250);
   const games: any[] = [];
   let remaining: number | null = null;
@@ -1137,23 +1304,30 @@ Deno.serve(async (req) => {
     // Lazy per-sport fetch: /v1/competitions/{SHORT}/events for the requested
     // sport (or all known sports if none given), plus /v0/advantages overlay.
     const sportKey: string | null = body.sportKey ?? null;
+    // On-demand leagues (college football) are fetched ONLY when the client
+    // says that tab is active — never on a default all-sports refresh.
+    const onDemandSport: string | null = body.onDemandSport ?? sportKey ?? null;
     const shortsToFetch: string[] = sportKey
       ? shortNamesFor(sportKey)
       : [
           ...Object.values(SPORT_KEY_TO_SHORT),
           ...Object.values(SPORT_KEY_TO_SHORT_CANDIDATES).flat(),
+          ...(onDemandSport && ON_DEMAND_SHORT_CANDIDATES[onDemandSport]
+            ? ON_DEMAND_SHORT_CANDIDATES[onDemandSport]
+            : []),
         ];
 
     // Run Sportsbook API (primary) + The Odds API (secondary for WC/golf)
     // in parallel. Odds API failures must NOT block the primary response.
     const [advantages, oddsApiResult, ...perSport] = await Promise.all([
       getAdvantages(client),
-      fetchOddsApiAll(client, !!body.forceRefresh).catch((e) => {
+      fetchOddsApiAll(client, !!body.forceRefresh, onDemandSport).catch((e) => {
         console.error("[odds-api] fetchOddsApiAll failed:", e);
         return { games: [] as any[], remaining: null as number | null };
       }),
       ...shortsToFetch.map((s) => getCompetitionEvents(client, s).then((evs) => ({ short: s, evs }))),
     ]);
+
 
     // === DISCOVERY LOGGING ===
     // Surface every competition shortName/name the API currently has data for
@@ -1292,20 +1466,45 @@ Deno.serve(async (req) => {
       const gHome = norm(game?.home_team);
       const gAway = norm(game?.away_team);
       const gDay = dayKey(game?.commence_time);
+      const gIsCfb = isCollegeFootballGame(game);
       const idx = acc.findIndex((existing: any) => {
         const eHome = norm(existing?.home_team);
         const eAway = norm(existing?.away_team);
         const eDay = dayKey(existing?.commence_time);
         if (!eDay || !gDay || eDay !== gDay) return false;
+
+        const eIsCfb = isCollegeFootballGame(existing);
+        // College football: alias-aware, guarded matching ONLY. Never fall
+        // through to substring or kickoff-proximity logic — a Saturday slate
+        // has dozens of games at identical kickoff times, and Miami (OH) must
+        // never collapse into Miami (FL).
+        if (gIsCfb || eIsCfb) {
+          if (!(gIsCfb && eIsCfb)) return false;
+          const cfbStraight = cfbTeamsMatch(existing?.home_team, game?.home_team)
+            && cfbTeamsMatch(existing?.away_team, game?.away_team);
+          const cfbSwapped = cfbTeamsMatch(existing?.home_team, game?.away_team)
+            && cfbTeamsMatch(existing?.away_team, game?.home_team);
+          if (cfbStraight || cfbSwapped) {
+            console.log("[dedup] CFB match:", JSON.stringify({
+              existing: `${existing?.away_team} @ ${existing?.home_team} (${existing?.source})`,
+              incoming: `${game?.away_team} @ ${game?.home_team} (${game?.source})`,
+            }));
+            return true;
+          }
+          return false;
+        }
+
         // Match either orientation — sources sometimes swap home/away.
         const straight = teamsMatch(eHome, gHome) && teamsMatch(eAway, gAway);
         const swapped  = teamsMatch(eHome, gAway) && teamsMatch(eAway, gHome);
         if (straight || swapped) return true;
 
-        // Fallback: same World Cup league + near-identical kickoff across two
-        // providers. This catches source naming variants that normalization
-        // misses while avoiding cross-game merges from the same provider.
-        const proximityDuplicate = sameLeague(existing, game)
+        // Fallback: World Cup ONLY — same league + near-identical kickoff
+        // across two providers. This catches source naming variants that
+        // normalization misses while avoiding cross-game merges.
+        const proximityDuplicate = isWorldCupGame(existing)
+          && isWorldCupGame(game)
+          && sameLeague(existing, game)
           && existing?.source !== game?.source
           && timeDiffMs(existing, game) < 7_200_000;
         if (proximityDuplicate) {
@@ -1333,6 +1532,7 @@ Deno.serve(async (req) => {
         }
         return proximityDuplicate;
       });
+
       if (idx === -1) {
         acc.push(game);
         return acc;
@@ -1341,12 +1541,50 @@ Deno.serve(async (req) => {
       const existingBooks = existing?.bookmakers?.length ?? 0;
       const newBooks = game?.bookmakers?.length ?? 0;
       const base = newBooks > existingBooks ? game : existing;
+      const other = base === game ? existing : game;
+      // Union the bookmaker lists so a cross-provider duplicate keeps every
+      // price we saw (one book on the Sportsbook side, the rest from Odds API).
+      const seenBooks = new Set(
+        (base?.bookmakers ?? []).map((b: any) => String(b?.key ?? b?.name ?? "").toLowerCase()),
+      );
+      // The two providers spell teams differently ("Maryland" vs "Maryland
+      // Terrapins"). Clients map moneylines by exact outcome name, so rewrite
+      // the incoming book's outcome names onto the base game's spelling.
+      const relabel = (b: any) => {
+        const matches = (name: string, team: string) =>
+          norm(name) === norm(team)
+            || (isCollegeFootballGame(base) && cfbTeamsMatch(name, team))
+            || teamsMatch(norm(name), norm(team));
+        return {
+          ...b,
+          markets: (b?.markets ?? []).map((m: any) => ({
+            ...m,
+            outcomes: (m?.outcomes ?? []).map((o: any) => {
+              const n = String(o?.name ?? "");
+              if (matches(n, other?.home_team)) return { ...o, name: base.home_team };
+              if (matches(n, other?.away_team)) return { ...o, name: base.away_team };
+              return o;
+            }),
+          })),
+        };
+      };
+      const unionBooks = [
+        ...(base?.bookmakers ?? []),
+        ...(other?.bookmakers ?? [])
+          .filter((b: any) => {
+            const k = String(b?.key ?? b?.name ?? "").toLowerCase();
+            return k && !seenBooks.has(k);
+          })
+          .map(relabel),
+      ];
       acc[idx] = {
         ...base,
+        bookmakers: unionBooks,
         mispricings: (existing?.mispricings?.length ? existing.mispricings : game?.mispricings)
           ?? base.mispricings,
         crossMarket: existing?.crossMarket ?? game?.crossMarket ?? base.crossMarket,
       };
+
       return acc;
     }, [] as any[]);
     console.log(`[dedup] before=${rawMerged.length} after=${mergedGames.length} removed=${rawMerged.length - mergedGames.length}`);

@@ -41,6 +41,7 @@ export interface SportsMispricing {
 
 export const SPORTS = [
   { key: "americanfootball_nfl", label: "NFL", icon: "football" },
+  { key: "americanfootball_ncaaf", label: "🏈 CFB", icon: "football" },
   { key: "basketball_nba", label: "NBA", icon: "circle" },
   { key: "baseball_mlb", label: "MLB", icon: "circle" },
   { key: "icehockey_nhl", label: "NHL", icon: "circle" },
@@ -212,6 +213,9 @@ export async function fetchFullOdds(
       trigger,
       forceRefresh,
       sportKey: forceRefresh ? sportKey : undefined,
+      // On-demand leagues (college football) are only fetched when their tab
+      // is the active one — this tells the edge function which that is.
+      onDemandSport: sportKey,
     },
   });
   if (error) {

@@ -27,9 +27,14 @@ import { hasPropsSupport } from "@/lib/oddsApi";
 import type { GolfTournament, GolfLeaderboard, GolfLeaderboardRow } from "@/hooks/useGolfData";
 
 function displayTeamName(game: FullGame, side: "home" | "away"): string {
+  const full = side === "home" ? game.homeTeam : game.awayTeam;
+  // College football: show the school name in full. Nicknames are ambiguous
+  // across 130+ programs (multiple Tigers, Bulldogs and Wildcats), and
+  // last-word reduction produces useless labels like "State".
+  if (game.sport === "americanfootball_ncaaf") return full ?? "";
   const short = side === "home" ? game.homeTeamShort : game.awayTeamShort;
   if (short) return short;
-  return teamNickname(side === "home" ? game.homeTeam : game.awayTeam);
+  return teamNickname(full);
 }
 
 function displayLeague(game: FullGame): string {

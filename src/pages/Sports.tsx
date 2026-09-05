@@ -498,8 +498,9 @@ export default function Sports() {
         })().map((s) => {
           const active = activeSport === s.key;
           const count = counts[s.key] ?? 0;
-          const isLoaded = s.key === "golf"
-            ? loadedSports.has("golf") && count > 0
+          const isCFB = s.key === "americanfootball_ncaaf";
+          const isLoaded = s.key === "golf" || isCFB
+            ? loadedSports.has(s.key) && count > 0
             : s.key === "all" || loadedSports.has(s.key);
           const isWC = s.key === "soccer_fifa_world_cup";
           const isMMA = s.key === "mma_mixed_martial_arts";
@@ -526,11 +527,15 @@ export default function Sports() {
                 if (s.key !== "all") {
                   setCurrentSport(s.key);
                 }
-                if (s.key !== "all" && !isLoaded) {
+                if (s.key !== "all" && !isCFB && !isLoaded) {
                   void loadGamesForSport(s.key);
                 }
                 if (s.key === "soccer_fifa_world_cup") {
                   // Force fresh fetch for WC so pre-7-day-filter cache is bypassed.
+                  void loadGamesForSport(s.key, true);
+                }
+                if (isCFB && !isLoaded) {
+                  // College football is fetched on tab-select only (one request).
                   void loadGamesForSport(s.key, true);
                 }
               }}
