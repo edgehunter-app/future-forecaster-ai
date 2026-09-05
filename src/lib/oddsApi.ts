@@ -321,9 +321,9 @@ export async function fetchFullOdds(
       const h2h = b.markets?.find((m: any) => m.key === "h2h");
       const sp = b.markets?.find((m: any) => m.key === "spreads");
       const tot = b.markets?.find((m: any) => m.key === "totals");
-      const homeML = h2h?.outcomes?.find((o: any) => o.name === home)?.price ?? 0;
-      const awayML = h2h?.outcomes?.find((o: any) => o.name === away)?.price ?? 0;
-      const drawML = h2h?.outcomes?.find((o: any) => o.name === "Draw")?.price ?? 0;
+      const homeML = sanitizeOdds(h2h?.outcomes?.find((o: any) => o.name === home)?.price);
+      const awayML = sanitizeOdds(h2h?.outcomes?.find((o: any) => o.name === away)?.price);
+      const drawML = sanitizeOdds(h2h?.outcomes?.find((o: any) => o.name === "Draw")?.price);
       const homeSpOut = sp?.outcomes?.find((o: any) => o.name === home);
       const awaySpOut = sp?.outcomes?.find((o: any) => o.name === away);
       const overOut = tot?.outcomes?.find((o: any) => o.name === "Over");
@@ -337,39 +337,53 @@ export async function fetchFullOdds(
         awayMoneyline: awayML,
         drawMoneyline: drawML,
         homeSpread: homeSpOut?.point ?? 0,
-        spreadHomeOdds: homeSpOut?.price ?? 0,
-        spreadAwayOdds: awaySpOut?.price ?? 0,
+        spreadHomeOdds: sanitizeOdds(homeSpOut?.price),
+        spreadAwayOdds: sanitizeOdds(awaySpOut?.price),
         totalLine: overOut?.point ?? 0,
-        overOdds: overOut?.price ?? 0,
-        underOdds: underOut?.price ?? 0,
+        overOdds: sanitizeOdds(overOut?.price),
+        underOdds: sanitizeOdds(underOut?.price),
       };
     });
 
-    const homeBest = books.reduce(
-      (best, b) => (b.homeMoneyline > best.odds ? { odds: b.homeMoneyline, book: b.name } : best),
-      { odds: -99999, book: "" },
+    const homeBest = books
+      .filter((b) => isValidOdds(b.homeMoneyline))
+      .reduce(
+        (best, b) => (b.homeMoneyline > best.odds ? { odds: b.homeMoneyline, book: b.name } : best),
+        { odds: -Infinity, book: "" },
+      );
+    const awayBest = books
+      .filter((b) => isValidOdds(b.awayMoneyline))
+      .reduce(
+        (best, b) => (b.awayMoneyline > best.odds ? { odds: b.awayMoneyline, book: b.name } : best),
+        { odds: -Infinity, book: "" },
+      );
+    const bestHomeOdds = isValidOdds(homeBest.odds) ? homeBest.odds : 0;
+    const bestAwayOdds = isValidOdds(awayBest.odds) ? awayBest.odds : 0;
+
+    // Consensus only over books that actually posted a moneyline.
+    const mlBooks = books.filter(
+      (b) => isValidOdds(b.homeMoneyline) && isValidOdds(b.awayMoneyline),
     );
-    const awayBest = books.reduce(
-      (best, b) => (b.awayMoneyline > best.odds ? { odds: b.awayMoneyline, book: b.name } : best),
-      { odds: -99999, book: "" },
-    );
-    const homeImpliedRaw = books.length
-      ? books.reduce((s, b) => s + toImplied(b.homeMoneyline), 0) / books.length
-      : 0.5;
-    const awayImpliedRaw = books.length
-      ? books.reduce((s, b) => s + toImplied(b.awayMoneyline), 0) / books.length
-      : 0.5;
-    const consensus = removeVig(homeImpliedRaw, awayImpliedRaw);
+    const consensus = mlBooks.length
+      ? removeVig(
+          mlBooks.reduce((s, b) => s + toImplied(b.homeMoneyline), 0) / mlBooks.length,
+          mlBooks.reduce((s, b) => s + toImplied(b.awayMoneyline), 0) / mlBooks.length,
+        )
+      : { home: 0, away: 0 };
 
     // Vegas-only consensus, used as the reference for prediction-market gaps.
     const vegasBooks = books.filter(
-      (b) => b.category === "vegas" && (b.homeMoneyline !== 0 || b.awayMoneyline !== 0),
+      (b) =>
+        b.category === "vegas" &&
+        isValidOdds(b.homeMoneyline) &&
+        isValidOdds(b.awayMoneyline),
     );
     let vegasConsensus: FullGame["vegasConsensus"] = null;
     if (vegasBooks.length > 0) {
       const hRaw = vegasBooks.reduce((s, b) => s + toImplied(b.homeMoneyline), 0) / vegasBooks.length;
       const aRaw = vegasBooks.reduce((s, b) => s + toImplied(b.awayMoneyline), 0) / vegasBooks.length;
       const dv = removeVig(hRaw, aRaw);
+
       const impToAm = (p: number) =>
         p <= 0 || p >= 1 ? 0 : p >= 0.5 ? -Math.round((p / (1 - p)) * 100) : Math.round(((1 - p) / p) * 100);
       vegasConsensus = {
