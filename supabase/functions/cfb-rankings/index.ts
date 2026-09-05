@@ -4,8 +4,12 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 
-const ENDPOINT =
-  "https://site.api.espn.com/apis/site/v2/sports/football/college-football/rankings";
+const ENDPOINTS = [
+  "https://site.api.espn.com/apis/site/v2/sports/football/college-football/rankings",
+  "https://site.web.api.espn.com/apis/site/v2/sports/football/college-football/rankings",
+  "https://api.allorigins.win/raw?url=https%3A%2F%2Fsite.api.espn.com%2Fapis%2Fsite%2Fv2%2Fsports%2Ffootball%2Fcollege-football%2Frankings",
+  "https://api.allorigins.win/raw?url=https://site.api.espn.com/apis/site/v2/sports/football/college-football/rankings",
+];
 
 const norm = (s: string) =>
   s.toLowerCase().replace(/&/g, " and ").replace(/[^a-z0-9]+/g, " ").trim();
@@ -23,17 +27,32 @@ Deno.serve(async (req) => {
       });
     }
 
-    const res = await fetch(ENDPOINT, {
-      headers: {
-        "User-Agent":
-          "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0 Safari/537.36",
-        Accept: "application/json,text/plain,*/*",
-        "Accept-Language": "en-US,en;q=0.9",
-        Referer: "https://www.espn.com/",
-      },
-    });
-    if (!res.ok) throw new Error(`espn ${res.status}`);
-    const json = await res.json();
+    let json: any = null;
+    const attempts: string[] = [];
+    for (const url of ENDPOINTS) {
+      try {
+        const res = await fetch(url, {
+          headers: {
+            "User-Agent":
+              "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0 Safari/537.36",
+            Accept: "application/json,text/plain,*/*",
+            "Accept-Language": "en-US,en;q=0.9",
+            Referer: "https://www.espn.com/",
+          },
+        });
+        if (!res.ok) {
+          attempts.push(`${url} -> ${res.status}`);
+          continue;
+        }
+        json = await res.json();
+        if (Array.isArray(json?.rankings) && json.rankings.length) break;
+        attempts.push(`${url} -> no rankings`);
+        json = null;
+      } catch (e) {
+        attempts.push(`${url} -> ${String(e)}`);
+      }
+    }
+    if (!json) throw new Error(`all endpoints failed: ${attempts.join(" | ")}`);
     const polls: any[] = Array.isArray(json?.rankings) ? json.rankings : [];
 
     const pick = (re: RegExp, exclude?: RegExp) =>
