@@ -415,8 +415,14 @@ export async function fetchFullOdds(
         }
       : null;
 
+    // Headline moneyline: first book with a real two-way price (Vegas first),
+    // never an arbitrary book that only carries a placeholder.
+    const headlineBook =
+      vegasBooks[0] ?? mlBooks[0] ?? null;
+
     const commenceTime = g.commence_time ?? "";
     const isLive = commenceTime ? new Date(commenceTime).getTime() <= Date.now() : false;
+
 
     return {
       id: g.id,
