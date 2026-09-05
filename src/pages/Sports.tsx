@@ -420,7 +420,6 @@ export default function Sports() {
           const isLoaded = s.key === "golf" || isCFB
             ? loadedSports.has(s.key) && count > 0
             : s.key === "all" || loadedSports.has(s.key);
-          const isWC = s.key === "soccer_fifa_world_cup";
           const isMMA = s.key === "mma_mixed_martial_arts";
           const isTennis = s.key === "tennis";
           const mmaLiveTonight = isMMA && fullGames.some((g) => {
@@ -448,10 +447,6 @@ export default function Sports() {
                 if (s.key !== "all" && !isCFB && !isLoaded) {
                   void loadGamesForSport(s.key);
                 }
-                if (s.key === "soccer_fifa_world_cup") {
-                  // Force fresh fetch for WC so pre-7-day-filter cache is bypassed.
-                  void loadGamesForSport(s.key, true);
-                }
                 if (isCFB && !isLoaded) {
                   // College football is fetched on tab-select only (one request).
                   void loadGamesForSport(s.key, true);
@@ -460,31 +455,21 @@ export default function Sports() {
               disabled={loading && s.key !== activeSport}
               className={cn(
                 "text-keep shrink-0 inline-flex items-center gap-1.5 rounded-full border px-2 py-1 text-xs font-semibold transition-colors disabled:opacity-50 sm:px-3",
-                isWC
+                isMMA
                   ? active
-                    ? "border-amber-400 bg-amber-500 text-amber-950"
-                    : "border-amber-400/50 bg-amber-500/10 text-amber-200 hover:bg-amber-500/20"
-                  : isMMA
+                    ? "border-orange-400 bg-gradient-to-r from-red-500 to-orange-500 text-white"
+                    : "border-orange-400/50 bg-orange-500/10 text-orange-200 hover:bg-orange-500/20"
+                  : isTennis
                     ? active
-                      ? "border-orange-400 bg-gradient-to-r from-red-500 to-orange-500 text-white"
-                      : "border-orange-400/50 bg-orange-500/10 text-orange-200 hover:bg-orange-500/20"
-                    : isTennis
-                      ? active
-                        ? "border-green-400 bg-green-600 text-white"
-                        : "border-green-500/50 bg-green-500/10 text-green-300 hover:bg-green-500/20"
-                      : active
-                        ? "border-info bg-info text-white"
-                        : "border-border bg-card text-muted-foreground hover:text-foreground",
+                      ? "border-green-400 bg-green-600 text-white"
+                      : "border-green-500/50 bg-green-500/10 text-green-300 hover:bg-green-500/20"
+                    : active
+                      ? "border-info bg-info text-white"
+                      : "border-border bg-card text-muted-foreground hover:text-foreground",
               )}
             >
               <span>{isMMA ? "🥊 MMA" : s.label}</span>
               {count > 0 && <span className="opacity-70">{count}</span>}
-              {isWC && (
-                <span className="inline-flex items-center gap-0.5 rounded-full bg-destructive/20 px-1.5 py-px text-[8px] font-bold uppercase text-destructive">
-                  <span className="h-1 w-1 rounded-full bg-destructive animate-pulse" />
-                  Live
-                </span>
-              )}
               {mmaLiveTonight && (
                 <span className="inline-flex items-center gap-0.5 rounded-full bg-destructive/25 px-1.5 py-px text-[8px] font-bold uppercase text-destructive-foreground">
                   <span className="h-1 w-1 rounded-full bg-destructive animate-pulse" />
