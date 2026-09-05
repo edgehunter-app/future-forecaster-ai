@@ -314,16 +314,25 @@ export function cfbTeamMeta(teamName: string | undefined | null): CfbTeamMeta | 
   if (!teamName) return null;
   const key = norm(teamName);
   if (BY_KEY.has(key)) return BY_KEY.get(key)!;
-  // Provider may append or omit the mascot: match the longest known prefix.
+  // Provider may append or omit the mascot: match the longest known prefix, but
+  // only when the leftover words are actually that school's mascot. Without the
+  // check, "Houston Baptist Huskies" (FCS) would wrongly resolve to "Houston".
   let best: CfbTeamMeta | null = null;
   let bestLen = 0;
   for (const [k, meta] of BY_KEY) {
-    if (k.length > bestLen && (key.startsWith(`${k} `) || `${key} `.startsWith(`${k} `))) {
-      best = meta;
-      bestLen = k.length;
+    if (k.length <= bestLen) continue;
+    if (!(key === k || key.startsWith(`${k} `))) continue;
+    const remainder = key.slice(k.length).trim();
+    if (remainder) {
+      const mascot = norm(meta.nickname).split(" ").filter(Boolean);
+      const extra = remainder.split(" ").filter(Boolean);
+      if (!extra.every((w) => mascot.includes(w))) continue;
     }
+    best = meta;
+    bestLen = k.length;
   }
   return best;
+
 }
 
 export function cfbConference(teamName: string): string | null {
