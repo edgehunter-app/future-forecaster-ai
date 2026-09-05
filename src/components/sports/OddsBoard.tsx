@@ -10,6 +10,8 @@ import {
   formatSpread,
   formatGameTime,
   getBestMoneyline,
+  isValidOdds,
+  toImplied,
   findPropEdge,
   formatPropType,
   type FullGame,
@@ -132,7 +134,7 @@ const TABS: { key: Tab; label: string }[] = [
 ];
 
 function oddsClass(odds: number): string {
-  if (!odds) return "text-muted-foreground";
+  if (!isValidOdds(odds)) return "text-muted-foreground";
   return odds > 0 ? "text-success" : "text-destructive";
 }
 
@@ -227,16 +229,22 @@ function GameCard({ game, mispricings }: { game: FullGame; mispricings: SportsMi
       bookmakers.map((b) => b.key ?? b.name));
   }
   const booksWithOdds = bookmakers.filter(
-    (b) => b.homeMoneyline !== 0 || b.awayMoneyline !== 0,
+    (b) => isValidOdds(b.homeMoneyline) || isValidOdds(b.awayMoneyline),
   );
   const vegasBookCount = booksWithOdds.filter((b) => b.category !== "prediction_market").length;
   const hasBookmakers = booksWithOdds.length > 0;
-  const homeOdds = game.moneyline?.home ?? 0;
-  const awayOdds = game.moneyline?.away ?? 0;
+  const bestHome = hasBookmakers ? getBestMoneyline(booksWithOdds, "home") : { odds: 0, book: "" };
+  const bestAway = hasBookmakers ? getBestMoneyline(booksWithOdds, "away") : { odds: 0, book: "" };
+  // Show a real price if any book has one; otherwise 0 → renders "N/A".
+  const homeOdds = isValidOdds(game.moneyline?.home)
+    ? (game.moneyline!.home as number)
+    : isValidOdds(bestHome.odds) ? bestHome.odds : 0;
+  const awayOdds = isValidOdds(game.moneyline?.away)
+    ? (game.moneyline!.away as number)
+    : isValidOdds(bestAway.odds) ? bestAway.odds : 0;
   const homeImplied = game.moneyline?.homeImplied ?? 0;
   const awayImplied = game.moneyline?.awayImplied ?? 0;
-  const bestHome = hasBookmakers ? getBestMoneyline(booksWithOdds, "home") : { odds: homeOdds, book: "" };
-  const bestAway = hasBookmakers ? getBestMoneyline(booksWithOdds, "away") : { odds: awayOdds, book: "" };
+
   const { analyzeGame, clearResult, isAnalyzing, getResult, getError } = useGameAnalysis();
   const result = getResult(game.id);
   const analyzing = isAnalyzing(game.id);
@@ -253,16 +261,32 @@ function GameCard({ game, mispricings }: { game: FullGame; mispricings: SportsMi
   const predictionMarketGaps = bookmakers
     .filter((b) => b.category === "prediction_market" && game.vegasConsensus)
     .map((b) => {
-      const home = b.homeMoneyline - (game.vegasConsensus!.home || 0);
-      const away = b.awayMoneyline - (game.vegasConsensus!.away || 0);
-      const maxAbs = Math.abs(home) >= Math.abs(away) ? home : away;
-      return { book: b.name, side: Math.abs(home) >= Math.abs(away) ? "Home" : "Away", cents: maxAbs };
+      const vc = game.vegasConsensus!;
+      // Only compare sides where BOTH the prediction market and the Vegas
+      // consensus have a real price — never against a missing line.
+      const home = isValidOdds(b.homeMoneyline) && isValidOdds(vc.home)
+        ? b.homeMoneyline - vc.home : null;
+      const away = isValidOdds(b.awayMoneyline) && isValidOdds(vc.away)
+        ? b.awayMoneyline - vc.away : null;
+      if (home === null && away === null) return null;
+      const useHome = away === null || (home !== null && Math.abs(home) >= Math.abs(away));
+      return {
+        book: b.name,
+        side: useHome ? "Home" : "Away",
+        cents: (useHome ? home : away) as number,
+      };
     })
+    .filter((g): g is { book: string; side: string; cents: number } => g !== null)
     .filter((g) => Math.abs(g.cents) > 5)
     .sort((a, b) => Math.abs(b.cents) - Math.abs(a.cents));
   const topGap = predictionMarketGaps[0];
 
-  const linesPending = vegasBookCount < 2;
+  // Only "pending" when there is genuinely no live market data at all —
+  // a posted spread or total means lines are up.
+  const hasLiveMarkets =
+    game.spread !== null || game.total !== null ||
+    isValidOdds(game.moneyline?.home) || isValidOdds(game.moneyline?.away);
+  const linesPending = vegasBookCount < 2 && !hasLiveMarkets;
   const kalshiBook = bookmakers.find((b) => b.key === "kalshi");
   const vegasQuotaOut = game.vegasQuotaExhausted === true && vegasBookCount === 0;
 
@@ -319,7 +343,9 @@ function GameCard({ game, mispricings }: { game: FullGame; mispricings: SportsMi
             {formatOdds(awayOdds)}
           </div>
           <div className="text-[10px] font-mono text-muted-foreground">
-            {(awayImplied * 100).toFixed(0)}%
+            {isValidOdds(awayOdds)
+              ? `${(toImplied(awayOdds) * 100).toFixed(0)}%`
+              : awayImplied > 0 ? `${(awayImplied * 100).toFixed(0)}% est` : "—"}
           </div>
         </div>
         <div className="text-center">
@@ -337,7 +363,9 @@ function GameCard({ game, mispricings }: { game: FullGame; mispricings: SportsMi
             {formatOdds(homeOdds)}
           </div>
           <div className="text-[10px] font-mono text-muted-foreground">
-            {(homeImplied * 100).toFixed(0)}%
+            {isValidOdds(homeOdds)
+              ? `${(toImplied(homeOdds) * 100).toFixed(0)}%`
+              : homeImplied > 0 ? `${(homeImplied * 100).toFixed(0)}% est` : "—"}
           </div>
         </div>
       </div>
@@ -397,7 +425,7 @@ function GameCard({ game, mispricings }: { game: FullGame; mispricings: SportsMi
               ? "Our odds provider hit its quota. We're on it — refresh later or check other sports."
               : "Vegas books typically post 24–36h before first pitch."}
           </p>
-          {kalshiBook && (kalshiBook.homeMoneyline !== 0 || kalshiBook.awayMoneyline !== 0) && (
+          {kalshiBook && (isValidOdds(kalshiBook.homeMoneyline) || isValidOdds(kalshiBook.awayMoneyline)) && (
             <div className="mt-1.5 rounded-md border border-info/30 bg-info/5 px-2 py-1.5 space-y-0.5">
               <div className="flex items-center justify-between gap-2">
                 <span className="text-[10px] font-mono text-foreground">
@@ -1050,24 +1078,27 @@ function BookTable({
 
   // Best Over/Under across vegas books only (highest American odds wins).
   const bestOver = vegasBooks
-    .filter((b) => b.totalLine && Number.isFinite(b.overOdds) && b.overOdds !== 0)
+    .filter((b) => b.totalLine && isValidOdds(b.overOdds))
     .reduce(
-      (a, b) => (b.overOdds > a.odds ? { odds: b.overOdds, book: b.name } : a),
-      { odds: -99999, book: "" },
+      (a, b) => (!a.book || b.overOdds > a.odds ? { odds: b.overOdds, book: b.name } : a),
+      { odds: 0, book: "" },
     );
   const bestUnder = vegasBooks
-    .filter((b) => b.totalLine && Number.isFinite(b.underOdds) && b.underOdds !== 0)
+    .filter((b) => b.totalLine && isValidOdds(b.underOdds))
     .reduce(
-      (a, b) => (b.underOdds > a.odds ? { odds: b.underOdds, book: b.name } : a),
-      { odds: -99999, book: "" },
+      (a, b) => (!a.book || b.underOdds > a.odds ? { odds: b.underOdds, book: b.name } : a),
+      { odds: 0, book: "" },
     );
 
   const gapFor = (book: FullBookmakerLine): { value: number; side: string } | null => {
     if (!vegasConsensus) return null;
-    const home = book.homeMoneyline - vegasConsensus.home;
-    const away = book.awayMoneyline - vegasConsensus.away;
-    const useHome = Math.abs(home) >= Math.abs(away);
-    return { value: useHome ? home : away, side: useHome ? "H" : "A" };
+    const home = isValidOdds(book.homeMoneyline) && isValidOdds(vegasConsensus.home)
+      ? book.homeMoneyline - vegasConsensus.home : null;
+    const away = isValidOdds(book.awayMoneyline) && isValidOdds(vegasConsensus.away)
+      ? book.awayMoneyline - vegasConsensus.away : null;
+    if (home === null && away === null) return null;
+    const useHome = away === null || (home !== null && Math.abs(home) >= Math.abs(away));
+    return { value: (useHome ? home : away) as number, side: useHome ? "H" : "A" };
   };
 
   const renderRow = (b: FullBookmakerLine) => {

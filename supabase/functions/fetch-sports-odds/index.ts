@@ -287,9 +287,16 @@ function toSportKey(shortName: string): string {
     ?? shortName.toLowerCase().replace(/\s+/g, "_");
 }
 
-const toAmerican = (p: number): number =>
-  p >= 2 ? Math.round((p - 1) * 100) : Math.round(-100 / (p - 1));
+// Anything beyond this magnitude is a provider placeholder, not a real price.
+const MAX_SANE_AMERICAN = 10000;
+const toAmerican = (p: number): number => {
+  if (typeof p !== "number" || !Number.isFinite(p) || p <= 1.0001) return 0;
+  const american = p >= 2 ? Math.round((p - 1) * 100) : Math.round(-100 / (p - 1));
+  if (!Number.isFinite(american) || Math.abs(american) > MAX_SANE_AMERICAN) return 0;
+  return american;
+};
 const toImplied = (p: number): number => (p > 0 ? 1 / p : 0);
+
 
 // ---------------- module caches ----------------
 let advantagesCache: { expires: number; payload: any[] } | null = null;
