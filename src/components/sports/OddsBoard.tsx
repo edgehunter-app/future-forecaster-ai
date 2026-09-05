@@ -243,17 +243,23 @@ function GameCard({ game, mispricings }: { game: FullGame; mispricings: SportsMi
   const booksWithOdds = bookmakers.filter(
     (b) => isValidOdds(b.homeMoneyline) || isValidOdds(b.awayMoneyline),
   );
-  const vegasBookCount = booksWithOdds.filter((b) => b.category !== "prediction_market").length;
-  const hasBookmakers = booksWithOdds.length > 0;
-  const bestHome = hasBookmakers ? getBestMoneyline(booksWithOdds, "home") : { odds: 0, book: "" };
-  const bestAway = hasBookmakers ? getBestMoneyline(booksWithOdds, "away") : { odds: 0, book: "" };
-  // Show a real price if any book has one; otherwise 0 → renders "N/A".
-  const homeOdds = isValidOdds(game.moneyline?.home)
-    ? (game.moneyline!.home as number)
-    : isValidOdds(bestHome.odds) ? bestHome.odds : 0;
-  const awayOdds = isValidOdds(game.moneyline?.away)
-    ? (game.moneyline!.away as number)
-    : isValidOdds(bestAway.odds) ? bestAway.odds : 0;
+  // Moneyline display uses traditional sportsbooks only. Prediction markets
+  // (Kalshi / Polymarket) stay confined to the Gap callout below.
+  const sportsbooksWithOdds = booksWithOdds.filter(
+    (b) => b.category !== "prediction_market",
+  );
+  const vegasBookCount = sportsbooksWithOdds.length;
+  const hasBookmakers = sportsbooksWithOdds.length > 0;
+  const bestHome = hasBookmakers ? getBestMoneyline(sportsbooksWithOdds, "home") : { odds: 0, book: "" };
+  const bestAway = hasBookmakers ? getBestMoneyline(sportsbooksWithOdds, "away") : { odds: 0, book: "" };
+  // Show a real sportsbook price if one exists; otherwise 0 → renders "N/A".
+  const homeOdds = isValidOdds(bestHome.odds)
+    ? bestHome.odds
+    : isValidOdds(game.moneyline?.home) ? (game.moneyline!.home as number) : 0;
+  const awayOdds = isValidOdds(bestAway.odds)
+    ? bestAway.odds
+    : isValidOdds(game.moneyline?.away) ? (game.moneyline!.away as number) : 0;
+
   const homeImplied = game.moneyline?.homeImplied ?? 0;
   const awayImplied = game.moneyline?.awayImplied ?? 0;
 
