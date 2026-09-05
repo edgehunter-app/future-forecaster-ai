@@ -53,11 +53,33 @@ export const SPORTS = [
   { key: "tennis", label: "🎾 Tennis", icon: "circle" },
 ] as const;
 
+/**
+ * Sanity bound for American moneyline/spread/total prices. Anything beyond
+ * this is a provider sentinel/placeholder (e.g. -100000, +99900), not a real
+ * quotable line. 0 also means "no line".
+ */
+export const MAX_SANE_AMERICAN = 10000;
+
+export function isValidOdds(odds: unknown): odds is number {
+  return (
+    typeof odds === "number" &&
+    Number.isFinite(odds) &&
+    odds !== 0 &&
+    Math.abs(odds) <= MAX_SANE_AMERICAN
+  );
+}
+
+/** Coerce a possibly-sentinel price to a real line or 0 (= unavailable). */
+export function sanitizeOdds(odds: unknown): number {
+  return isValidOdds(odds) ? odds : 0;
+}
+
 export function toImplied(odds: number): number {
-  if (odds === 0) return 0.5;
+  if (!isValidOdds(odds)) return 0.5;
   if (odds > 0) return 100 / (odds + 100);
   return Math.abs(odds) / (Math.abs(odds) + 100);
 }
+
 
 export function removeVig(home: number, away: number): { home: number; away: number } {
   const total = home + away;
