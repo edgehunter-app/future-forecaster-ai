@@ -649,12 +649,15 @@ export function getBestMoneyline(
 ): { odds: number; book: string } {
   let best = { odds: 0, book: "" };
   for (const b of bookmakers) {
+    // Sportsbooks only — prediction-market quotes never fill a moneyline.
+    if (b.category === "prediction_market") continue;
     const odds = side === "home" ? b.homeMoneyline : b.awayMoneyline;
     if (!isValidOdds(odds)) continue;
     if (!best.book || odds > best.odds) best = { odds, book: b.name };
   }
   return best;
 }
+
 
 
 // ============= Player Props =============
