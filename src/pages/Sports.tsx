@@ -242,17 +242,6 @@ export default function Sports() {
           const lg = (g.league ?? "").toLowerCase();
           return sp.startsWith("golf") || lg.includes("golf");
         }).length;
-      } else if (s.key === "soccer_fifa_world_cup") {
-        out[s.key] = fullGames.filter((g) => {
-          const sp = (g.sport ?? "").toLowerCase();
-          const lg = (g.league ?? "").toLowerCase();
-          const spRaw = g.sport ?? "";
-          const lgRaw = g.league ?? "";
-          return sp.includes("world") || sp.includes("fifa")
-            || lg.includes("world") || lg.includes("fifa")
-            || spRaw.toUpperCase() === "FIFA_WC"
-            || lgRaw.toUpperCase() === "FIFA_WC";
-        }).length;
       } else if (s.key === "tennis") {
         out[s.key] = fullGames.filter((g) => {
           const sp = (g.sport ?? "").toLowerCase();
