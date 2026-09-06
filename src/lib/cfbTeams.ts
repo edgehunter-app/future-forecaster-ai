@@ -298,6 +298,9 @@ const norm = (s: string) =>
   s
     .toLowerCase()
     .replace(/&/g, " and ")
+    // Drop apostrophes without leaving a word break: "Hawai'i" -> "hawaii",
+    // so it matches the provider's "Hawaii".
+    .replace(/['’`]/g, "")
     .replace(/[^a-z0-9]+/g, " ")
     .trim();
 

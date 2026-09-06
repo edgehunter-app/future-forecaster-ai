@@ -268,6 +268,12 @@ export default function Sports() {
     else if (effectiveView === "fbs") list = list.filter((t) => t.bothFbs);
     else if (effectiveView === "fcs") list = list.filter((t) => t.hasFcs);
     if (cfbConference) list = list.filter((t) => t.conferences.includes(cfbConference));
+    // Never show an empty board while this week's games exist: an unmatched
+    // school name (or a slate with no ranked/FBS-vs-FBS matchup) would
+    // otherwise hide every game behind the default filter.
+    if (list.length === 0 && !cfbConference && cfbTagged.length > 0) {
+      return cfbTagged.map((t) => t.game);
+    }
     return list.map((t) => t.game);
   }, [isCfbTab, filteredGames, cfbTagged, cfbView, cfbConference]);
 

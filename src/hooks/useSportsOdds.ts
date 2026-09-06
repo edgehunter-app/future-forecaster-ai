@@ -173,21 +173,24 @@ export function useSportsOdds(polymarkets: Market[]) {
             || b.homeSpread !== 0 || b.totalLine !== 0,
         );
         if (!hasAnyCfbLine) return false;
-        // Current college football week only: Thursday through Monday.
-        // The provider doesn't tag week numbers, so compute from today's
-        // date. On Tue/Wed the "current week" is the upcoming Thu–Mon.
+        // Current college football week only: Thursday through Monday, in the
+        // viewer's local time. The provider doesn't tag week numbers, so it is
+        // computed from today's date. On Tue/Wed the "current week" is the
+        // upcoming Thu–Mon.
         const day = now.getDay(); // 0=Sun … 6=Sat
-        // Days until the Thursday that starts this CFB week.
-        // Thu(4) Fri(5) Sat(6) Sun(0) Mon(1) -> this week's Thu already started/now
-        // Tue(2) Wed(3) -> upcoming Thursday
-        const daysToThursday = [3, 2, 2, 1, 0, -1, -2][day];
+        // Offset (in days) from today back/forward to the Thursday that starts
+        // this CFB week:
+        //   Sun(0) -3, Mon(1) -4  -> the Thursday just gone (week in progress)
+        //   Tue(2) +2, Wed(3) +1  -> the upcoming Thursday
+        //   Thu(4)  0, Fri(5) -1, Sat(6) -2
+        const daysToThursday = [-3, -4, 2, 1, 0, -1, -2][day];
         const weekStart = new Date(now);
         weekStart.setDate(now.getDate() + daysToThursday);
         weekStart.setHours(0, 0, 0, 0);
         const weekEnd = new Date(weekStart);
-        weekEnd.setDate(weekStart.getDate() + 5); // Monday 23:59:59
+        weekEnd.setDate(weekStart.getDate() + 4); // Monday
         weekEnd.setHours(23, 59, 59, 999);
-        return gameTime <= weekEnd;
+        return gameTime >= weekStart && gameTime <= weekEnd;
       }
 
 
