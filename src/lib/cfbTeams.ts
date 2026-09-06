@@ -297,6 +297,9 @@ export const CFB_CONFERENCES_FBS = [
 const norm = (s: string) =>
   s
     .toLowerCase()
+    // Strip diacritics: "José" -> "jose" (provider sends "San Jose State").
+    .normalize("NFD")
+    .replace(/[̀-ͯ]/g, "")
     .replace(/&/g, " and ")
     // Drop apostrophes without leaving a word break: "Hawai'i" -> "hawaii",
     // so it matches the provider's "Hawaii".
