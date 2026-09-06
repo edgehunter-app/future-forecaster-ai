@@ -11,8 +11,16 @@ const ENDPOINTS = [
   "https://api.allorigins.win/raw?url=https://site.api.espn.com/apis/site/v2/sports/football/college-football/rankings",
 ];
 
+// Keep in sync with the norm in src/lib/cfbTeams.ts / src/hooks/useCfbRankings.ts.
 const norm = (s: string) =>
-  s.toLowerCase().replace(/&/g, " and ").replace(/[^a-z0-9]+/g, " ").trim();
+  s
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/[̀-ͯ]/g, "")
+    .replace(/&/g, " and ")
+    .replace(/['’`]/g, "")
+    .replace(/[^a-z0-9]+/g, " ")
+    .trim();
 
 let cache: { at: number; body: unknown } | null = null;
 const TTL_MS = 6 * 60 * 60 * 1000;
