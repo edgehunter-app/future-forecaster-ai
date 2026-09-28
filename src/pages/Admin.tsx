@@ -190,7 +190,7 @@ export default function Admin() {
     if (!email) return;
     setGranting(true);
     try {
-      const { data, error } = await supabase.rpc("grant_admin_by_email", { _email: email });
+      const { data, error } = await supabase.functions.invoke("admin-grant", { body: { action: "admin", email } });
       if (error) throw error;
       const result = data as { ok: boolean; error?: string };
       if (result?.ok) {
@@ -222,7 +222,7 @@ export default function Admin() {
     const results: Array<{ email: string; ok: boolean; already?: boolean; error?: string }> = [];
     for (const email of emails) {
       try {
-        const { data, error } = await supabase.rpc("grant_beta_tester_by_email", { _email: email });
+        const { data, error } = await supabase.functions.invoke("admin-grant", { body: { action: "beta", email } });
         if (error) throw error;
         const r = data as { ok: boolean; email: string; already?: boolean; error?: string };
         results.push({ email, ok: r.ok, already: r.already, error: r.error });
