@@ -83,16 +83,19 @@ export type Database = {
         Row: {
           created_at: string
           email: string
+          expires_at: string | null
           note: string | null
         }
         Insert: {
           created_at?: string
           email: string
+          expires_at?: string | null
           note?: string | null
         }
         Update: {
           created_at?: string
           email?: string
+          expires_at?: string | null
           note?: string | null
         }
         Relationships: []
@@ -785,6 +788,7 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      expire_beta_testers: { Args: never; Returns: number }
       grant_admin_by_email: { Args: { _email: string }; Returns: Json }
       grant_beta_tester_by_email: { Args: { _email: string }; Returns: Json }
       has_role: {
