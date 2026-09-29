@@ -18,6 +18,8 @@ interface PickRow {
   payout_flat_100: number | null;
   clv: number | null;
   closing_odds: number | null;
+  origin: string;
+  pick_rank: number | null;
 }
 
 const RANGES = [
@@ -27,6 +29,13 @@ const RANGES = [
   { label: "All", days: 0 },
 ];
 const TIERS = ["all", "high", "medium", "low"];
+const ORIGINS = [
+  { value: "all", label: "All sources" },
+  { value: "sports_analysis", label: "Game analysis" },
+  { value: "best_bet_of_day", label: "Best Bet Today" },
+  { value: "top5", label: "Top 5 Bets" },
+  { value: "wallet_auto", label: "Wallet signals" },
+];
 
 /** Wilson score interval half-width for a win rate — tells us when the sample is big enough. */
 function wilsonHalfWidth(wins: number, n: number): number {
@@ -55,12 +64,13 @@ export default function PickPerformancePanel() {
   const [rangeDays, setRangeDays] = useState(30);
   const [tier, setTier] = useState("all");
   const [sport, setSport] = useState("all");
+  const [origin, setOrigin] = useState("all");
 
   const load = async () => {
     setLoading(true);
     const { data, error } = await supabase
       .from("pick_log")
-      .select("id,picked_at,sport_key,league,bet_type,selection,odds_at_pick,confidence,confidence_tier,result,payout_flat_100,clv,closing_odds")
+      .select("id,picked_at,sport_key,league,bet_type,selection,odds_at_pick,confidence,confidence_tier,result,payout_flat_100,clv,closing_odds,origin,pick_rank")
       .order("picked_at", { ascending: false })
       .limit(2000);
     if (error) toast.error(error.message);
@@ -96,9 +106,10 @@ export default function PickPerformancePanel() {
       if (cutoff && new Date(r.picked_at).getTime() < cutoff) return false;
       if (tier !== "all" && r.confidence_tier !== tier) return false;
       if (sport !== "all" && r.sport_key !== sport) return false;
+      if (origin !== "all" && r.origin !== origin) return false;
       return true;
     });
-  }, [rows, rangeDays, tier, sport]);
+  }, [rows, rangeDays, tier, sport, origin]);
 
   const graded = filtered.filter((r) => r.result === "win" || r.result === "loss" || r.result === "push");
   const decided = graded.filter((r) => r.result !== "push");
@@ -167,6 +178,16 @@ export default function PickPerformancePanel() {
         >
           {sports.map((s) => (
             <option key={s} value={s}>{s === "all" ? "All sports" : s}</option>
+          ))}
+        </select>
+        <select
+          value={origin}
+          onChange={(e) => setOrigin(e.target.value)}
+          aria-label="Pick source"
+          className="rounded-md border border-border bg-background px-2 py-1 text-[11px] text-foreground"
+        >
+          {ORIGINS.map((o) => (
+            <option key={o.value} value={o.value}>{o.label}</option>
           ))}
         </select>
       </div>
