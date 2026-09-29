@@ -1,10 +1,17 @@
-import { Flame, Loader2 } from "lucide-react";
+import { Flame, Loader2, Search } from "lucide-react";
 import type { FullGame } from "@/lib/oddsApi";
 import { useSportTop5 } from "@/hooks/useSportTop5";
 
 function fmtOdds(n?: number | null) {
   if (n == null || !Number.isFinite(n) || n === 0) return "N/A";
   return n > 0 ? `+${n}` : `${n}`;
+}
+function ago(d: Date) {
+  const m = Math.max(0, Math.round((Date.now() - d.getTime()) / 60000));
+  if (m < 1) return "just now";
+  if (m < 60) return `${m}m ago`;
+  const h = Math.round(m / 60);
+  return `${h}h ago`;
 }
 function fmtTime(iso: string) {
   try {
@@ -24,19 +31,23 @@ interface Props {
 export default function SportTop5Card({ sportKey, sportLabel, games, golfTournamentName }: Props) {
   const t = useSportTop5(sportKey, games, golfTournamentName);
   const isGolf = sportKey === "golf";
+  const when = sportKey === "americanfootball_ncaaf" ? "this week's" : "today's";
+  const whenTitle = sportKey === "americanfootball_ncaaf" ? "This Week" : "Today";
 
   let body: React.ReactNode;
   if (t.loading) {
     body = (
       <div className="flex items-center gap-2 py-3 text-xs text-muted-foreground">
         <Loader2 className="h-3.5 w-3.5 animate-spin" />
-        Scoring today's {sportLabel} games… {t.progress.total ? `${t.progress.done}/${t.progress.total}` : ""}
+        Scoring {when} {sportLabel} games… {t.progress.total ? `${t.progress.done}/${t.progress.total}` : ""}
       </div>
     );
   } else if (t.error) {
     body = <div className="py-3 text-xs text-destructive">Couldn't build today's Top 5. Try again later.</div>;
+  } else if (!t.hasResult && t.hasGamesToday) {
+    body = <div className="py-3 text-xs text-muted-foreground">Tap "Scan for Top 5" to score {when} {sportLabel} games.</div>;
   } else if (!t.hasResult && !t.hasGamesToday) {
-    body = <div className="py-3 text-xs text-muted-foreground">No {sportLabel} games today.</div>;
+    body = <div className="py-3 text-xs text-muted-foreground">No {sportLabel} games {whenTitle === "Today" ? "today" : "this week"}.</div>;
   } else if (isGolf && t.golf) {
     body = (
       <ol className="divide-y divide-border/60">
@@ -91,20 +102,28 @@ export default function SportTop5Card({ sportKey, sportLabel, games, golfTournam
       </ol>
     );
   } else {
-    body = <div className="py-3 text-xs text-muted-foreground">No bets with a real edge in today's {sportLabel} games.</div>;
+    body = <div className="py-3 text-xs text-muted-foreground">No bets with a real edge in {when} {sportLabel} games.</div>;
   }
 
   return (
     <section className="rounded-xl border-2 border-warning/40 bg-gradient-to-br from-warning/10 via-card to-purple/5 p-4 shadow-lg">
       <div className="mb-1 flex items-center justify-between">
         <h2 className="flex items-center gap-1.5 text-sm font-extrabold uppercase tracking-wide text-foreground">
-          <Flame className="h-4 w-4 text-warning" /> Top 5 {sportLabel} Bets Today
+          <Flame className="h-4 w-4 text-warning" /> Top 5 {sportLabel} Bets {whenTitle}
         </h2>
-        {isGolf && t.golf ? (
-          <span className="text-[11px] text-muted-foreground">{t.golf.confidence}% conf</span>
-        ) : t.analyzed > 0 ? (
-          <span className="text-[11px] text-muted-foreground">{t.analyzed} games scored</span>
-        ) : null}
+        <div className="flex items-center gap-2">
+          {t.lastScannedAt && (
+            <span className="text-[11px] text-muted-foreground">Last scanned: {ago(t.lastScannedAt)}</span>
+          )}
+          <button
+            onClick={t.scan}
+            disabled={t.loading || !t.hasGamesToday}
+            className="inline-flex items-center gap-1 rounded-md border border-warning/50 bg-warning/15 px-2.5 py-1 text-[11px] font-bold text-warning hover:bg-warning/25 disabled:opacity-50"
+          >
+            {t.loading ? <Loader2 className="h-3 w-3 animate-spin" /> : <Search className="h-3 w-3" />}
+            Scan for Top 5
+          </button>
+        </div>
       </div>
       {body}
     </section>

@@ -123,6 +123,10 @@ interface Props {
   mispricings?: SportsMispricing[];
   onRefresh?: () => void;
   golfData?: GolfDataProps;
+  /** Optional grouped layout for the Games tab (e.g. CFB Top 25 / by day). */
+  sections?: { title: string; subtitle?: string; games: FullGame[] }[];
+  emptyTitle?: string;
+  emptyHint?: string;
 }
 
 type Tab = "games" | "best" | "spreads" | "totals" | "props";
@@ -140,7 +144,7 @@ function oddsClass(odds: number): string {
   return odds > 0 ? "text-success" : "text-destructive";
 }
 
-export default function OddsBoard({ games, loading, mispricings = [], onRefresh, golfData }: Props) {
+export default function OddsBoard({ games, loading, mispricings = [], onRefresh, golfData, sections, emptyTitle, emptyHint }: Props) {
   const [tab, setTab] = useState<Tab>("games");
 
   if (loading && games.length === 0) {
@@ -156,10 +160,9 @@ export default function OddsBoard({ games, loading, mispricings = [], onRefresh,
   if (games.length === 0) {
     return (
       <div className="rounded-lg border border-dashed border-border bg-card/40 p-8 text-center space-y-3">
-        <p className="text-sm font-semibold text-foreground">No games today</p>
+        <p className="text-sm font-semibold text-foreground">{emptyTitle ?? "No games today"}</p>
         <p className="text-sm text-muted-foreground">
-          Try the MMA tab — those slates run up to 7 days out. Otherwise check
-          back later today for tonight's odds.
+          {emptyHint ?? "Try the MMA tab — those slates run up to 7 days out. Otherwise check back later today for tonight's odds."}
         </p>
         {onRefresh && (
           <button
@@ -193,7 +196,25 @@ export default function OddsBoard({ games, loading, mispricings = [], onRefresh,
         ))}
       </div>
 
-      {tab === "games" && (
+      {tab === "games" && sections && (
+        <div className="space-y-6">
+          {sections.filter((sec) => sec.games.length > 0).map((sec) => (
+            <section key={sec.title} className="space-y-2">
+              <div className="flex items-baseline justify-between border-b border-border pb-1">
+                <h3 className="text-sm font-extrabold uppercase tracking-wide text-foreground">{sec.title}</h3>
+                <span className="text-[11px] text-muted-foreground">
+                  {sec.subtitle ?? `${sec.games.length} game${sec.games.length === 1 ? "" : "s"}`}
+                </span>
+              </div>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {sec.games.map((g) => <GameCard key={g.id} game={g} mispricings={mispricings} />)}
+              </div>
+            </section>
+          ))}
+        </div>
+      )}
+
+      {tab === "games" && !sections && (
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           {(() => {
             if (import.meta.env.DEV) {
