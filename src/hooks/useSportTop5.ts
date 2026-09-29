@@ -161,6 +161,33 @@ export function useSportTop5(sportKey: string, games: FullGame[], golfTournament
             analyzed: 1,
             at: new Date().toISOString(),
           };
+          const { data: au } = await supabase.auth.getUser();
+          if (au.user && picks.length) {
+            void supabase.from("pick_log").insert(
+              picks.map((p, i) => ({
+                user_id: au.user!.id,
+                origin: "top5",
+                pick_rank: i + 1,
+                event_key: `golf:${tournament}`,
+                sport_key: sportKey,
+                league: "Golf",
+                event_name: tournament,
+                home_team: "",
+                away_team: "",
+                commence_time: null,
+                bet_type: "outright",
+                selection: p.player,
+                selection_side: "OUTRIGHT",
+                odds_at_pick: Number.isFinite(Number(p.odds)) ? Math.round(Number(p.odds)) : null,
+                book_at_pick: p.book ?? "",
+                confidence: Math.round(g.confidence ?? 0),
+                confidence_tier: (g.confidence ?? 0) >= 70 ? "high" : (g.confidence ?? 0) >= 55 ? "medium" : "low",
+                edge: g.edge ?? null,
+                model: "claude",
+                grade_notes: "golf outright — not auto-graded",
+              })),
+            ).then(({ error }) => error && console.warn("[top5] golf log failed", error.message));
+          }
           setProgress({ done: 1, total: 1 });
         } else {
           setProgress({ done: 0, total: candidates.length });
