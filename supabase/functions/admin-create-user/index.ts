@@ -17,14 +17,7 @@ Deno.serve(async (req) => {
   const { data: role } = await admin.from("user_roles").select("role").eq("user_id", user.id).eq("role", "admin").maybeSingle();
   if (!role) return json({ error: "Admin only" }, 403);
 
-  const body = await req.json();
-  const { email, password } = body;
-  // TEMP test hook: recovery link for throwaway test accounts only
-  if (body.action === "recovery_link" && String(email).endsWith("@edgehunter-test.dev")) {
-    const { data, error } = await admin.auth.admin.generateLink({ type: "recovery", email, options: { redirectTo: body.redirectTo } });
-    if (error) return json({ error: error.message }, 400);
-    return json({ link: data.properties.action_link });
-  }
+  const { email, password } = await req.json();
   if (!email || !password || String(password).length < 8) return json({ error: "email and password (8+) required" }, 400);
 
   const { data, error } = await admin.auth.admin.createUser({ email, password, email_confirm: true });
