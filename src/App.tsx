@@ -1,4 +1,6 @@
-import { lazy, Suspense, useEffect } from "react";
+import { lazy, Suspense, useEffect, useState } from "react";
+import { isRecovery } from "@/lib/recoveryGate";
+const ResetPassword = lazy(() => import("./pages/ResetPassword"));
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Route, Routes } from "react-router-dom";
 import { Toaster as Sonner } from "@/components/ui/sonner";
@@ -45,6 +47,12 @@ const wrap = (node: React.ReactNode) => (
 function AppRoutes() {
   const { user, loading } = useAuth();
   const isDemoMode = useAppStore((s) => s.isDemoMode);
+  const [recovery, setRecovery] = useState(isRecovery());
+  useEffect(() => {
+    const on = () => setRecovery(true);
+    window.addEventListener("eh-recovery", on);
+    return () => window.removeEventListener("eh-recovery", on);
+  }, []);
 
   // One-time clear of any stuck demo mode in legacy localStorage
   useEffect(() => {
@@ -85,6 +93,10 @@ function AppRoutes() {
   // for logged-in users — that would make the Settings toggle un-toggleable.
 
   if (loading) return <PageLoadingSkeleton />;
+
+  if (recovery) {
+    return <Suspense fallback={<PageLoadingSkeleton />}><ResetPassword /></Suspense>;
+  }
 
   if (!user && !isDemoMode) {
     return (
