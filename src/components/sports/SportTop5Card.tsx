@@ -1,6 +1,6 @@
 import { Flame, Loader2, Search } from "lucide-react";
 import type { FullGame } from "@/lib/oddsApi";
-import { useSportTop5 } from "@/hooks/useSportTop5";
+import { useSportTop5, isWeekSport } from "@/hooks/useSportTop5";
 
 function fmtOdds(n?: number | null) {
   if (n == null || !Number.isFinite(n) || n === 0) return "N/A";
@@ -31,8 +31,8 @@ interface Props {
 export default function SportTop5Card({ sportKey, sportLabel, games, golfTournamentName }: Props) {
   const t = useSportTop5(sportKey, games, golfTournamentName);
   const isGolf = sportKey === "golf";
-  const when = sportKey === "americanfootball_ncaaf" ? "this week's" : "today's";
-  const whenTitle = sportKey === "americanfootball_ncaaf" ? "This Week" : "Today";
+  const when = isWeekSport(sportKey) ? "this week's" : "today's";
+  const whenTitle = isWeekSport(sportKey) ? "This Week" : "Today";
 
   let body: React.ReactNode;
   if (t.loading) {
