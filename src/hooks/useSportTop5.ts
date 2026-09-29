@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAppStore } from "@/store/useAppStore";
 import type { FullGame } from "@/lib/oddsApi";
@@ -59,7 +59,7 @@ function readCache(key: string): CacheShape | null {
 }
 
 /**
- * Auto-runs on tab open (once per sport per day, cached). Uses the exact
+ * Runs only when the user taps Scan; results cached per sport per day. Uses the exact
  * Best Bet Today scoring: confidence*0.6 + edge*100*0.4, x0.6 for heavy
  * favorites (< -350), NO_EDGE dropped.
  */
@@ -83,13 +83,12 @@ export function useSportTop5(sportKey: string, games: FullGame[], golfTournament
     setError(null);
   }, [cacheKey]);
 
-  useEffect(() => {
+  const scan = useCallback(() => {
     if (!sportKey || sportKey === "all") return;
-    if (readCache(cacheKey)) return;
-    if (!readyKey) return; // nothing to analyze yet (or no games today)
+    if (!readyKey) return; // nothing to analyze (no games today)
     if (inFlight.has(cacheKey)) return;
     inFlight.add(cacheKey);
-    let cancelled = false;
+    const cancelled = false;
     setLoading(true);
     setError(null);
 
@@ -171,11 +170,8 @@ export function useSportTop5(sportKey: string, games: FullGame[], golfTournament
       }
     };
     void run();
-    return () => {
-      cancelled = true;
-    };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [cacheKey, readyKey]);
+  }, [cacheKey, readyKey, settings, trackedWallets, golfTournamentName]);
 
 
   return {
@@ -187,5 +183,7 @@ export function useSportTop5(sportKey: string, games: FullGame[], golfTournament
     loading,
     progress,
     error,
+    scan,
+    lastScannedAt: data?.at ? new Date(data.at) : null,
   };
 }
