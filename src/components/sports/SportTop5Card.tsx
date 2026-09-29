@@ -31,21 +31,23 @@ interface Props {
 export default function SportTop5Card({ sportKey, sportLabel, games, golfTournamentName }: Props) {
   const t = useSportTop5(sportKey, games, golfTournamentName);
   const isGolf = sportKey === "golf";
+  const when = sportKey === "americanfootball_ncaaf" ? "this week's" : "today's";
+  const whenTitle = sportKey === "americanfootball_ncaaf" ? "This Week" : "Today";
 
   let body: React.ReactNode;
   if (t.loading) {
     body = (
       <div className="flex items-center gap-2 py-3 text-xs text-muted-foreground">
         <Loader2 className="h-3.5 w-3.5 animate-spin" />
-        Scoring today's {sportLabel} games… {t.progress.total ? `${t.progress.done}/${t.progress.total}` : ""}
+        Scoring {when} {sportLabel} games… {t.progress.total ? `${t.progress.done}/${t.progress.total}` : ""}
       </div>
     );
   } else if (t.error) {
     body = <div className="py-3 text-xs text-destructive">Couldn't build today's Top 5. Try again later.</div>;
   } else if (!t.hasResult && t.hasGamesToday) {
-    body = <div className="py-3 text-xs text-muted-foreground">Tap "Scan for Top 5" to score today's {sportLabel} games.</div>;
+    body = <div className="py-3 text-xs text-muted-foreground">Tap "Scan for Top 5" to score {when} {sportLabel} games.</div>;
   } else if (!t.hasResult && !t.hasGamesToday) {
-    body = <div className="py-3 text-xs text-muted-foreground">No {sportLabel} games today.</div>;
+    body = <div className="py-3 text-xs text-muted-foreground">No {sportLabel} games {whenTitle === "Today" ? "today" : "this week"}.</div>;
   } else if (isGolf && t.golf) {
     body = (
       <ol className="divide-y divide-border/60">
@@ -100,14 +102,14 @@ export default function SportTop5Card({ sportKey, sportLabel, games, golfTournam
       </ol>
     );
   } else {
-    body = <div className="py-3 text-xs text-muted-foreground">No bets with a real edge in today's {sportLabel} games.</div>;
+    body = <div className="py-3 text-xs text-muted-foreground">No bets with a real edge in {when} {sportLabel} games.</div>;
   }
 
   return (
     <section className="rounded-xl border-2 border-warning/40 bg-gradient-to-br from-warning/10 via-card to-purple/5 p-4 shadow-lg">
       <div className="mb-1 flex items-center justify-between">
         <h2 className="flex items-center gap-1.5 text-sm font-extrabold uppercase tracking-wide text-foreground">
-          <Flame className="h-4 w-4 text-warning" /> Top 5 {sportLabel} Bets Today
+          <Flame className="h-4 w-4 text-warning" /> Top 5 {sportLabel} Bets {whenTitle}
         </h2>
         <div className="flex items-center gap-2">
           {t.lastScannedAt && (

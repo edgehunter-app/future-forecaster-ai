@@ -38,13 +38,13 @@ function localDateKey(d = new Date()) {
 }
 
 /** Today's games (local date), not started more than 3h ago, soonest first. */
-function todaysGames(games: FullGame[]): FullGame[] {
+function todaysGames(games: FullGame[], wholeWeek = false): FullGame[] {
   const today = localDateKey();
   const cutoff = Date.now() - 3 * 3600000;
   return games
     .filter((g) => {
       const t = new Date(g.commenceTime);
-      return Number.isFinite(t.getTime()) && localDateKey(t) === today && t.getTime() >= cutoff;
+      return Number.isFinite(t.getTime()) && (wholeWeek || localDateKey(t) === today) && t.getTime() >= cutoff;
     })
     .sort((a, b) => new Date(a.commenceTime).getTime() - new Date(b.commenceTime).getTime());
 }
@@ -75,7 +75,7 @@ export function useSportTop5(sportKey: string, games: FullGame[], golfTournament
   const [error, setError] = useState<string | null>(null);
 
   const golfGame = isGolf ? games.find((g) => g.isOutright && (g.players?.length ?? 0) > 0) : undefined;
-  const candidates = isGolf ? [] : todaysGames(games).slice(0, MAX_ANALYZED);
+  const candidates = isGolf ? [] : todaysGames(games, sportKey === "americanfootball_ncaaf").slice(0, MAX_ANALYZED);
   const readyKey = isGolf ? (golfGame ? "g" : "") : candidates.map((g) => g.id ?? `${g.homeTeam}-${g.awayTeam}`).join("|");
 
   useEffect(() => {
