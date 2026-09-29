@@ -256,10 +256,26 @@ export default function Sports() {
     ];
   }, [isCfbTab, filteredGames, cfbRankOf]);
 
+  // NFL: full Thu–Mon week grouped by local day.
+  const nflSections = useMemo(() => {
+    if (activeSport !== "americanfootball_nfl") return undefined;
+    const groups = new Map<string, typeof filteredGames>();
+    for (const g of [...filteredGames].sort(
+      (a, b) => new Date(a.commenceTime).getTime() - new Date(b.commenceTime).getTime(),
+    )) {
+      const label = new Date(g.commenceTime).toLocaleDateString([], { weekday: "long", month: "short", day: "numeric" });
+      if (!groups.has(label)) groups.set(label, []);
+      groups.get(label)!.push(g);
+    }
+    return Array.from(groups.entries()).map(([title, games]) => ({ title, games }));
+  }, [activeSport, filteredGames]);
+
+  const weekSections = cfbSections ?? nflSections;
+
   const boardGames = useMemo(() => {
-    if (!cfbSections) return filteredGames;
-    return cfbSections.flatMap((sec) => sec.games);
-  }, [cfbSections, filteredGames]);
+    if (!weekSections) return filteredGames;
+    return weekSections.flatMap((sec) => sec.games);
+  }, [weekSections, filteredGames]);
 
   if (typeof window !== "undefined") {
     console.log("Full games:", fullGames);

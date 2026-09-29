@@ -206,6 +206,16 @@ export function useSportsOdds(polymarkets: Market[]) {
       // 7-day window: World Cup, MMA/UFC, NFL (lines posted early week).
       if (isMMAGame(game)) return gameTime <= daysOut(7);
       if (isTennisGame(game)) return gameTime <= daysOut(7);
+      // NFL: current Thu–Mon week only (same window as CFB).
+      if (sport === "americanfootball_nfl") {
+        const ws = new Date(now);
+        ws.setDate(now.getDate() + [-3, -4, 2, 1, 0, -1, -2][now.getDay()]);
+        ws.setHours(0, 0, 0, 0);
+        const we = new Date(ws);
+        we.setDate(ws.getDate() + 4);
+        we.setHours(23, 59, 59, 999);
+        return gameTime >= ws && gameTime <= we;
+      }
       if (sport.includes("americanfootball")) return gameTime <= daysOut(7);
 
       // 3-day window: MLB, NBA, NHL, Soccer, and everything else.
