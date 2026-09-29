@@ -259,27 +259,48 @@ Deno.serve(async (req) => {
       .is("result", null)
       .not("commence_time", "is", null)
       .lte("commence_time", new Date(now - 2 * 3600_000).toISOString())
-      .gte("commence_time", new Date(now - 4 * 24 * 3600_000).toISOString())
+      .order("commence_time", { ascending: true })
       .limit(300);
 
     summary.pendingGrade = gradeCandidates?.length ?? 0;
+    const skipped: Record<string, number> = {};
+    const skip = async (pick: any, reason: string) => {
+      skipped[reason] = (skipped[reason] ?? 0) + 1;
+      if (pick.grade_notes !== reason) await admin.from("pick_log").update({ grade_notes: reason }).eq("id", pick.id);
+    };
+    (summary as any).skipped = skipped;
 
     if (summary.pendingGrade > 0) {
-      const sports = Array.from(new Set((gradeCandidates ?? []).map((p: any) => p.sport_key).filter(Boolean)));
+      const recentCutoff = now - 3 * 24 * 3600_000;
+      const sports = Array.from(new Set((gradeCandidates ?? [])
+        .filter((p: any) => new Date(p.commence_time).getTime() >= recentCutoff)
+        .map((p: any) => p.sport_key).filter(Boolean)));
       const scoresBySport: Record<string, any[]> = {};
       for (const s of sports) scoresBySport[s] = await fetchScores(s);
 
       for (const pick of gradeCandidates ?? []) {
+        let home: number | null = null;
+        let away: number | null = null;
         const events = scoresBySport[pick.sport_key] ?? [];
         const ev = events.find(
           (e: any) =>
             String(e.id) === String(pick.event_key) ||
             (norm(e.home_team) === norm(pick.home_team) && norm(e.away_team) === norm(pick.away_team)),
         );
-        if (!ev || ev.completed !== true) continue;
-        const home = scoreOf(ev, ev.home_team);
-        const away = scoreOf(ev, ev.away_team);
-        if (home === null || away === null) continue;
+        if (ev?.completed === true) {
+          home = scoreOf(ev, ev.home_team);
+          away = scoreOf(ev, ev.away_team);
+        }
+        if (home === null || away === null) {
+          const r = await espnResult(pick);
+          if (r.status === "final") { home = r.home!; away = r.away!; }
+          else {
+            await skip(pick, r.status === "unsupported" ? "no score source for this sport"
+              : r.status === "notfinal" ? "game not final yet" : "game not found in score feed");
+            continue;
+          }
+        }
+
 
         const result = gradePick(pick, home, away);
         const odds = Number(pick.odds_at_pick);
