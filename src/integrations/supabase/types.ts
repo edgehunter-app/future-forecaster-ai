@@ -613,6 +613,36 @@ export type Database = {
         }
         Relationships: []
       }
+      top5_cache: {
+        Row: {
+          created_at: string
+          payload: Json
+          period_key: string
+          scanned_at: string
+          scanned_by: string | null
+          sport_key: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          payload: Json
+          period_key: string
+          scanned_at?: string
+          scanned_by?: string | null
+          sport_key: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          payload?: Json
+          period_key?: string
+          scanned_at?: string
+          scanned_by?: string | null
+          sport_key?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       tracked_wallets: {
         Row: {
           address: string

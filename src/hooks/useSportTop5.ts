@@ -49,6 +49,16 @@ function todaysGames(games: FullGame[], wholeWeek = false): FullGame[] {
     .sort((a, b) => new Date(a.commenceTime).getTime() - new Date(b.commenceTime).getTime());
 }
 
+const WEEK_SPORTS = new Set(["americanfootball_ncaaf", "americanfootball_nfl"]);
+export const isWeekSport = (k: string) => WEEK_SPORTS.has(k);
+
+/** Thursday that starts the current Thu–Mon football week (Tue/Wed → upcoming Thu). */
+function weekStartKey(now = new Date()) {
+  const d = new Date(now);
+  d.setDate(now.getDate() + [-3, -4, 2, 1, 0, -1, -2][now.getDay()]);
+  return `wk-${localDateKey(d)}`;
+}
+
 function readCache(key: string): CacheShape | null {
   try {
     const raw = localStorage.getItem(key);
@@ -67,7 +77,8 @@ export function useSportTop5(sportKey: string, games: FullGame[], golfTournament
   const settings = useAppStore((s) => s.settings);
   const trackedWallets = useAppStore((s) => s.trackedWallets ?? []);
   const isGolf = sportKey === "golf";
-  const cacheKey = `eh_top5_${sportKey}_${localDateKey()}`;
+  const periodKey = isWeekSport(sportKey) ? weekStartKey() : localDateKey();
+  const cacheKey = `eh_top5_${sportKey}_${periodKey}`;
 
   const [data, setData] = useState<CacheShape | null>(() => readCache(cacheKey));
   const [loading, setLoading] = useState(false);
@@ -75,13 +86,29 @@ export function useSportTop5(sportKey: string, games: FullGame[], golfTournament
   const [error, setError] = useState<string | null>(null);
 
   const golfGame = isGolf ? games.find((g) => g.isOutright && (g.players?.length ?? 0) > 0) : undefined;
-  const candidates = isGolf ? [] : todaysGames(games, sportKey === "americanfootball_ncaaf").slice(0, MAX_ANALYZED);
+  const candidates = isGolf ? [] : todaysGames(games, isWeekSport(sportKey)).slice(0, MAX_ANALYZED);
   const readyKey = isGolf ? (golfGame ? "g" : "") : candidates.map((g) => g.id ?? `${g.homeTeam}-${g.awayTeam}`).join("|");
 
+  // Shared cache: load the latest scan any user saved for this sport + period.
   useEffect(() => {
+    let alive = true;
     setData(readCache(cacheKey));
     setError(null);
-  }, [cacheKey]);
+    if (!sportKey || sportKey === "all") return;
+    void supabase
+      .from("top5_cache")
+      .select("payload, scanned_at")
+      .eq("sport_key", sportKey)
+      .eq("period_key", periodKey)
+      .maybeSingle()
+      .then(({ data: row }) => {
+        if (!alive || !row) return;
+        const shared = { ...(row.payload as unknown as CacheShape), at: row.scanned_at };
+        setData(shared);
+        try { localStorage.setItem(cacheKey, JSON.stringify(shared)); } catch { /* ignore */ }
+      });
+    return () => { alive = false; };
+  }, [cacheKey, sportKey, periodKey]);
 
   const scan = useCallback(() => {
     if (!sportKey || sportKey === "all") return;
@@ -161,6 +188,17 @@ export function useSportTop5(sportKey: string, games: FullGame[], golfTournament
         } catch {
           /* storage full — keep in memory */
         }
+        const { data: auth } = await supabase.auth.getUser();
+        if (auth.user) {
+          const { error: saveErr } = await supabase.from("top5_cache").upsert({
+            sport_key: sportKey,
+            period_key: periodKey,
+            payload: result as never,
+            scanned_at: result.at,
+            scanned_by: auth.user.id,
+          });
+          if (saveErr) console.warn("[top5] shared save failed", saveErr.message);
+        }
         if (!cancelled) setData(result);
       } catch (err) {
         if (!cancelled) setError(err instanceof Error ? err.message : "Couldn't build Top 5");
@@ -171,7 +209,7 @@ export function useSportTop5(sportKey: string, games: FullGame[], golfTournament
     };
     void run();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [cacheKey, readyKey, settings, trackedWallets, golfTournamentName]);
+  }, [cacheKey, periodKey, readyKey, settings, trackedWallets, golfTournamentName]);
 
 
   return {
