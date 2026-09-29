@@ -337,6 +337,35 @@ Deno.serve(async (req) => {
         origin: "wallet_auto",
         expires_at: new Date(Date.now() + 48 * 60 * 60 * 1000).toISOString(),
       });
+      if (!insErr) {
+        const price = Number(currentOdds);
+        const american = price > 0 && price < 1
+          ? Math.round(price >= 0.5 ? (-100 * price) / (1 - price) : (100 * (1 - price)) / price)
+          : null;
+        const { error: logErr } = await admin.from("pick_log").insert({
+          user_id: b.userId,
+          origin: "wallet_auto",
+          event_key: String(b.marketId),
+          sport_key: "polymarket",
+          league: "Prediction",
+          event_name: b.question,
+          home_team: "",
+          away_team: "",
+          commence_time: null,
+          bet_type: "prediction",
+          selection: finalDirection,
+          selection_side: finalDirection,
+          odds_at_pick: american,
+          implied_at_pick: price > 0 && price < 1 ? Number(price.toFixed(6)) : null,
+          book_at_pick: "polymarket",
+          confidence: Math.round(conf),
+          confidence_tier: conf >= 70 ? "high" : conf >= 55 ? "medium" : "low",
+          edge,
+          model: "claude",
+          grade_notes: "prediction market — not auto-graded",
+        });
+        if (logErr) console.warn("pick_log insert failed:", logErr.message);
+      }
       if (!insErr) counters.signals_created++;
       else console.warn("insert failed:", insErr.message);
       if (!insErr) bumpUser(b.userId, "signals_created", 1);
