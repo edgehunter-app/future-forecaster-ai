@@ -1,10 +1,17 @@
-import { Flame, Loader2 } from "lucide-react";
+import { Flame, Loader2, Search } from "lucide-react";
 import type { FullGame } from "@/lib/oddsApi";
 import { useSportTop5 } from "@/hooks/useSportTop5";
 
 function fmtOdds(n?: number | null) {
   if (n == null || !Number.isFinite(n) || n === 0) return "N/A";
   return n > 0 ? `+${n}` : `${n}`;
+}
+function ago(d: Date) {
+  const m = Math.max(0, Math.round((Date.now() - d.getTime()) / 60000));
+  if (m < 1) return "just now";
+  if (m < 60) return `${m}m ago`;
+  const h = Math.round(m / 60);
+  return `${h}h ago`;
 }
 function fmtTime(iso: string) {
   try {
@@ -35,6 +42,8 @@ export default function SportTop5Card({ sportKey, sportLabel, games, golfTournam
     );
   } else if (t.error) {
     body = <div className="py-3 text-xs text-destructive">Couldn't build today's Top 5. Try again later.</div>;
+  } else if (!t.hasResult && t.hasGamesToday) {
+    body = <div className="py-3 text-xs text-muted-foreground">Tap "Scan for Top 5" to score today's {sportLabel} games.</div>;
   } else if (!t.hasResult && !t.hasGamesToday) {
     body = <div className="py-3 text-xs text-muted-foreground">No {sportLabel} games today.</div>;
   } else if (isGolf && t.golf) {
@@ -100,11 +109,19 @@ export default function SportTop5Card({ sportKey, sportLabel, games, golfTournam
         <h2 className="flex items-center gap-1.5 text-sm font-extrabold uppercase tracking-wide text-foreground">
           <Flame className="h-4 w-4 text-warning" /> Top 5 {sportLabel} Bets Today
         </h2>
-        {isGolf && t.golf ? (
-          <span className="text-[11px] text-muted-foreground">{t.golf.confidence}% conf</span>
-        ) : t.analyzed > 0 ? (
-          <span className="text-[11px] text-muted-foreground">{t.analyzed} games scored</span>
-        ) : null}
+        <div className="flex items-center gap-2">
+          {t.lastScannedAt && (
+            <span className="text-[11px] text-muted-foreground">Last scanned: {ago(t.lastScannedAt)}</span>
+          )}
+          <button
+            onClick={t.scan}
+            disabled={t.loading || !t.hasGamesToday}
+            className="inline-flex items-center gap-1 rounded-md border border-warning/50 bg-warning/15 px-2.5 py-1 text-[11px] font-bold text-warning hover:bg-warning/25 disabled:opacity-50"
+          >
+            {t.loading ? <Loader2 className="h-3 w-3 animate-spin" /> : <Search className="h-3 w-3" />}
+            Scan for Top 5
+          </button>
+        </div>
       </div>
       {body}
     </section>
