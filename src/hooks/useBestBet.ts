@@ -11,6 +11,7 @@ import type {
   Wallet,
 } from "@/types";
 import { bumpSportsAnalyses } from "@/lib/analysisCounter";
+import { logAiPick } from "@/lib/pickLog";
 
 type ScanStage = "idle" | "sports" | "prediction_markets" | "wallet_signals" | "ranking";
 
@@ -185,6 +186,7 @@ export function useBestBet() {
         analysis.keyFactors = Array.isArray(analysis.keyFactors) ? analysis.keyFactors : [];
         analysis.warningFlags = Array.isArray(analysis.warningFlags) ? analysis.warningFlags : [];
         bumpSportsAnalyses();
+        void logAiPick(best.sports.game, analysis, { origin: "best_bet_of_day" });
         resultObj = {
           source: "sports",
           game: best.sports.game,

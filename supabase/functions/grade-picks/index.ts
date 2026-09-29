@@ -99,6 +99,78 @@ function scoreOf(ev: any, team: string): number | null {
   return Number.isFinite(n) ? n : null;
 }
 
+// ESPN fallback for picks older than the Odds API's 3-day scores window.
+const ESPN_PATHS: Record<string, string> = {
+  americanfootball_nfl: "football/nfl",
+  americanfootball_ncaaf: "football/college-football",
+  baseball_mlb: "baseball/mlb",
+  basketball_nba: "basketball/nba",
+  basketball_wnba: "basketball/wnba",
+  basketball_ncaab: "basketball/mens-college-basketball",
+  icehockey_nhl: "hockey/nhl",
+};
+const espnCache = new Map<string, any[]>();
+
+async function fetchEspnDay(path: string, ymd: string): Promise<any[]> {
+  const key = `${path}|${ymd}`;
+  if (espnCache.has(key)) return espnCache.get(key)!;
+  const extra = path.includes("college-football") ? "&groups=80&limit=400" : "&limit=400";
+  let out: any[] = [];
+  try {
+    const res = await fetch(`https://site.api.espn.com/apis/site/v2/sports/${path}/scoreboard?dates=${ymd}${extra}`, {
+      signal: AbortSignal.timeout(12000),
+      headers: { "User-Agent": "Mozilla/5.0 (compatible; EdgeHunter/1.0)", Accept: "application/json" },
+    });
+    if (!res.ok) { console.warn("espn status", path, ymd, res.status); return []; }
+    {
+      const j = await res.json();
+      out = (j?.events ?? []).map((e: any) => {
+        const comp = e?.competitions?.[0];
+        const cs = comp?.competitors ?? [];
+        const h = cs.find((c: any) => c.homeAway === "home");
+        const a = cs.find((c: any) => c.homeAway === "away");
+        return {
+          completed: comp?.status?.type?.completed === true,
+          home_team: h?.team?.displayName ?? "",
+          away_team: a?.team?.displayName ?? "",
+          home_alt: [h?.team?.location, h?.team?.shortDisplayName, h?.team?.name].filter(Boolean),
+          away_alt: [a?.team?.location, a?.team?.shortDisplayName, a?.team?.name].filter(Boolean),
+          home: Number(h?.score),
+          away: Number(a?.score),
+        };
+      });
+    }
+  } catch (e) {
+    console.warn("espn fetch failed", path, ymd, (e as Error).message);
+    return [];
+  }
+  espnCache.set(key, out);
+  return out;
+}
+
+const teamMatch = (name: string, alts: string[], want: string) => {
+  const w = norm(want);
+  if (!w) return false;
+  if (norm(name) === w) return true;
+  return [name, ...alts].some((n) => { const x = norm(n); return x.length >= 4 && (w.startsWith(x) || x.startsWith(w)); });
+};
+
+async function espnResult(pick: any): Promise<{ status: "final" | "notfinal" | "notfound" | "unsupported"; home?: number; away?: number }> {
+  const path = ESPN_PATHS[pick.sport_key];
+  if (!path) return { status: "unsupported" };
+  const t = new Date(pick.commence_time).getTime();
+  // ESPN dates are US-local; check the UTC day and the day before.
+  const days = [t, t - 24 * 3600_000].map((ms) => new Date(ms).toISOString().slice(0, 10).replace(/-/g, ""));
+  for (const d of days) {
+    const evs = await fetchEspnDay(path, d);
+    const ev = evs.find((e) => teamMatch(e.home_team, e.home_alt, pick.home_team) && teamMatch(e.away_team, e.away_alt, pick.away_team));
+    if (!ev) continue;
+    if (!ev.completed || !Number.isFinite(ev.home) || !Number.isFinite(ev.away)) return { status: "notfinal" };
+    return { status: "final", home: ev.home, away: ev.away };
+  }
+  return { status: "notfound" };
+}
+
 function gradePick(pick: any, home: number, away: number): string {
   const isHome = pick.selection_side === "HOME";
   if (pick.bet_type === "total") {
@@ -190,27 +262,48 @@ Deno.serve(async (req) => {
       .is("result", null)
       .not("commence_time", "is", null)
       .lte("commence_time", new Date(now - 2 * 3600_000).toISOString())
-      .gte("commence_time", new Date(now - 4 * 24 * 3600_000).toISOString())
+      .order("commence_time", { ascending: true })
       .limit(300);
 
     summary.pendingGrade = gradeCandidates?.length ?? 0;
+    const skipped: Record<string, number> = {};
+    const skip = async (pick: any, reason: string) => {
+      skipped[reason] = (skipped[reason] ?? 0) + 1;
+      if (pick.grade_notes !== reason) await admin.from("pick_log").update({ grade_notes: reason }).eq("id", pick.id);
+    };
+    (summary as any).skipped = skipped;
 
     if (summary.pendingGrade > 0) {
-      const sports = Array.from(new Set((gradeCandidates ?? []).map((p: any) => p.sport_key).filter(Boolean)));
+      const recentCutoff = now - 3 * 24 * 3600_000;
+      const sports = Array.from(new Set((gradeCandidates ?? [])
+        .filter((p: any) => new Date(p.commence_time).getTime() >= recentCutoff)
+        .map((p: any) => p.sport_key).filter(Boolean)));
       const scoresBySport: Record<string, any[]> = {};
       for (const s of sports) scoresBySport[s] = await fetchScores(s);
 
       for (const pick of gradeCandidates ?? []) {
+        let home: number | null = null;
+        let away: number | null = null;
         const events = scoresBySport[pick.sport_key] ?? [];
         const ev = events.find(
           (e: any) =>
             String(e.id) === String(pick.event_key) ||
             (norm(e.home_team) === norm(pick.home_team) && norm(e.away_team) === norm(pick.away_team)),
         );
-        if (!ev || ev.completed !== true) continue;
-        const home = scoreOf(ev, ev.home_team);
-        const away = scoreOf(ev, ev.away_team);
-        if (home === null || away === null) continue;
+        if (ev?.completed === true) {
+          home = scoreOf(ev, ev.home_team);
+          away = scoreOf(ev, ev.away_team);
+        }
+        if (home === null || away === null) {
+          const r = await espnResult(pick);
+          if (r.status === "final") { home = r.home!; away = r.away!; }
+          else {
+            await skip(pick, r.status === "unsupported" ? "no score source for this sport"
+              : r.status === "notfinal" ? "game not final yet" : "game not found in score feed");
+            continue;
+          }
+        }
+
 
         const result = gradePick(pick, home, away);
         const odds = Number(pick.odds_at_pick);

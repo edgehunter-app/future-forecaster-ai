@@ -1,0 +1,1 @@
+ALTER TABLE public.pick_log ADD COLUMN IF NOT EXISTS pick_rank integer;
