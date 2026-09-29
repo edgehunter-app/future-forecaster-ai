@@ -119,8 +119,10 @@ async function fetchEspnDay(path: string, ymd: string): Promise<any[]> {
   try {
     const res = await fetch(`https://site.api.espn.com/apis/site/v2/sports/${path}/scoreboard?dates=${ymd}${extra}`, {
       signal: AbortSignal.timeout(12000),
+      headers: { "User-Agent": "Mozilla/5.0 (compatible; EdgeHunter/1.0)", Accept: "application/json" },
     });
-    if (res.ok) {
+    if (!res.ok) { console.warn("espn status", path, ymd, res.status); return []; }
+    {
       const j = await res.json();
       out = (j?.events ?? []).map((e: any) => {
         const comp = e?.competitions?.[0];
@@ -140,6 +142,7 @@ async function fetchEspnDay(path: string, ymd: string): Promise<any[]> {
     }
   } catch (e) {
     console.warn("espn fetch failed", path, ymd, (e as Error).message);
+    return [];
   }
   espnCache.set(key, out);
   return out;
