@@ -177,18 +177,6 @@ export function useSportTop5(sportKey: string, games: FullGame[], golfTournament
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [cacheKey, readyKey]);
 
-  const rescan = () => {
-    try {
-      localStorage.removeItem(cacheKey);
-    } catch {
-      /* ignore */
-    }
-    setData(null);
-    // bump readyKey dependency by forcing effect via state
-    setProgress({ done: 0, total: 0 });
-    setForce((f) => f + 1);
-  };
-  const [, setForce] = useState(0);
 
   return {
     entries: data?.entries ?? [],
@@ -199,6 +187,5 @@ export function useSportTop5(sportKey: string, games: FullGame[], golfTournament
     loading,
     progress,
     error,
-    rescan,
   };
 }
