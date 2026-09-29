@@ -5,6 +5,7 @@ import type { FullGame } from "@/lib/oddsApi";
 import type { GameAnalysisResult } from "@/types";
 import type { GolfAnalysisResult } from "@/components/sports/GolfAnalysisPanel";
 import { scanSportsGames } from "@/hooks/useBestBet";
+import { logAiPick } from "@/lib/pickLog";
 
 /** Max games analyzed per sport tab to build its Top 5. */
 const MAX_ANALYZED = 10;
@@ -181,6 +182,7 @@ export function useSportTop5(sportKey: string, games: FullGame[], golfTournament
               game: c.sports!.game,
               analysis: c.sports!.analysis,
             }));
+          entries.forEach((e, i) => void logAiPick(e.game, e.analysis, { origin: "top5", rank: i + 1 }));
           result = { entries, analyzed: candidates.length, at: new Date().toISOString() };
         }
         try {

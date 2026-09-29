@@ -18,7 +18,11 @@ export function confidenceTier(confidence: number): "high" | "medium" | "low" {
  * (win rate / ROI / closing line value). Fire-and-forget: never blocks or
  * surfaces errors to the user.
  */
-export async function logAiPick(game: FullGame, result: GameAnalysisResult): Promise<void> {
+export async function logAiPick(
+  game: FullGame,
+  result: GameAnalysisResult,
+  opts: { origin?: "sports_analysis" | "best_bet_of_day" | "top5"; rank?: number } = {},
+): Promise<void> {
   try {
     if (!result || result.recommendation === "NO_EDGE") return;
     const { data: auth } = await supabase.auth.getUser();
@@ -47,7 +51,8 @@ export async function logAiPick(game: FullGame, result: GameAnalysisResult): Pro
 
     await supabase.from("pick_log").insert({
       user_id: userId,
-      origin: "sports_analysis",
+      origin: opts.origin ?? "sports_analysis",
+      pick_rank: opts.rank ?? null,
       event_key: String(game.id),
       sport_key: String(game.sport ?? ""),
       league: String(game.league ?? ""),
