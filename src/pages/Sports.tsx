@@ -16,7 +16,6 @@ import { usePageTitle } from "@/hooks/usePageTitle";
 import { useIsAdmin } from "@/hooks/useIsAdmin";
 import SportTop5Card from "@/components/sports/SportTop5Card";
 import UsagePanel from "@/components/sports/UsagePanel";
-import CfbFilterBar, { type CfbView } from "@/components/sports/CfbFilterBar";
 import { useCfbRankings } from "@/hooks/useCfbRankings";
 import { cfbTeamMeta } from "@/lib/cfbTeams";
 
@@ -221,62 +220,47 @@ export default function Sports() {
 
   // --- College football segmentation -------------------------------------
   const isCfbTab = activeSport === "americanfootball_ncaaf";
-  const [cfbView, setCfbView] = useState<CfbView>("top25");
-  const [cfbConference, setCfbConference] = useState<string | null>(null);
-  const { poll: cfbPoll, rankOf: cfbRankOf } = useCfbRankings(isCfbTab);
+  const { rankOf: cfbRankOf } = useCfbRankings(isCfbTab);
 
-  const cfbTagged = useMemo(() => {
-    if (!isCfbTab) return [];
-    return filteredGames.map((g) => {
-      const home = cfbTeamMeta(g.homeTeam);
-      const away = cfbTeamMeta(g.awayTeam);
-      const homeRank = cfbRankOf(g.homeTeam);
-      const awayRank = cfbRankOf(g.awayTeam);
-      return {
-        game: g,
-        ranked: !!(homeRank || awayRank),
-        bothFbs: home?.division === "FBS" && away?.division === "FBS",
-        hasFcs: home?.division === "FCS" || away?.division === "FCS",
-        conferences: [home?.conference, away?.conference].filter(Boolean) as string[],
-      };
-    });
+  // CFB: "Top 25" (any ranked team, best rank first), then "All Other Games"
+  // grouped by local day across the current Thu–Mon week.
+  const cfbSections = useMemo(() => {
+    if (!isCfbTab) return undefined;
+    const byTime = (a: { commenceTime: string }, b: { commenceTime: string }) =>
+      new Date(a.commenceTime).getTime() - new Date(b.commenceTime).getTime();
+    const ranked: { g: (typeof filteredGames)[number]; best: number }[] = [];
+    const others: typeof filteredGames = [];
+    for (const g of filteredGames) {
+      const ranks = [cfbRankOf(g.homeTeam), cfbRankOf(g.awayTeam)].filter(
+        (r): r is number => typeof r === "number" && r > 0,
+      );
+      if (ranks.length) ranked.push({ g, best: Math.min(...ranks) });
+      else others.push(g);
+    }
+    ranked.sort((a, b) => a.best - b.best || byTime(a.g, b.g));
+    const dayGroups = new Map<string, typeof filteredGames>();
+    for (const g of [...others].sort(byTime)) {
+      const label = new Date(g.commenceTime).toLocaleDateString([], {
+        weekday: "long",
+        month: "short",
+        day: "numeric",
+      });
+      if (!dayGroups.has(label)) dayGroups.set(label, []);
+      dayGroups.get(label)!.push(g);
+    }
+    return [
+      { title: "Top 25", games: ranked.map((r) => r.g) },
+      ...Array.from(dayGroups.entries()).map(([day, games], i) => ({
+        title: i === 0 ? `All Other Games · ${day}` : day,
+        games,
+      })),
+    ];
   }, [isCfbTab, filteredGames, cfbRankOf]);
 
-  const cfbViewCounts = useMemo(() => {
-    const c: Record<CfbView, number> = { top25: 0, fbs: 0, fcs: 0, all: cfbTagged.length };
-    for (const t of cfbTagged) {
-      if (t.ranked) c.top25 += 1;
-      if (t.bothFbs) c.fbs += 1;
-      if (t.hasFcs) c.fcs += 1;
-    }
-    return c;
-  }, [cfbTagged]);
-
-  const cfbConferenceCounts = useMemo(() => {
-    const c: Record<string, number> = {};
-    for (const t of cfbTagged) {
-      for (const conf of new Set(t.conferences)) c[conf] = (c[conf] ?? 0) + 1;
-    }
-    return c;
-  }, [cfbTagged]);
-
   const boardGames = useMemo(() => {
-    if (!isCfbTab) return filteredGames;
-    let list = cfbTagged;
-    const effectiveView =
-      cfbView === "top25" && !cfbTagged.some((t) => t.ranked) ? "fbs" : cfbView;
-    if (effectiveView === "top25") list = list.filter((t) => t.ranked);
-    else if (effectiveView === "fbs") list = list.filter((t) => t.bothFbs);
-    else if (effectiveView === "fcs") list = list.filter((t) => t.hasFcs);
-    if (cfbConference) list = list.filter((t) => t.conferences.includes(cfbConference));
-    // Never show an empty board while this week's games exist: an unmatched
-    // school name (or a slate with no ranked/FBS-vs-FBS matchup) would
-    // otherwise hide every game behind the default filter.
-    if (list.length === 0 && !cfbConference && cfbTagged.length > 0) {
-      return cfbTagged.map((t) => t.game);
-    }
-    return list.map((t) => t.game);
-  }, [isCfbTab, filteredGames, cfbTagged, cfbView, cfbConference]);
+    if (!cfbSections) return filteredGames;
+    return cfbSections.flatMap((sec) => sec.games);
+  }, [cfbSections, filteredGames]);
 
   if (typeof window !== "undefined") {
     console.log("Full games:", fullGames);
@@ -607,24 +591,11 @@ export default function Sports() {
               </div>
             </div>
           )}
-          {isCfbTab && filteredGames.length > 0 && (
-            <CfbFilterBar
-              view={cfbView}
-              onViewChange={setCfbView}
-              conference={cfbConference}
-              onConferenceChange={setCfbConference}
-              viewCounts={cfbViewCounts}
-              conferenceCounts={cfbConferenceCounts}
-              poll={cfbPoll}
-            />
-          )}
-          {isCfbTab && filteredGames.length > 0 && boardGames.length === 0 && (
-            <div className="rounded-lg border border-border bg-card px-4 py-3 text-sm text-muted-foreground">
-              No games match this filter. Try “All games” or a different conference.
-            </div>
-          )}
           <OddsBoard
             games={boardGames}
+            sections={cfbSections}
+            emptyTitle={isCfbTab ? "No college football games this week" : undefined}
+            emptyHint={isCfbTab ? "Lines for the Thursday–Monday slate usually post early in the week. Tap Refresh to check again." : undefined}
             loading={loading}
             mispricings={mispricings}
             onRefresh={() => void scan("manual")}
