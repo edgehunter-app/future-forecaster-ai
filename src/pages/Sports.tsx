@@ -14,6 +14,7 @@ import { SPORTS } from "@/lib/oddsApi";
 import { cn } from "@/lib/utils";
 import { usePageTitle } from "@/hooks/usePageTitle";
 import { useIsAdmin } from "@/hooks/useIsAdmin";
+import SportTop5Card from "@/components/sports/SportTop5Card";
 import UsagePanel from "@/components/sports/UsagePanel";
 import CfbFilterBar, { type CfbView } from "@/components/sports/CfbFilterBar";
 import { useCfbRankings } from "@/hooks/useCfbRankings";
@@ -570,6 +571,16 @@ export default function Sports() {
         <div className="rounded-lg border border-destructive/40 bg-destructive/10 px-4 py-3 text-sm text-destructive">
           {isAdmin ? error : "Couldn't load latest odds. Please try again in a moment."}
         </div>
+      )}
+
+      {activeSport && activeSport !== "all" && (
+        <SportTop5Card
+          key={activeSport}
+          sportKey={activeSport}
+          sportLabel={SPORTS.find((s) => s.key === activeSport)?.label ?? ""}
+          games={filteredGames}
+          golfTournamentName={golf.tournament?.name}
+        />
       )}
 
       {/* Main odds board */}
