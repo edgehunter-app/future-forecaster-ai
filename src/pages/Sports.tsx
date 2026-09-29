@@ -17,7 +17,6 @@ import { useIsAdmin } from "@/hooks/useIsAdmin";
 import SportTop5Card from "@/components/sports/SportTop5Card";
 import UsagePanel from "@/components/sports/UsagePanel";
 import { useCfbRankings } from "@/hooks/useCfbRankings";
-import { cfbTeamMeta } from "@/lib/cfbTeams";
 
 const GOLF_NOTIFY_KEY = "eh.golfNotify";
 
