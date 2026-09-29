@@ -608,9 +608,9 @@ export default function Sports() {
           )}
           <OddsBoard
             games={boardGames}
-            sections={cfbSections}
-            emptyTitle={isCfbTab ? "No college football games this week" : undefined}
-            emptyHint={isCfbTab ? "Lines for the Thursday–Monday slate usually post early in the week. Tap Refresh to check again." : undefined}
+            sections={weekSections}
+            emptyTitle={isCfbTab ? "No college football games this week" : activeSport === "americanfootball_nfl" ? "No NFL games this week" : undefined}
+            emptyHint={isCfbTab || activeSport === "americanfootball_nfl" ? "Lines for the Thursday–Monday slate usually post early in the week. Tap Refresh to check again." : undefined}
             loading={loading}
             mispricings={mispricings}
             onRefresh={() => void scan("manual")}
