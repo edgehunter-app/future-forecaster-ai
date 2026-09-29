@@ -16,7 +16,7 @@ type ScanStage = "idle" | "sports" | "prediction_markets" | "wallet_signals" | "
 
 export type BestBetAvailability = "within_12h" | "within_24h" | "none";
 
-interface Candidate {
+export interface Candidate {
   source: "sports" | "prediction_market" | "wallet_signal";
   score: number;
   confidence: number;
@@ -27,7 +27,7 @@ interface Candidate {
   wallet?: WalletSignalBest;
 }
 
-function scoreOf(confidence: number, edge: number): number {
+export function scoreOf(confidence: number, edge: number): number {
   return confidence * 0.6 + edge * 100 * 0.4;
 }
 
@@ -240,7 +240,7 @@ export function useBestBet() {
 // Sports scan
 // ============================================================================
 
-async function scanSportsGames(
+export async function scanSportsGames(
   sortedGames: FullGame[],
   trackedWallets: Wallet[],
   cfg: { bankroll: number; kellyMultiplier: number; maxPositionPct: number },
