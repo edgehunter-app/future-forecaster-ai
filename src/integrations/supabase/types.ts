@@ -356,6 +356,7 @@ export type Database = {
           odds_at_pick: number | null
           origin: string
           payout_flat_100: number | null
+          pick_rank: number | null
           picked_at: string
           result: string | null
           selection: string
@@ -393,6 +394,7 @@ export type Database = {
           odds_at_pick?: number | null
           origin?: string
           payout_flat_100?: number | null
+          pick_rank?: number | null
           picked_at?: string
           result?: string | null
           selection?: string
@@ -430,6 +432,7 @@ export type Database = {
           odds_at_pick?: number | null
           origin?: string
           payout_flat_100?: number | null
+          pick_rank?: number | null
           picked_at?: string
           result?: string | null
           selection?: string
