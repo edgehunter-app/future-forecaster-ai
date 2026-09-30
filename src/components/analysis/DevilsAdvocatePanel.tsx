@@ -36,7 +36,7 @@ export default function DevilsAdvocatePanel({ data }: Props) {
 
   return (
     <div className="rounded-lg border border-border bg-background/40 p-3 sm:p-4 space-y-3 animate-in fade-in slide-in-from-top-2 duration-200">
-      <div className="flex items-center justify-between gap-2">
+      <div className="flex flex-wrap items-center justify-between gap-x-2 gap-y-1">
         <div className="flex items-center gap-1.5">
           <span className="text-lg leading-none">😈</span>
           <div>
@@ -48,7 +48,7 @@ export default function DevilsAdvocatePanel({ data }: Props) {
             </div>
           </div>
         </div>
-        <StatusBadge tone={v.tone} size="md">
+        <StatusBadge tone={v.tone} size="sm" className="max-w-full">
           {(data.verdict ?? "CAUTION").toUpperCase()} · {v.label}
         </StatusBadge>
       </div>
