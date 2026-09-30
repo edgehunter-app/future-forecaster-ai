@@ -156,6 +156,11 @@ async function scanDate(date: string): Promise<ScanResult> {
       const d = (data as Record<string, unknown>)?.date;
       return typeof d !== "string" || d === date;
     });
+    const dropped = races.length - trackRaces.length;
+    if (dropped > 0) {
+      const got = (races[0]?.data as Record<string, unknown>)?.date;
+      console.log(`[horse-racing] ${m.slug}: dropped ${dropped}/${races.length} races — asked ${date}, FormFav returned ${got}`);
+    }
     if (trackRaces.length === 0) continue;
     trackRaces.sort((a, b) => a.race - b.race);
     if (!shapeSample) {
