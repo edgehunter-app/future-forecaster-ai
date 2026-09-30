@@ -758,6 +758,15 @@ export default function HorseRacing() {
         </button>
       </header>
 
+      <div className="flex items-start gap-2.5 rounded-xl border border-warning/40 bg-warning/10 px-4 py-3">
+        <span className="text-base leading-5" aria-hidden>⚠️</span>
+        <p className="text-xs leading-5 text-foreground">
+          <span className="font-semibold">Heads up:</span> odds and scratch status reflect this morning's
+          card and may not be current. Confirm scratches and live odds at the track or your sportsbook
+          before wagering.
+        </p>
+      </div>
+
       {loading && !data && (
         <div className="flex items-center justify-center rounded-2xl border border-border bg-card p-12">
           <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
