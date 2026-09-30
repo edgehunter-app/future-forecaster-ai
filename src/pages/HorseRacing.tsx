@@ -653,6 +653,16 @@ export default function HorseRacing() {
     return () => window.clearTimeout(id);
   }, [data, lastChecked]);
 
+  const scheduleTracks = useMemo(() => {
+    if (!data) return [] as string[];
+    const pretty = (slug: string) => slug.split("-").map((w) => w.charAt(0).toUpperCase() + w.slice(1)).join(" ");
+    const names = [
+      ...(data.meetings ?? []).map((m) => m.trackName || pretty(m.track)),
+      ...(data.wrongDateTracks ?? []).map((w) => pretty(w.track)),
+    ];
+    return [...new Set(names)];
+  }, [data]);
+
   const { cards, coverage } = useMemo(() => {
     if (!data) return { cards: [] as RaceCardData[], coverage: [] as CoverageEntry[] };
 
