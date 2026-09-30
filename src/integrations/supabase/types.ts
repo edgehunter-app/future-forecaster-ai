@@ -199,6 +199,30 @@ export type Database = {
         }
         Relationships: []
       }
+      horse_racing_cache: {
+        Row: {
+          card_date: string
+          fetched_at: string
+          meeting_count: number
+          payload: Json
+          source: string
+        }
+        Insert: {
+          card_date: string
+          fetched_at?: string
+          meeting_count?: number
+          payload: Json
+          source?: string
+        }
+        Update: {
+          card_date?: string
+          fetched_at?: string
+          meeting_count?: number
+          payload?: Json
+          source?: string
+        }
+        Relationships: []
+      }
       internal_cron_secrets: {
         Row: {
           name: string

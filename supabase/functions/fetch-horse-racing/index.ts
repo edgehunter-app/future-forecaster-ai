@@ -10,6 +10,28 @@ const CORS_HEADERS = {
   "Content-Type": "application/json",
 };
 
+import { createClient } from "npm:@supabase/supabase-js@2";
+
+const db = createClient(Deno.env.get("SUPABASE_URL")!, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!, { auth: { persistSession: false } });
+async function isCronRequest(req: Request): Promise<boolean> {
+  const h = req.headers.get("x-cron-secret");
+  if (!h) return false;
+  const { data } = await db.from("internal_cron_secrets").select("value").eq("name", "horse_racing_refresh").maybeSingle();
+  return !!data?.value && data.value === h;
+}
+const CACHE_FRESH_MS = 30 * 60 * 1000;
+
+async function readCache(date: string) {
+  const { data } = await db.from("horse_racing_cache").select("payload, fetched_at").eq("card_date", date).maybeSingle();
+  return data as { payload: Record<string, unknown>; fetched_at: string } | null;
+}
+async function writeCache(date: string, result: ScanResult, source: string) {
+  const { error } = await db.from("horse_racing_cache").upsert({
+    card_date: date, payload: result, meeting_count: result.meetingCount, fetched_at: new Date().toISOString(), source,
+  });
+  console.log(`[horse-racing][cache] ${error ? "write failed: " + error.message : `saved ${date} (${result.meetingCount} meetings, via ${source})`}`);
+}
+
 const FORMFAV_KEY = Deno.env.get("FORMFAV_API_KEY");
 const FORMFAV_BASE = "https://api.formfav.com/v1";
 const headers = {
@@ -401,7 +423,28 @@ Deno.serve(async (req) => {
     console.log("[horse-racing] date ET:", easternToday, "UTC:", utcToday);
     const primaryDate = requested ?? easternToday;
 
+    const isCron = await isCronRequest(req);
+    console.log(`[horse-racing] run mode=${isCron ? "cron" : "visitor"}`);
+    const cached = await readCache(primaryDate);
+    const cacheAge = cached ? Date.now() - new Date(cached.fetched_at).getTime() : Infinity;
+    if (!isCron && cached && cacheAge < CACHE_FRESH_MS) {
+      console.log(`[horse-racing][cache] hit ${primaryDate} age=${Math.round(cacheAge / 60000)}m`);
+      return new Response(JSON.stringify({ ...cached.payload, cachedAt: cached.fetched_at }), { headers: CORS_HEADERS });
+    }
+
     const primary = await scanDate(primaryDate);
+    if (primary.meetingCount > 0) {
+      await writeCache(primaryDate, primary, isCron ? "cron" : "visitor");
+    } else if (cached) {
+      // Live check came back empty/wrong-dated — keep serving the last good same-day card.
+      console.log(`[horse-racing][cache] live empty, serving cached ${primaryDate} from ${cached.fetched_at}`);
+      if (isCron) return new Response(JSON.stringify({ ok: true, kept: cached.fetched_at }), { headers: CORS_HEADERS });
+      return new Response(JSON.stringify({ ...cached.payload, cachedAt: cached.fetched_at }), { headers: CORS_HEADERS });
+    }
+    if (isCron) {
+      console.log(`[horse-racing][cron] ${primaryDate}: meetings=${primary.meetingCount} cardsNotReady=${!!(primary as any).cardsNotReady}`);
+      return new Response(JSON.stringify({ ok: true, meetingCount: primary.meetingCount }), { headers: CORS_HEADERS });
+    }
 
     let saturday: ScanResult | undefined;
     if (alsoScanSaturday && primary.meetingCount === 0) {
