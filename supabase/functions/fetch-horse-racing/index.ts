@@ -148,6 +148,7 @@ async function scanDate(date: string): Promise<ScanResult> {
     bySlug.set(job.slug, arr);
   });
 
+  const wrongDateTracks: Array<{ track: string; returned: string; dropped: number }> = [];
   for (const m of summaries) {
     const races = bySlug.get(m.slug) ?? [];
     // Drop any race whose returned `date` doesn't match what we asked for
@@ -159,6 +160,7 @@ async function scanDate(date: string): Promise<ScanResult> {
     const dropped = races.length - trackRaces.length;
     if (dropped > 0) {
       const got = (races[0]?.data as Record<string, unknown>)?.date;
+      wrongDateTracks.push({ track: m.slug, returned: String(got ?? "unknown"), dropped });
       console.log(`[horse-racing] ${m.slug}: dropped ${dropped}/${races.length} races — asked ${date}, FormFav returned ${got}`);
     }
     if (trackRaces.length === 0) continue;
@@ -181,7 +183,11 @@ async function scanDate(date: string): Promise<ScanResult> {
   console.log("[horse-racing] meetings found:", meetings.length);
   console.log("[horse-racing] tracks with races:", meetings.map((m) => m.track));
 
-  return { date, meetings, meetingCount: meetings.length, source: "formfav-meetings", shapeSample };
+  const cardsNotReady = meetings.length === 0 && wrongDateTracks.length > 0;
+  if (wrongDateTracks.length > 0) {
+    console.log(`[horse-racing] wrong-date summary: ${wrongDateTracks.length}/${summaries.length} tracks stale, cardsNotReady=${cardsNotReady}`);
+  }
+  return { date, meetings, meetingCount: meetings.length, source: "formfav-meetings", shapeSample, wrongDateTracks, cardsNotReady };
 }
 
 Deno.serve(async (req) => {
