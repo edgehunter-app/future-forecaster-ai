@@ -11,9 +11,7 @@ import { useIsAdmin } from "@/hooks/useIsAdmin";
 import { useLineMonitor } from "@/hooks/useLineMonitor";
 import { useSubscription } from "@/hooks/useSubscription";
 
-function HorseEmojiIcon({ className }: { className?: string }) {
-  return <span className={cn("text-[20px] leading-none", className)} aria-hidden>🐎</span>;
-}
+import { FootballIcon, RacingIcon, PredictionMarketsIcon } from "@/components/icons/marketIcons";
 
 const MORE_ITEMS = [
   { to: "/suggestions", label: "Signals", icon: Zap },
