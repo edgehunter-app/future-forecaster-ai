@@ -1,17 +1,10 @@
-import { Flame, Loader2, Search } from "lucide-react";
+import { Flame } from "lucide-react";
 import type { FullGame } from "@/lib/oddsApi";
 import { useSportTop5, isWeekSport } from "@/hooks/useSportTop5";
 
 function fmtOdds(n?: number | null) {
   if (n == null || !Number.isFinite(n) || n === 0) return "N/A";
   return n > 0 ? `+${n}` : `${n}`;
-}
-function ago(d: Date) {
-  const m = Math.max(0, Math.round((Date.now() - d.getTime()) / 60000));
-  if (m < 1) return "just now";
-  if (m < 60) return `${m}m ago`;
-  const h = Math.round(m / 60);
-  return `${h}h ago`;
 }
 function fmtTime(iso: string) {
   try {
@@ -35,7 +28,6 @@ function updatedLabel(d: Date) {
   return `Updated ${d.toLocaleDateString([], { weekday: "short" })} ${time}`;
 }
 
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
 export default function SportTop5Card({ sportKey, sportLabel, games, golfTournamentName: _g }: Props) {
   const t = useSportTop5(sportKey, games);
   const isGolf = sportKey === "golf";
@@ -118,21 +110,12 @@ export default function SportTop5Card({ sportKey, sportLabel, games, golfTournam
         <h2 className="flex items-center gap-1.5 text-sm font-extrabold uppercase tracking-wide text-foreground">
           <Flame className="h-4 w-4 text-warning" /> Top 5 {sportLabel} Bets {whenTitle}
         </h2>
-        <div className="flex items-center gap-2">
-          {t.lastScannedAt && (
-            <span className="text-[11px] text-muted-foreground">Last scanned: {ago(t.lastScannedAt)}</span>
-          )}
-          <button
-            onClick={t.scan}
-            disabled={t.loading || !t.hasGamesToday}
-            className="inline-flex items-center gap-1 rounded-md border border-warning/50 bg-warning/15 px-2.5 py-1 text-[11px] font-bold text-warning hover:bg-warning/25 disabled:opacity-50"
-          >
-            {t.loading ? <Loader2 className="h-3 w-3 animate-spin" /> : <Search className="h-3 w-3" />}
-            Scan for Top 5
-          </button>
-        </div>
+        {t.lastScannedAt && (
+          <span className="text-[11px] text-muted-foreground">{updatedLabel(t.lastScannedAt)}</span>
+        )}
       </div>
       {body}
+      <p className="mt-2 border-t border-border/60 pt-2 text-[11px] text-muted-foreground">For live updates on a specific game, use Find the Edge.</p>
     </section>
   );
 }
