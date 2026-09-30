@@ -4,6 +4,7 @@ import HeroBestEdgeCard from "@/components/discover/HeroBestEdgeCard";
 import BestEdgeDetailSheet from "@/components/discover/BestEdgeDetailSheet";
 import TodaySignalsList from "@/components/discover/TodaySignalsList";
 import AIInsightStrip from "@/components/discover/AIInsightStrip";
+import MarketGrid from "@/components/discover/MarketGrid";
 import GamblingDisclaimer from "@/components/sports/GamblingDisclaimer";
 import { useBestBet } from "@/hooks/useBestBet";
 import { useSportsOdds } from "@/hooks/useSportsOdds";
@@ -84,6 +85,8 @@ export default function Discover() {
 
       {/* AI insight strip */}
       <AIInsightStrip message={insight} />
+
+      <MarketGrid />
 
       {/* Today's Signals */}
       <div>
