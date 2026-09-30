@@ -193,7 +193,7 @@ export default function SportsMispricingCard({ mispricing: m }: Props) {
           </div>
           <p className="text-xs text-foreground leading-relaxed">{analysis.reasoning}</p>
           <ConfidenceBar value={analysis.confidence} size="sm" />
-          <div className="flex items-start gap-1.5 rounded-md border border-warning/30 bg-warning/10 px-2 py-1 text-[10px] text-warning">
+          <div className="flex items-start gap-1.5 rounded-md bg-muted/40 px-2 py-1 text-[10px] text-muted-foreground">
             <ShieldAlert className="h-3 w-3 mt-0.5 shrink-0" />
             <span>AI suggestion only. Verify before trading.</span>
           </div>
