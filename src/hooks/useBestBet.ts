@@ -50,6 +50,29 @@ export function useBestBet() {
   const crossMarketOpps = useAppStore((s) => s.crossMarketOpps ?? []);
   const setLastBestBet = useAppStore((s) => s.setLastBestBet);
 
+  // Morning pre-populated result (scheduled-top5 job, sport_key "best_bet").
+  // Only fills the card when nothing is showing; Rescan replaces it.
+  useEffect(() => {
+    if (useAppStore.getState().lastBestBet) return;
+    const etToday = new Intl.DateTimeFormat("en-CA", { timeZone: "America/New_York", year: "numeric", month: "2-digit", day: "2-digit" }).format(new Date());
+    let alive = true;
+    void supabase
+      .from("top5_cache")
+      .select("payload, scanned_at")
+      .eq("sport_key", "best_bet")
+      .eq("period_key", etToday)
+      .maybeSingle()
+      .then(({ data: row }) => {
+        const r = (row?.payload as { result?: BestBetResult | null } | undefined)?.result;
+        if (!alive || !r || useAppStore.getState().lastBestBet) return;
+        // Drop it once the game is more than 3h old.
+        const t = r.game?.commenceTime ? new Date(r.game.commenceTime).getTime() : NaN;
+        if (Number.isFinite(t) && Date.now() - t > 3 * 3600000) return;
+        setLastBestBet({ ...r, generatedAt: new Date(row!.scanned_at) });
+      });
+    return () => { alive = false; };
+  }, [setLastBestBet]);
+
   const availability: BestBetAvailability = useMemo(() => {
     const now = Date.now();
     let has12 = false;
