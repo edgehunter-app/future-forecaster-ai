@@ -21,9 +21,9 @@ interface Props {
 
 function levelTone(l?: string) {
   const up = (l ?? "").toUpperCase();
-  if (up === "LOW") return { cls: "border-success/40 bg-success/10 text-success", label: "Low Risk", bar: "bg-success" };
-  if (up === "HIGH") return { cls: "border-destructive/50 bg-destructive/15 text-destructive", label: "High Risk", bar: "bg-destructive" };
-  return { cls: "border-warning/40 bg-warning/15 text-warning", label: "Medium Risk", bar: "bg-warning" };
+  if (up === "LOW") return { cls: "bg-success/15 text-success border-success/30", label: "Low Risk", dot: "bg-success" };
+  if (up === "HIGH") return { cls: "bg-destructive/15 text-destructive border-destructive/30", label: "High Risk", dot: "bg-destructive" };
+  return { cls: "bg-warning/15 text-warning border-warning/30", label: "Medium Risk", dot: "bg-warning" };
 }
 
 function impactTone(i?: string) {
@@ -58,7 +58,8 @@ export default function RiskAIPanel({ data }: Props) {
           <Shield className="h-3.5 w-3.5" />
           <span className="text-[11px] font-bold uppercase tracking-wide">Risk Assessment</span>
         </div>
-        <span className={cn("rounded-full border px-2.5 py-0.5 text-[10px] font-bold uppercase", tone.cls)}>
+        <span className={cn("inline-flex items-center gap-1.5 rounded-full border px-3 py-1 text-xs font-semibold", tone.cls)}>
+          <span className={cn("h-2.5 w-2.5 rounded-full", tone.dot)} />
           {tone.label}
         </span>
       </div>
@@ -69,7 +70,7 @@ export default function RiskAIPanel({ data }: Props) {
           <span className="text-[11px] font-mono font-bold text-foreground">{score}/10</span>
         </div>
         <div className="h-1.5 w-full rounded-full bg-muted overflow-hidden">
-          <div className={cn("h-full transition-all", tone.bar)} style={{ width: `${score * 10}%` }} />
+          <div className={cn("h-full transition-all", tone.dot)} style={{ width: `${score * 10}%` }} />
         </div>
       </div>
 
