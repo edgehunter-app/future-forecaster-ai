@@ -258,8 +258,16 @@ async function runBestBet() {
   const at = new Date().toISOString();
   const best = scored.sort((a, b) => b.score - a.score)[0] ?? null;
   const payload = { result: best ? { source: "sports", game: best.game, analysis: best.analysis, scannedCount: candidates.length, generatedAt: at } : null, analyzed: candidates.length, at, scheduled: true };
-  const { error } = await db.from("top5_cache").upsert({ sport_key: "best_bet", period_key: today, payload, scanned_at: at, scanned_by: null });
-  if (error) throw new Error(`cache save failed: ${error.message}`);
+  // Evening re-run: never overwrite an existing pick with "none".
+  let keep = false;
+  if (!best) {
+    const { data: ex } = await db.from("top5_cache").select("payload").eq("sport_key", "best_bet").eq("period_key", today).maybeSingle();
+    keep = !!(ex?.payload as { result?: unknown } | undefined)?.result;
+  }
+  if (!keep) {
+    const { error } = await db.from("top5_cache").upsert({ sport_key: "best_bet", period_key: today, payload, scanned_at: at, scanned_by: null });
+    if (error) throw new Error(`cache save failed: ${error.message}`);
+  }
   if (best) {
     const a = best.analysis, g = best.game as Game, side = String(a.recommendation).toUpperCase(), odds = Number(a.odds);
     const { error: le } = await db.from("pick_log").insert({

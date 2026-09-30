@@ -22,7 +22,7 @@ export default function Discover() {
   // Shared engine: findBestBet writes into store.lastBestBet, which is the
   // single source of truth read by both Discover and Sports so the two
   // surfaces cannot disagree on "the best pick".
-  const { loading, findBestBet, availability, scannedSoFar, clear } = useBestBet();
+  const { loading, findBestBet, availability, scannedSoFar, clear, slateWrapped } = useBestBet();
   const lastBestBet = useAppStore((s) => s.lastBestBet);
   const [sheetOpen, setSheetOpen] = useState(false);
 
@@ -80,7 +80,8 @@ export default function Discover() {
           if (displayed) setSheetOpen(true);
           else void findBestBet();
         }}
-        emptyMessage={emptyMessage}
+        emptyMessage={slateWrapped ? "Every game on today's board has started. Tomorrow's pick posts around 7 AM ET." : emptyMessage}
+        emptyTitle={slateWrapped ? "Today's slate has wrapped up" : undefined}
       />
 
       {/* AI insight strip */}
