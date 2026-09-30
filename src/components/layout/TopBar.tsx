@@ -18,8 +18,8 @@ const cnIconBtn = (m: boolean) =>
     : "relative inline-flex h-9 w-9 items-center justify-center rounded-md border border-border bg-card text-muted-foreground hover:text-foreground hover:bg-accent transition-colors";
 const cnAvatarBtn = (m: boolean) =>
   m
-    ? "inline-flex h-11 w-11 items-center justify-center rounded-full bg-info text-xs font-bold text-white"
-    : "inline-flex h-9 w-9 items-center justify-center rounded-full bg-info text-xs font-bold text-white";
+    ? "inline-flex h-9 w-9 items-center justify-center rounded-full bg-info/80 text-[10px] font-bold text-primary-foreground"
+    : "inline-flex h-8 w-8 items-center justify-center rounded-full bg-info/80 text-[10px] font-bold text-primary-foreground";
 
 const titles: Record<string, { title: string; subtitle?: string }> = {
   "/": { title: "Dashboard", subtitle: "Overview of suggestions and signals" },
@@ -148,9 +148,8 @@ export function TopBar(_: { onMenuClick?: () => void } = {}) {
         </div>
         )}
         {isMobile && (
-        <span className="relative flex h-2 w-2">
-          <span className="absolute inline-flex h-full w-full rounded-full bg-success opacity-60 live-dot" />
-          <span className="relative inline-flex h-2 w-2 rounded-full bg-success" />
+        <span className="relative flex h-1.5 w-1.5" title="Live data" aria-label="Live data">
+          <span className="relative inline-flex h-1.5 w-1.5 rounded-full bg-success/70" />
         </span>
         )}
         <button

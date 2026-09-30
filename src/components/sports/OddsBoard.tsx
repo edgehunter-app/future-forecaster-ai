@@ -345,10 +345,10 @@ function GameCard({ game, mispricings }: { game: FullGame; mispricings: SportsMi
   };
 
   return (
-    <div className="rounded-lg border border-border bg-card p-4 space-y-3">
+    <div className="space-y-2 rounded-lg border border-border/80 bg-card p-3 shadow-sm ring-1 ring-foreground/5">
       {/* Top row */}
-      <div className="flex items-center justify-between gap-2">
-        <span className="rounded-full border border-border bg-background/40 px-2 py-0.5 text-[10px] font-semibold uppercase text-muted-foreground">
+      <div className="flex items-center justify-between gap-2 border-b border-border/40 pb-2">
+        <span className="rounded bg-muted/60 px-1.5 py-0.5 text-[9px] font-bold uppercase text-muted-foreground">
           {displayLeague(game)}
         </span>
         <div className="flex items-center gap-2">
@@ -385,45 +385,45 @@ function GameCard({ game, mispricings }: { game: FullGame; mispricings: SportsMi
       )}
 
       {/* Matchup row */}
-      <div className="grid grid-cols-[1fr_auto_1fr] items-center gap-3">
+      <div className="grid grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-center gap-3 py-1">
         <div className="text-center">
-          <div className="text-sm font-bold text-foreground">
+          <div className="text-base font-bold leading-tight text-foreground">
             {awayRank && <span className="text-info">#{awayRank} </span>}
             {displayTeamName(game, "away")}
             {isCfb && cfbAway?.division === "FCS" && (
               <span className="ml-1 text-[9px] font-bold uppercase text-muted-foreground">FCS</span>
             )}
           </div>
-          <div className={cn("text-xl font-extrabold mt-1", oddsClass(awayOdds))}>
+          <div className={cn("mt-1 text-2xl font-extrabold leading-none", oddsClass(awayOdds))}>
             {formatOdds(awayOdds)}
           </div>
-          <div className="text-[10px] font-mono text-muted-foreground">
+          <div className="mt-1 text-[9px] font-mono text-muted-foreground/70">
             {isValidOdds(awayOdds)
               ? `${(toImplied(awayOdds) * 100).toFixed(0)}%`
               : awayImplied > 0 ? `${(awayImplied * 100).toFixed(0)}% est` : "—"}
           </div>
         </div>
         <div className="text-center">
-          <div className="text-[10px] uppercase text-muted-foreground">vs</div>
+          <div className="text-[9px] uppercase text-muted-foreground/60">vs</div>
           {game.spread && (
-            <div className="mt-1 text-[10px] font-mono text-foreground">
+            <div className="mt-1 max-w-[72px] text-[9px] font-mono leading-tight text-muted-foreground">
               {displayTeamName(game, game.spread.homeSpread < 0 ? "home" : "away")}{" "}
               {formatSpread(game.spread.homeSpread < 0 ? game.spread.homeSpread : game.spread.awaySpread)}
             </div>
           )}
         </div>
         <div className="text-center">
-          <div className="text-sm font-bold text-foreground">
+          <div className="text-base font-bold leading-tight text-foreground">
             {homeRank && <span className="text-info">#{homeRank} </span>}
             {displayTeamName(game, "home")}
             {isCfb && cfbHome?.division === "FCS" && (
               <span className="ml-1 text-[9px] font-bold uppercase text-muted-foreground">FCS</span>
             )}
           </div>
-          <div className={cn("text-xl font-extrabold mt-1", oddsClass(homeOdds))}>
+          <div className={cn("mt-1 text-2xl font-extrabold leading-none", oddsClass(homeOdds))}>
             {formatOdds(homeOdds)}
           </div>
-          <div className="text-[10px] font-mono text-muted-foreground">
+          <div className="mt-1 text-[9px] font-mono text-muted-foreground/70">
             {isValidOdds(homeOdds)
               ? `${(toImplied(homeOdds) * 100).toFixed(0)}%`
               : homeImplied > 0 ? `${(homeImplied * 100).toFixed(0)}% est` : "—"}
@@ -433,14 +433,14 @@ function GameCard({ game, mispricings }: { game: FullGame; mispricings: SportsMi
 
       {/* Markets row */}
       {game.isTennis ? (
-        <div className="grid grid-cols-1 gap-2 text-[11px]">
+        <div className="grid grid-cols-1 gap-px overflow-hidden rounded-md bg-background/40 text-[11px]">
           <Market label="Match Winner">
             <div className={oddsClass(awayOdds)}>{displayTeamName(game, "away")} {formatOdds(awayOdds)}</div>
             <div className={oddsClass(homeOdds)}>{displayTeamName(game, "home")} {formatOdds(homeOdds)}</div>
           </Market>
         </div>
       ) : (
-        <div className="grid grid-cols-3 gap-2 text-[11px]">
+        <div className="grid grid-cols-3 gap-px overflow-hidden rounded-md bg-border/30 text-[11px]">
           <Market label="Moneyline">
             <div className={oddsClass(awayOdds)}>A {formatOdds(awayOdds)}</div>
             <div className={oddsClass(homeOdds)}>H {formatOdds(homeOdds)}</div>
@@ -476,7 +476,7 @@ function GameCard({ game, mispricings }: { game: FullGame; mispricings: SportsMi
 
       {/* Compare books — hidden entirely while lines are pending */}
       {linesPending ? (
-        <div className="rounded-md border border-dashed border-border/60 bg-background/30 px-3 py-2 space-y-1.5">
+        <div className="space-y-1 rounded-md bg-background/35 px-3 py-2">
           <div className="flex items-center gap-1.5 text-[11px] font-semibold text-muted-foreground">
             <Clock className="h-3 w-3" />
             <span>{vegasQuotaOut ? "Vegas odds temporarily unavailable" : "Lines posting soon"}</span>
@@ -487,7 +487,7 @@ function GameCard({ game, mispricings }: { game: FullGame; mispricings: SportsMi
               : "Vegas books typically post 24–36h before first pitch."}
           </p>
           {kalshiBook && (isValidOdds(kalshiBook.homeMoneyline) || isValidOdds(kalshiBook.awayMoneyline)) && (
-            <div className="mt-1.5 rounded-md border border-info/30 bg-info/5 px-2 py-1.5 space-y-0.5">
+            <div className="mt-1.5 space-y-0.5 rounded-md bg-info/5 px-2 py-1.5">
               <div className="flex items-center justify-between gap-2">
                 <span className="text-[10px] font-mono text-foreground">
                   Kalshi: {displayTeamName(game, "away")} {formatOdds(kalshiBook.awayMoneyline)}
@@ -502,10 +502,10 @@ function GameCard({ game, mispricings }: { game: FullGame; mispricings: SportsMi
           )}
         </div>
       ) : (
-      <div className="rounded-md border border-border/60">
+      <div className="overflow-hidden rounded-md bg-background/35">
         <button
           onClick={handleCompareToggle}
-          className="flex w-full items-center justify-between gap-2 px-3 py-2 text-[11px] font-semibold text-muted-foreground hover:text-foreground"
+          className="flex w-full items-center justify-between gap-2 px-3 py-1.5 text-[11px] font-semibold text-muted-foreground hover:text-foreground"
         >
           <span>
             {oddsLoading
@@ -524,7 +524,7 @@ function GameCard({ game, mispricings }: { game: FullGame; mispricings: SportsMi
         </button>
         {expanded && (
           oddsLoading ? (
-            <div className="border-t border-border/60 px-3 py-4 text-center text-[11px] text-muted-foreground">
+            <div className="border-t border-border/40 px-3 py-3 text-center text-[11px] text-muted-foreground">
               <Loader2 className="inline h-3 w-3 animate-spin mr-1.5" />
               Loading sportsbook lines…
             </div>
@@ -536,7 +536,7 @@ function GameCard({ game, mispricings }: { game: FullGame; mispricings: SportsMi
               vegasConsensus={game.vegasConsensus}
             />
           ) : (
-            <div className="border-t border-border/60 px-3 py-4 text-center space-y-0.5">
+            <div className="space-y-0.5 border-t border-border/40 px-3 py-3 text-center">
               <p className="text-[11px] text-muted-foreground">
                 {oddsFetched ? "No sportsbook lines posted yet" : "Full lines not yet available"}
               </p>
@@ -551,7 +551,7 @@ function GameCard({ game, mispricings }: { game: FullGame; mispricings: SportsMi
       {result ? (
         <GameAnalysisPanel result={result} game={game} onClear={() => clearResult(game.id)} />
       ) : linesPending ? (
-        <div className="flex w-full items-center justify-center gap-2 rounded-md border border-dashed border-border bg-background/30 px-3 h-[52px] sm:h-11 text-muted-foreground">
+         <div className="flex h-11 w-full items-center justify-center gap-2 rounded-md bg-background/35 px-3 text-muted-foreground">
           <Clock className="h-4 w-4" />
           <span className="text-[11px] font-semibold">Analysis available once lines post</span>
         </div>
@@ -562,7 +562,7 @@ function GameCard({ game, mispricings }: { game: FullGame; mispricings: SportsMi
             disabled={analyzing || oddsLoading}
             className={cn(
               "flex w-full items-center justify-center gap-2 rounded-md bg-purple px-3 text-white font-semibold transition-colors hover:bg-purple/90 disabled:opacity-60",
-              "h-[52px] sm:h-11",
+               "h-11",
             )}
           >
             {analyzing || oddsLoading ? (
@@ -604,11 +604,11 @@ function GameCard({ game, mispricings }: { game: FullGame; mispricings: SportsMi
       )}
 
       {/* Player Props toggle */}
-      <div className="rounded-md border border-info/30 bg-info/5">
+      <div className="rounded-md bg-info/5">
         <button
           onClick={() => setShowProps((v) => !v)}
           className={cn(
-            "flex w-full items-center justify-between gap-2 px-3 py-2 text-[11px] font-semibold transition-colors",
+            "flex w-full items-center justify-between gap-2 px-3 py-1.5 text-[11px] font-semibold transition-colors",
             showProps ? "text-info" : "text-muted-foreground hover:text-foreground",
           )}
         >
@@ -625,8 +625,8 @@ function GameCard({ game, mispricings }: { game: FullGame; mispricings: SportsMi
 
 function Market({ label, children }: { label: string; children: React.ReactNode }) {
   return (
-    <div className="rounded-md border border-border/60 bg-background/40 p-2">
-      <div className="text-[9px] uppercase font-semibold text-muted-foreground mb-1">{label}</div>
+    <div className="bg-background/60 p-2">
+      <div className="mb-1 text-[9px] font-semibold uppercase text-muted-foreground/70">{label}</div>
       <div className="font-mono space-y-0.5">{children}</div>
     </div>
   );
