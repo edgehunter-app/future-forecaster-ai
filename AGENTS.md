@@ -1,5 +1,5 @@
 
-- Admin grant actions (grant admin / grant beta tester) run only via the admin-grant edge function with service role; DB functions take _caller_id and re-check admin. Why: no direct RPC access for anon/authenticated.
+- Admin grants run only through admin-grant with service role; DB functions re-check _caller_id. Why: block direct RPC access.
 - grade-picks has no lookback limit; picks older than 3 days are scored from ESPN's free scoreboard, because the Odds API scores endpoint only covers 3 days.
 - Horse racing: fetch-horse-racing serves same-day cards from horse_racing_cache (30-min fresh window) and a pg_cron job refreshes it every 30 min during US racing hours; the cron authenticates with the horse_racing_refresh row in internal_cron_secrets. Why: cards appear with zero active visitors and FormFav calls stay bounded.
 - FormFav is queried at date+1 (FORMFAV_DAY_OFFSET) for date D cards, and every race is still date-checked == D, in both fetch-horse-racing and analyze-market; mismatches log an [offset] WARNING and are withheld. Why: FormFav serves one day behind.
@@ -7,3 +7,4 @@
 - fetch-sports-odds pauses Odds API golf majors (and the /sports golf check) until GOLF_MAJORS_RESUME, and calls tennis Grand Slam feeds only inside TENNIS_WINDOWS. Why: off-season feeds burned quota with no live events.
 - The same scheduled-top5 job also saves the morning Best Bet (sport_key "best_bet", ET date) that useBestBet loads when no result is showing; Rescan stays client-side. Why: Discover never opens empty.
 - Top 5 Bets is shown and filled only for sports in SCHEDULED_TOP5_SPORTS (MLB, NBA, NHL, EPL, MLS, MMA, NFL, CFB; not golf/tennis) by the scheduled-top5 edge function (pg_cron scheduled-top5-morning, 11:00 UTC, one call per sport; auth via internal_cron_secrets row "scheduled_top5"); top5_cache is read-only for users. Why: fixed, predictable AI cost.
+- Sport tabs share OddsBoard's compact GameCard treatment. Why: consistent, scannable mobile odds density.
