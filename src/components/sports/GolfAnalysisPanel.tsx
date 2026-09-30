@@ -105,7 +105,7 @@ export default function GolfAnalysisPanel({ result, tournamentName, onClear }: P
     : player;
 
   return (
-    <div className="rounded-lg border border-purple/40 bg-gradient-to-br from-purple/10 to-card p-3 sm:p-4 space-y-3 animate-in fade-in slide-in-from-top-2 duration-200">
+    <div className="rounded-lg border border-purple/30 bg-purple/5 p-3 sm:p-4 space-y-3 animate-in fade-in slide-in-from-top-2 duration-200">
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-1.5 text-purple">
           <Brain className="h-3.5 w-3.5" />
@@ -114,7 +114,7 @@ export default function GolfAnalysisPanel({ result, tournamentName, onClear }: P
           </span>
         </div>
         <div className="flex items-center gap-2">
-          <span className="text-[10px] font-mono text-muted-foreground">Just now</span>
+          <span className="text-[10px] text-muted-foreground">Just now</span>
           <button
             onClick={onClear}
             className="rounded-md p-1 text-muted-foreground hover:bg-muted hover:text-foreground"
@@ -183,16 +183,16 @@ export default function GolfAnalysisPanel({ result, tournamentName, onClear }: P
 
       {/* Value play */}
       {showValuePlay && result.valuePlay && (
-        <div className="rounded-md border border-amber-400/40 bg-amber-500/10 p-3">
-          <div className="text-[11px] font-bold uppercase text-amber-300 mb-1">
+        <div className="rounded-md border-l-[3px] border-l-purple bg-purple/5 p-3">
+          <div className="text-[11px] font-bold uppercase text-purple mb-1">
             💎 Value Play
           </div>
           <div className="text-sm font-bold text-foreground">
-            {result.valuePlay.player} at {fmtOdds(result.valuePlay.odds)}
+            {result.valuePlay.player} at <span className="font-mono">{fmtOdds(result.valuePlay.odds)}</span>
             {result.valuePlay.book ? ` (${result.valuePlay.book})` : ""}
           </div>
           {result.valuePlay.reason && (
-            <div className="mt-1 text-[11px] text-amber-200/90">{result.valuePlay.reason}</div>
+            <div className="mt-1 text-[11px] text-muted-foreground">{result.valuePlay.reason}</div>
           )}
         </div>
       )}
@@ -280,14 +280,14 @@ export default function GolfAnalysisPanel({ result, tournamentName, onClear }: P
       )}
       {!isElite && (result.devilsAdvocate || result.riskProfile) && <EliteTeaser />}
 
-      {/* Warnings */}
+      {/* Warnings — routine disclosure, muted treatment */}
       {Array.isArray(result.warningFlags) && result.warningFlags.length > 0 && (
-        <div className="rounded-md border border-warning/40 bg-warning/10 p-2.5">
-          <div className="flex items-center gap-1.5 text-warning">
+        <div className="rounded-md bg-muted/30 p-2.5">
+          <div className="flex items-center gap-1.5 text-muted-foreground">
             <Shield className="h-3.5 w-3.5" />
             <span className="text-[10px] font-bold uppercase">Warnings</span>
           </div>
-          <ul className="mt-1 ml-1 list-disc list-inside space-y-0.5 text-[11px] text-warning/90">
+          <ul className="mt-1 ml-1 list-disc list-inside space-y-0.5 text-[11px] text-muted-foreground">
             {result.warningFlags.map((w, i) => (
               <li key={i}>{w}</li>
             ))}

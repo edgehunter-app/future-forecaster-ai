@@ -92,7 +92,7 @@ export default function PlayerPropsPanel({ game, sportKey }: Props) {
           Player Props ({props.props.length})
         </span>
         {isAdmin && (
-          <span className="text-[10px] font-mono text-muted-foreground">
+          <span className="text-[10px] text-muted-foreground">
             Cached · refreshes in {refreshIn}m
           </span>
         )}
@@ -157,7 +157,7 @@ function PlayerPropRow({ player, props }: { player: string; props: PlayerProp[] 
               <OverUnderBox label={`Under ${prop.line}`} odds={prop.bestUnderOdds} book={prop.bestUnderBook} kind="under" />
             </div>
             {edge && (
-              <div className="mt-1.5 rounded-md border border-warning/30 bg-warning/10 px-2 py-1 text-[10px] font-semibold text-warning">
+              <div className="mt-1.5 rounded-md border-l-[3px] border-l-warning bg-warning/5 px-2 py-1 text-[10px] font-semibold text-warning">
                 Best line: {edge.side.toUpperCase()} {formatOdds(edge.odds)} at {edge.book} (+{(edge.edge * 100).toFixed(1)}% vs worst)
               </div>
             )}
