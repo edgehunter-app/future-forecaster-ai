@@ -27,10 +27,9 @@ function formatOdds(v: number | string | undefined): string {
 }
 
 function confidenceTone(c: number) {
-  if (c >= 70) return "border-warning/50 bg-warning/10 text-warning";
-  if (c >= 60) return "border-success/50 bg-success/10 text-success";
-  if (c >= 50) return "border-info/50 bg-info/10 text-info";
-  return "border-border bg-muted/40 text-foreground";
+  if (c >= 70) return "border-success/40 bg-success/10 text-success";
+  if (c >= 60) return "border-info/40 bg-info/10 text-info";
+  return "border-border bg-muted/40 text-muted-foreground";
 }
 
 export default function BestBetCard({ result, onClear, onRescan }: Props) {
@@ -176,10 +175,10 @@ export default function BestBetCard({ result, onClear, onRescan }: Props) {
   return (
     <div
       id="best-bet-card"
-      className="rounded-xl border-2 border-purple/40 bg-gradient-to-br from-purple/10 via-card to-warning/5 p-4 sm:p-5 space-y-4 shadow-lg animate-in fade-in slide-in-from-top-2 duration-300"
+      className="rounded-xl border border-purple/30 bg-purple/5 p-4 sm:p-5 space-y-4 animate-in fade-in slide-in-from-top-2 duration-300"
     >
       {isStale && (
-        <div className="rounded-md border border-warning/50 bg-warning/10 p-3 flex items-start gap-2">
+        <div className="rounded-md border-l-[3px] border-l-warning bg-warning/5 p-3 flex items-start gap-2">
           <AlertTriangle className="h-4 w-4 text-warning shrink-0 mt-0.5" />
           <div className="flex-1 text-xs text-warning">
             <div className="font-bold">
@@ -190,7 +189,7 @@ export default function BestBetCard({ result, onClear, onRescan }: Props) {
           {onRescan && (
             <button
               onClick={onRescan}
-              className="inline-flex items-center gap-1 rounded-md border border-warning/50 bg-warning/20 px-2 py-1 text-[11px] font-bold text-warning hover:bg-warning/30"
+              className="inline-flex items-center gap-1 rounded-md border border-warning/40 bg-warning/10 px-2 py-1 text-[11px] font-semibold text-warning hover:bg-warning/20"
             >
               <RotateCw className="h-3 w-3" /> Rescan Now
             </button>
@@ -201,12 +200,12 @@ export default function BestBetCard({ result, onClear, onRescan }: Props) {
       {/* Header */}
       <div className="flex items-start justify-between gap-3">
         <div className="flex items-center gap-2">
-          <Trophy className="h-5 w-5 text-warning" />
+          <Trophy className="h-5 w-5 text-muted-foreground" />
           <div>
             <div className="flex items-center gap-2">
               <div className="text-base font-extrabold text-foreground">Today's Best Bet</div>
-              <span className="rounded-full border border-warning/40 bg-warning/15 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-warning">
-                🏆 Line Shopping Edge
+              <span className="rounded-full border border-border bg-muted/50 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
+                Line Shopping Edge
               </span>
             </div>
             <div className="text-[11px] text-muted-foreground">
@@ -249,7 +248,7 @@ export default function BestBetCard({ result, onClear, onRescan }: Props) {
       )}
 
       {/* Recommendation box */}
-      <div className={cn("rounded-lg border-2 px-3 py-4 text-center", tone)}>
+      <div className={cn("rounded-lg border px-3 py-4 text-center", tone)}>
         <div className="text-lg sm:text-2xl font-extrabold leading-tight">{headline}</div>
         <div className="mt-1 text-[11px] tracking-wide text-muted-foreground">
           {sideLabel ? `${sideLabel} · ` : ""}
@@ -401,7 +400,7 @@ function PredictionMarketBestBetCard({ result, onClear, onRescan }: Props) {
   return (
     <div
       id="best-bet-card"
-      className="rounded-xl border-2 border-info/40 bg-gradient-to-br from-info/10 via-card to-purple/5 p-4 sm:p-5 space-y-4 shadow-lg animate-in fade-in slide-in-from-top-2 duration-300"
+      className="rounded-xl border border-info/30 bg-info/5 p-4 sm:p-5 space-y-4 animate-in fade-in slide-in-from-top-2 duration-300"
     >
       {isStale && onRescan && (
         <StaleBanner ageMinutes={ageMinutes} onRescan={onRescan} />
@@ -435,7 +434,7 @@ function PredictionMarketBestBetCard({ result, onClear, onRescan }: Props) {
         {p.market.question}
       </div>
 
-      <div className={cn("rounded-lg border-2 px-3 py-4 text-center", tone)}>
+      <div className={cn("rounded-lg border px-3 py-4 text-center", tone)}>
         <div className="text-lg sm:text-2xl font-extrabold leading-tight">
           BET {p.favoredSide} on {p.bestPlatform}
         </div>
@@ -499,7 +498,7 @@ function WalletSignalBestBetCard({ result, onClear, onRescan }: Props) {
   return (
     <div
       id="best-bet-card"
-      className="rounded-xl border-2 border-purple/40 bg-gradient-to-br from-purple/10 via-card to-info/5 p-4 sm:p-5 space-y-4 shadow-lg animate-in fade-in slide-in-from-top-2 duration-300"
+      className="rounded-xl border border-purple/30 bg-purple/5 p-4 sm:p-5 space-y-4 animate-in fade-in slide-in-from-top-2 duration-300"
     >
       {isStale && onRescan && (
         <StaleBanner ageMinutes={ageMinutes} onRescan={onRescan} />
@@ -533,7 +532,7 @@ function WalletSignalBestBetCard({ result, onClear, onRescan }: Props) {
         {w.market.question}
       </div>
 
-      <div className={cn("rounded-lg border-2 px-3 py-4 text-center", tone)}>
+      <div className={cn("rounded-lg border px-3 py-4 text-center", tone)}>
         <div className="text-lg sm:text-2xl font-extrabold leading-tight">
           BET {w.favoredSide}
         </div>
@@ -550,7 +549,7 @@ function WalletSignalBestBetCard({ result, onClear, onRescan }: Props) {
             className={cn(
               "rounded-md border px-2 py-0.5 text-[11px] font-bold font-mono",
               tw.tier === "S"
-                ? "border-warning/50 bg-warning/15 text-warning"
+                ? "border-border bg-muted/60 text-foreground"
                 : "border-info/50 bg-info/15 text-info",
             )}
             title={`${tw.label} · $${Math.round(tw.positionValue).toLocaleString()}`}
@@ -596,7 +595,7 @@ function WalletSignalBestBetCard({ result, onClear, onRescan }: Props) {
 
 function StaleBanner({ ageMinutes, onRescan }: { ageMinutes: number; onRescan: () => void }) {
   return (
-    <div className="rounded-md border border-warning/50 bg-warning/10 p-3 flex items-start gap-2">
+    <div className="rounded-md border-l-[3px] border-l-warning bg-warning/5 p-3 flex items-start gap-2">
       <AlertTriangle className="h-4 w-4 text-warning shrink-0 mt-0.5" />
       <div className="flex-1 text-xs text-warning">
         <div className="font-bold">
@@ -606,7 +605,7 @@ function StaleBanner({ ageMinutes, onRescan }: { ageMinutes: number; onRescan: (
       </div>
       <button
         onClick={onRescan}
-        className="inline-flex items-center gap-1 rounded-md border border-warning/50 bg-warning/20 px-2 py-1 text-[11px] font-bold text-warning hover:bg-warning/30"
+        className="inline-flex items-center gap-1 rounded-md border border-warning/40 bg-warning/10 px-2 py-1 text-[11px] font-semibold text-warning hover:bg-warning/20"
       >
         <RotateCw className="h-3 w-3" /> Rescan Now
       </button>

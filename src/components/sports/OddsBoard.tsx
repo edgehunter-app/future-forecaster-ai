@@ -4,6 +4,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAppStore } from "@/store/useAppStore";
 import GolfAnalysisPanel, { type GolfAnalysisResult } from "./GolfAnalysisPanel";
 import { cn } from "@/lib/utils";
+import StatusBadge from "@/components/ui/StatusBadge";
 import { teamNickname } from "@/lib/betHeadline";
 import {
   formatOdds,
@@ -348,39 +349,43 @@ function GameCard({ game, mispricings }: { game: FullGame; mispricings: SportsMi
     <div className="space-y-2 rounded-xl border border-border/80 bg-card p-3 shadow-sm ring-1 ring-foreground/5">
       {/* Top row */}
       <div className="flex items-center justify-between gap-2 border-b border-border/40 pb-2">
-        <span className="rounded bg-muted/60 px-1.5 py-0.5 text-[9px] font-bold uppercase text-muted-foreground">
+        <span className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
           {displayLeague(game)}
         </span>
         <div className="flex items-center gap-2">
           {game.isLive && (
-            <span className="inline-flex items-center gap-1 rounded-full bg-destructive/15 px-2 py-0.5 text-[10px] font-bold text-destructive">
-              <span className="h-1.5 w-1.5 rounded-full bg-destructive animate-pulse" />
-              LIVE
-            </span>
+            <StatusBadge tone="destructive" dot>
+              Live
+            </StatusBadge>
           )}
           {isBuyGame && (
-            <span className="rounded-full border border-warning/40 bg-warning/10 px-2 py-0.5 text-[9px] font-bold uppercase text-warning">
+            <StatusBadge tone="neutral" size="xs">
               FBS vs FCS
-            </span>
+            </StatusBadge>
           )}
           {isCfb && cfbHome?.conference && cfbHome.conference === cfbAway?.conference && (
-            <span className="rounded-full border border-border bg-background/40 px-2 py-0.5 text-[9px] font-bold uppercase text-muted-foreground">
+            <StatusBadge tone="neutral" size="xs">
               {cfbHome.conference}
-            </span>
+            </StatusBadge>
           )}
-          <span className="text-[11px] font-mono text-muted-foreground">{formatGameTime(game.commenceTime)}</span>
+          <span className="text-[11px] text-muted-foreground">{formatGameTime(game.commenceTime)}</span>
         </div>
       </div>
 
-      {/* Prediction-market gap badge */}
+      {/* Prediction-market gap — one of the few places amber is allowed */}
       {topGap && (
         <button
           type="button"
           onClick={() => setExpanded(true)}
-          className="inline-flex items-center gap-1.5 rounded-full border border-warning/40 bg-warning/10 px-2 py-0.5 text-[10px] font-bold text-warning hover:bg-warning/20"
+          className="flex w-full items-center justify-between gap-2 rounded-md border-l-[3px] border-l-warning bg-warning/5 px-3 py-1.5 text-left hover:bg-warning/10"
         >
-          <TrendingUp className="h-3 w-3" />
-          {topGap.book} Gap: {topGap.cents > 0 ? "+" : ""}{topGap.cents} cents ({topGap.side})
+          <span className="inline-flex items-center gap-1.5 text-[11px] font-semibold text-warning">
+            <TrendingUp className="h-3 w-3" />
+            {topGap.book} Gap
+          </span>
+          <span className="font-mono text-[11px] font-semibold text-foreground">
+            {topGap.cents > 0 ? "+" : ""}{topGap.cents}¢ · {topGap.side}
+          </span>
         </button>
       )}
 
@@ -397,7 +402,7 @@ function GameCard({ game, mispricings }: { game: FullGame; mispricings: SportsMi
           <div className={cn("mt-1 text-2xl font-extrabold leading-none", oddsClass(awayOdds))}>
             {formatOdds(awayOdds)}
           </div>
-          <div className="mt-1 text-[9px] font-mono text-muted-foreground/70">
+          <div className="mt-1 font-mono text-[9px] text-muted-foreground/60">
             {isValidOdds(awayOdds)
               ? `${(toImplied(awayOdds) * 100).toFixed(0)}%`
               : awayImplied > 0 ? `${(awayImplied * 100).toFixed(0)}% est` : "—"}
@@ -423,7 +428,7 @@ function GameCard({ game, mispricings }: { game: FullGame; mispricings: SportsMi
           <div className={cn("mt-1 text-2xl font-extrabold leading-none", oddsClass(homeOdds))}>
             {formatOdds(homeOdds)}
           </div>
-          <div className="mt-1 text-[9px] font-mono text-muted-foreground/70">
+          <div className="mt-1 font-mono text-[9px] text-muted-foreground/60">
             {isValidOdds(homeOdds)
               ? `${(toImplied(homeOdds) * 100).toFixed(0)}%`
               : homeImplied > 0 ? `${(homeImplied * 100).toFixed(0)}% est` : "—"}
@@ -464,13 +469,16 @@ function GameCard({ game, mispricings }: { game: FullGame; mispricings: SportsMi
         </div>
       )}
 
-      {/* Polymarket row */}
+      {/* Polymarket gap row — same amber accent-rail treatment as the Gap badge */}
       {game.polymarketMatch && game.polymarketImplied !== null && game.mispricingGap !== null && (
-        <div className="rounded-md border border-warning/40 bg-warning/10 px-3 py-2 text-[11px] text-warning">
-          <div className="font-semibold">
-            Polymarket: {(game.polymarketImplied * 100).toFixed(0)}% YES · Gap: {(game.mispricingGap * 100).toFixed(1)}%
+        <div className="rounded-md border-l-[3px] border-l-warning bg-warning/5 px-3 py-2">
+          <div className="flex items-center justify-between gap-2 text-[11px]">
+            <span className="font-semibold text-warning">Polymarket vs Vegas</span>
+            <span className="font-mono font-semibold text-foreground">
+              {(game.polymarketImplied * 100).toFixed(0)}% · gap {(game.mispricingGap * 100).toFixed(1)}%
+            </span>
           </div>
-          <div className="opacity-80">Potential edge vs Vegas consensus</div>
+          <div className="mt-0.5 text-[10px] text-muted-foreground">Potential edge vs Vegas consensus</div>
         </div>
       )}
 
@@ -494,9 +502,9 @@ function GameCard({ game, mispricings }: { game: FullGame; mispricings: SportsMi
                   {" · "}
                   {displayTeamName(game, "home")} {formatOdds(kalshiBook.homeMoneyline)}
                 </span>
-                <span className="rounded-sm border border-info/40 bg-info/10 px-1 py-px text-[8px] font-bold text-info whitespace-nowrap">
+                <StatusBadge tone="info" size="xs" className="whitespace-nowrap">
                   Prediction market only
-                </span>
+                </StatusBadge>
               </div>
             </div>
           )}
@@ -665,7 +673,7 @@ export function GolfLeaderboardCard({
   // Show a prompt so the user can trigger the (quota-protected) fetch.
   if (!game && !hasAnyData) {
     return (
-      <div className="rounded-lg border border-amber-400/40 bg-gradient-to-br from-amber-500/5 to-card p-4 space-y-3 md:col-span-2">
+      <div className="rounded-lg border border-border/80 bg-card p-4 space-y-3 md:col-span-2">
         <GolfCardHeader
           loading={loading}
           fetchedAt={golf?.fetchedAt ?? null}
@@ -680,7 +688,7 @@ export function GolfLeaderboardCard({
           <button
             onClick={() => golf?.onRefresh?.(true)}
             disabled={loading}
-            className="inline-flex items-center gap-1.5 rounded-md bg-amber-500 px-4 py-2 text-xs font-bold text-amber-950 hover:bg-amber-400 disabled:opacity-50"
+            className="inline-flex items-center gap-1.5 rounded-md bg-info px-4 py-2 text-xs font-bold text-white hover:bg-info/90 disabled:opacity-50"
           >
             <RotateCw className={cn("h-3.5 w-3.5", loading && "animate-spin")} />
             Refresh Golf Data
@@ -689,7 +697,7 @@ export function GolfLeaderboardCard({
             Updates on demand to preserve API quota during beta
           </div>
           {golf?.error && (
-            <div className="text-[10px] text-warning">{golf.error}</div>
+            <div className="text-[10px] text-destructive">{golf.error}</div>
           )}
         </div>
       </div>
@@ -832,7 +840,7 @@ export function GolfLeaderboardCard({
   };
 
   return (
-    <div className="rounded-lg border border-amber-400/40 bg-gradient-to-br from-amber-500/5 to-card p-4 space-y-3 md:col-span-2">
+    <div className="rounded-xl border border-border/80 bg-card p-4 space-y-3 md:col-span-2 shadow-sm ring-1 ring-foreground/5">
       <GolfCardHeader
         loading={loading}
         fetchedAt={golf?.fetchedAt ?? null}
@@ -842,9 +850,9 @@ export function GolfLeaderboardCard({
 
       {/* ===== Section 1: Live Leaderboard (Live Golf Data API) ===== */}
       {!tournament && golf?.error && (
-        <div className="rounded-md border border-warning/40 bg-warning/10 p-3 text-[11px] text-warning">
+        <div className="rounded-md border-l-[3px] border-l-destructive bg-destructive/5 p-3 text-[11px] text-destructive">
           <div className="font-bold uppercase mb-1">⚠️ Live leaderboard unavailable</div>
-          <div className="text-warning/90">
+          <div className="opacity-90">
             {/quota|429/i.test(golf.error)
               ? "RapidAPI Live Golf Data monthly quota exhausted — upgrade the plan or wait for the monthly reset to see live tournament rows."
               : golf.error}
@@ -860,31 +868,25 @@ export function GolfLeaderboardCard({
                   📊 {showLive ? "Live Leaderboard" : "Next Tournament"}
                 </span>
                 {showLive ? (
-                  <span className="inline-flex items-center gap-1 rounded-full bg-success/20 px-1.5 py-px text-[9px] font-bold uppercase text-success">
-                    <span className="h-1 w-1 rounded-full bg-success animate-pulse" />
+                  <StatusBadge tone="success" dot className="animate-pulse">
                     Live · R{leaderboard?.roundId || "?"}
-                  </span>
+                  </StatusBadge>
                 ) : status ? (
-                  <span
-                    className={cn(
-                      "inline-flex items-center gap-1 rounded-full px-1.5 py-px text-[9px] font-bold uppercase",
-                      status.color === "green" && "bg-success/20 text-success",
-                      status.color === "blue" && "bg-info/20 text-info",
-                      status.color === "gray" && "bg-muted text-muted-foreground",
-                      status.pulse && "animate-pulse",
-                    )}
+                  <StatusBadge
+                    tone={status.color === "green" ? "success" : status.color === "blue" ? "info" : "neutral"}
+                    className={cn(status.pulse && "animate-pulse")}
                   >
                     {status.label}
-                  </span>
+                  </StatusBadge>
                 ) : null}
               </div>
 
               <div className="text-base font-extrabold text-foreground">{tournament.name}</div>
               {liveRange && (
-                <div className="text-[10px] font-mono text-muted-foreground">{liveRange}</div>
+                <div className="text-[10px] text-muted-foreground">{liveRange}</div>
               )}
             </div>
-            <div className="text-[9px] font-mono uppercase text-muted-foreground text-right">
+            <div className="text-[9px] uppercase text-muted-foreground text-right">
               Live Golf Data<br />Updates ~15 min
             </div>
           </header>
@@ -1014,10 +1016,10 @@ export function GolfLeaderboardCard({
               </div>
               <div className="text-base font-extrabold text-foreground">{oddsName}</div>
               {oddsSubtitle && (
-                <div className="text-[10px] font-mono text-muted-foreground">{oddsSubtitle}</div>
+                <div className="text-[10px] text-muted-foreground">{oddsSubtitle}</div>
               )}
             </div>
-            <div className="text-[9px] font-mono uppercase text-muted-foreground text-right">
+            <div className="text-[9px] uppercase text-muted-foreground text-right">
               The Odds API<br />Futures market
             </div>
           </header>
@@ -1174,14 +1176,14 @@ function BookTable({
           <div className="flex items-center gap-1.5">
             <span>{b.name}</span>
             {b.key === "kalshi" && (
-              <span className="rounded-sm border border-info/40 bg-info/10 px-1 py-px text-[8px] font-bold text-info">CFTC</span>
+              <StatusBadge tone="info" size="xs">CFTC</StatusBadge>
             )}
             {b.key === "polymarket" && (
-              <span className="rounded-sm border border-warning/40 bg-warning/10 px-1 py-px text-[8px] font-bold text-warning">Offshore</span>
+              <StatusBadge tone="neutral" size="xs">Offshore</StatusBadge>
             )}
             {(b.key === "betonlineag" ||
               b.name.toLowerCase().includes("betonline")) && (
-              <span className="rounded-sm border border-warning/40 bg-warning/10 px-1 py-px text-[8px] font-bold text-warning">Offshore</span>
+              <StatusBadge tone="neutral" size="xs">Offshore</StatusBadge>
             )}
           </div>
         </td>
@@ -1350,7 +1352,7 @@ function SpreadsTab({ games }: { games: FullGame[] }) {
       {withSpreads.map((g) => (
         <div key={g.id} className="rounded-lg border border-border bg-card p-4">
           <div className="text-sm font-semibold text-foreground">{g.awayTeam} @ {g.homeTeam}</div>
-          <div className="text-[11px] font-mono text-muted-foreground">{formatGameTime(g.commenceTime)}</div>
+          <div className="text-[11px] text-muted-foreground">{formatGameTime(g.commenceTime)}</div>
           <div className="mt-2 text-sm font-mono">
             <div>{g.awayTeam}: {formatSpread(g.spread!.awaySpread)} ({formatOdds(g.spread!.awayOdds)})</div>
             <div>{g.homeTeam}: {formatSpread(g.spread!.homeSpread)} ({formatOdds(g.spread!.homeOdds)})</div>
@@ -1377,10 +1379,10 @@ function TotalsTab({ games }: { games: FullGame[] }) {
           <div key={g.id} className="rounded-lg border border-border bg-card p-4">
             <div className="flex items-center justify-between gap-2">
               <div className="text-sm font-semibold text-foreground">{g.awayTeam} @ {g.homeTeam}</div>
-              {high && <span className="rounded-full bg-warning/20 px-2 py-0.5 text-[10px] font-bold text-warning">HIGH SCORING</span>}
-              {low && <span className="rounded-full bg-info/20 px-2 py-0.5 text-[10px] font-bold text-info">LOW SCORING</span>}
+              {high && <span className="rounded-full border border-border bg-muted/50 px-2 py-0.5 text-[10px] font-semibold uppercase text-muted-foreground">HIGH SCORING</span>}
+              {low && <span className="rounded-full border border-border bg-muted/50 px-2 py-0.5 text-[10px] font-semibold uppercase text-muted-foreground">LOW SCORING</span>}
             </div>
-            <div className="text-[11px] font-mono text-muted-foreground">{formatGameTime(g.commenceTime)}</div>
+            <div className="text-[11px] text-muted-foreground">{formatGameTime(g.commenceTime)}</div>
             <div className="mt-2 text-sm font-mono">
               <div>Over {t.line} ({formatOdds(t.overOdds)})</div>
               <div>Under {t.line} ({formatOdds(t.underOdds)})</div>
@@ -1458,7 +1460,7 @@ function PropsTab({ games }: { games: FullGame[] }) {
               )}
             >
               <div>{g.awayTeam} @ {g.homeTeam}</div>
-              <div className="text-[9px] font-mono opacity-80">
+              <div className="text-[9px] opacity-80">
                 {g.league}{cachedFlag ? " · cached" : ""}
               </div>
             </button>
@@ -1563,10 +1565,10 @@ function GolfCardHeader({
 
   return (
     <div className="flex items-center justify-between gap-2 flex-wrap">
-      <div className="text-xs font-bold uppercase text-amber-300">⛳ Golf</div>
+      <div className="text-xs font-bold uppercase text-muted-foreground">⛳ Golf</div>
       <div className="flex items-center gap-2">
         {(ago || minsUntil > 0) && (
-          <div className="text-[10px] text-muted-foreground font-mono">
+          <div className="text-[10px] text-muted-foreground">
             {ago && <>Updated {ago}</>}
             {ago && minsUntil > 0 && <span className="opacity-50"> · </span>}
             {minsUntil > 0 && <>Next update in {minsUntil} min</>}

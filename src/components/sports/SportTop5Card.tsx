@@ -52,7 +52,7 @@ export default function SportTop5Card({ sportKey, sportLabel, games, golfTournam
       <ol className="divide-y divide-border/60">
         {t.golf.picks.map((p, i) => (
           <li key={p.player} className="flex items-start gap-3 py-2.5">
-            <span className="mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-warning/20 text-xs font-extrabold text-warning">{i + 1}</span>
+            <span className="mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-muted text-xs font-extrabold text-foreground">{i + 1}</span>
             <div className="min-w-0 flex-1">
               <div className="flex items-baseline justify-between gap-2">
                 <span className="truncate text-sm font-bold text-foreground">{p.player}</span>
@@ -80,7 +80,7 @@ export default function SportTop5Card({ sportKey, sportLabel, games, golfTournam
           const pick = a.betType === "total" ? `${a.recommendation === "UNDER" ? "Under" : "Over"}${line}` : `${a.recommendedTeam}${line}`;
           return (
             <li key={`${e.game.id}-${i}`} className="flex items-start gap-3 py-2.5">
-              <span className="mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-warning/20 text-xs font-extrabold text-warning">{i + 1}</span>
+              <span className="mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-muted text-xs font-extrabold text-foreground">{i + 1}</span>
               <div className="min-w-0 flex-1">
                 <div className="flex items-baseline justify-between gap-2">
                   <span className="truncate text-sm font-bold text-foreground">{pick}</span>
@@ -92,8 +92,8 @@ export default function SportTop5Card({ sportKey, sportLabel, games, golfTournam
                 </div>
               </div>
               <div className="shrink-0 text-right">
-                <div className="text-xs font-bold text-info">{e.confidence}%</div>
-                <div className="text-[10px] text-success">{e.edge >= 0 ? "+" : ""}{(e.edge * 100).toFixed(1)}% edge</div>
+                <div className="font-mono text-xs font-bold text-info">{e.confidence}%</div>
+                <div className="font-mono text-[10px] text-success">{e.edge >= 0 ? "+" : ""}{(e.edge * 100).toFixed(1)}% edge</div>
               </div>
             </li>
           );
@@ -105,10 +105,10 @@ export default function SportTop5Card({ sportKey, sportLabel, games, golfTournam
   }
 
   return (
-    <section className="rounded-xl border-2 border-warning/40 bg-gradient-to-br from-warning/10 via-card to-purple/5 p-4 shadow-lg">
+    <section className="rounded-xl border border-border bg-card p-4">
       <div className="mb-1 flex items-center justify-between">
         <h2 className="flex items-center gap-1.5 text-sm font-extrabold uppercase tracking-wide text-foreground">
-          <Flame className="h-4 w-4 text-warning" /> Top 5 {sportLabel} Bets {whenTitle}
+          <Flame className="h-4 w-4 text-info" /> Top 5 {sportLabel} Bets {whenTitle}
         </h2>
         {t.lastScannedAt && (
           <span className="text-[11px] text-muted-foreground">{updatedLabel(t.lastScannedAt)}</span>
