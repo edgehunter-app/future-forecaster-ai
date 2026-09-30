@@ -4,6 +4,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAppStore } from "@/store/useAppStore";
 import GolfAnalysisPanel, { type GolfAnalysisResult } from "./GolfAnalysisPanel";
 import { cn } from "@/lib/utils";
+import StatusBadge from "@/components/ui/StatusBadge";
 import { teamNickname } from "@/lib/betHeadline";
 import {
   formatOdds,
@@ -348,39 +349,43 @@ function GameCard({ game, mispricings }: { game: FullGame; mispricings: SportsMi
     <div className="space-y-2 rounded-xl border border-border/80 bg-card p-3 shadow-sm ring-1 ring-foreground/5">
       {/* Top row */}
       <div className="flex items-center justify-between gap-2 border-b border-border/40 pb-2">
-        <span className="rounded bg-muted/60 px-1.5 py-0.5 text-[9px] font-bold uppercase text-muted-foreground">
+        <span className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
           {displayLeague(game)}
         </span>
         <div className="flex items-center gap-2">
           {game.isLive && (
-            <span className="inline-flex items-center gap-1 rounded-full bg-destructive/15 px-2 py-0.5 text-[10px] font-bold text-destructive">
-              <span className="h-1.5 w-1.5 rounded-full bg-destructive animate-pulse" />
-              LIVE
-            </span>
+            <StatusBadge tone="destructive" dot>
+              Live
+            </StatusBadge>
           )}
           {isBuyGame && (
-            <span className="rounded-full border border-warning/40 bg-warning/10 px-2 py-0.5 text-[9px] font-bold uppercase text-warning">
+            <StatusBadge tone="neutral" size="xs">
               FBS vs FCS
-            </span>
+            </StatusBadge>
           )}
           {isCfb && cfbHome?.conference && cfbHome.conference === cfbAway?.conference && (
-            <span className="rounded-full border border-border bg-background/40 px-2 py-0.5 text-[9px] font-bold uppercase text-muted-foreground">
+            <StatusBadge tone="neutral" size="xs">
               {cfbHome.conference}
-            </span>
+            </StatusBadge>
           )}
-          <span className="text-[11px] font-mono text-muted-foreground">{formatGameTime(game.commenceTime)}</span>
+          <span className="text-[11px] text-muted-foreground">{formatGameTime(game.commenceTime)}</span>
         </div>
       </div>
 
-      {/* Prediction-market gap badge */}
+      {/* Prediction-market gap — one of the few places amber is allowed */}
       {topGap && (
         <button
           type="button"
           onClick={() => setExpanded(true)}
-          className="inline-flex items-center gap-1.5 rounded-full border border-warning/40 bg-warning/10 px-2 py-0.5 text-[10px] font-bold text-warning hover:bg-warning/20"
+          className="flex w-full items-center justify-between gap-2 rounded-md border-l-[3px] border-l-warning bg-warning/5 px-3 py-1.5 text-left hover:bg-warning/10"
         >
-          <TrendingUp className="h-3 w-3" />
-          {topGap.book} Gap: {topGap.cents > 0 ? "+" : ""}{topGap.cents} cents ({topGap.side})
+          <span className="inline-flex items-center gap-1.5 text-[11px] font-semibold text-warning">
+            <TrendingUp className="h-3 w-3" />
+            {topGap.book} Gap
+          </span>
+          <span className="font-mono text-[11px] font-semibold text-foreground">
+            {topGap.cents > 0 ? "+" : ""}{topGap.cents}¢ · {topGap.side}
+          </span>
         </button>
       )}
 
@@ -397,7 +402,7 @@ function GameCard({ game, mispricings }: { game: FullGame; mispricings: SportsMi
           <div className={cn("mt-1 text-2xl font-extrabold leading-none", oddsClass(awayOdds))}>
             {formatOdds(awayOdds)}
           </div>
-          <div className="mt-1 text-[9px] font-mono text-muted-foreground/70">
+          <div className="mt-1 font-mono text-[9px] text-muted-foreground/60">
             {isValidOdds(awayOdds)
               ? `${(toImplied(awayOdds) * 100).toFixed(0)}%`
               : awayImplied > 0 ? `${(awayImplied * 100).toFixed(0)}% est` : "—"}
@@ -423,7 +428,7 @@ function GameCard({ game, mispricings }: { game: FullGame; mispricings: SportsMi
           <div className={cn("mt-1 text-2xl font-extrabold leading-none", oddsClass(homeOdds))}>
             {formatOdds(homeOdds)}
           </div>
-          <div className="mt-1 text-[9px] font-mono text-muted-foreground/70">
+          <div className="mt-1 font-mono text-[9px] text-muted-foreground/60">
             {isValidOdds(homeOdds)
               ? `${(toImplied(homeOdds) * 100).toFixed(0)}%`
               : homeImplied > 0 ? `${(homeImplied * 100).toFixed(0)}% est` : "—"}
