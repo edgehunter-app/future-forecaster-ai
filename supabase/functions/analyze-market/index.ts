@@ -1027,10 +1027,15 @@ Deno.serve(async (req) => {
       const wantTrack = body.track ? String(body.track).toLowerCase() : null;
       const wantRace = body.race ? Number(body.race) : null;
       const ffHeaders = { "X-API-Key": formfavKey, "Accept": "application/json" };
+      // FormFav is one day behind: query D+1 to get D's cards; every card is still date-checked below.
+      const FORMFAV_DAY_OFFSET = 1;
+      const qd = new Date(date + "T12:00:00Z");
+      qd.setUTCDate(qd.getUTCDate() + FORMFAV_DAY_OFFSET);
+      const queryDate = qd.toISOString().split("T")[0];
 
       try {
         // 1. meetings
-        const meetingsUrl = `https://api.formfav.com/v1/form/meetings?date=${encodeURIComponent(date)}&race_code=gallops&country=us`;
+        const meetingsUrl = `https://api.formfav.com/v1/form/meetings?date=${encodeURIComponent(queryDate)}&race_code=gallops&country=us`;
         const meetingsRes = await fetch(meetingsUrl, { headers: ffHeaders, signal: AbortSignal.timeout(15000) });
         if (!meetingsRes.ok) {
           const txt = await meetingsRes.text();
@@ -1070,7 +1075,7 @@ Deno.serve(async (req) => {
           ?? 1;
 
         // 3. race card
-        const cardUrl = `https://api.formfav.com/v1/form?date=${encodeURIComponent(date)}&track=${encodeURIComponent(meeting.slug)}&race=${encodeURIComponent(String(raceNumber))}&country=us`;
+        const cardUrl = `https://api.formfav.com/v1/form?date=${encodeURIComponent(queryDate)}&track=${encodeURIComponent(meeting.slug)}&race=${encodeURIComponent(String(raceNumber))}&country=us`;
         const cardRes = await fetch(cardUrl, { headers: ffHeaders, signal: AbortSignal.timeout(15000) });
         if (!cardRes.ok) {
           const txt = await cardRes.text();
@@ -1082,6 +1087,17 @@ Deno.serve(async (req) => {
           }), { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } });
         }
         const card = await cardRes.json();
+        const cardDate = (card as any)?.date;
+        if (typeof cardDate !== "string" || cardDate !== date) {
+          console.warn(`[horse-racing][offset] WARNING: race finder wanted ${date} (queried ${queryDate}), FormFav card dated ${cardDate} — refusing to analyze`);
+          return new Response(JSON.stringify({
+            error: "Today's race cards aren't available yet — check back soon",
+            code: "CARD_WRONG_DATE",
+            date,
+            returnedDate: cardDate ?? null,
+          }), { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+        }
+        console.log(`[horse-racing][offset] race finder ok: queried ${queryDate}, card dated ${date}`);
         console.log("[horse-racing] race card:", (card as any)?.track, (card as any)?.numberOfRunners, "runners");
         console.log("[horse-racing] raw card:", JSON.stringify(card).slice(0, 1000));
         console.log("[horse-racing] first runner:", JSON.stringify((card as any)?.runners?.[0] ?? null));

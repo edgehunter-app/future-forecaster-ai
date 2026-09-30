@@ -87,13 +87,24 @@ async function fetchMeetings(date: string): Promise<MeetingSummary[]> {
   return deduped;
 }
 
+// FormFav is currently one day behind: asking for date D+1 returns cards dated D.
+// We request D+1 to get D's cards and still verify every race's returned date == D.
+// If that ever stops holding, races are dropped (safety net) and a warning is logged.
+const FORMFAV_DAY_OFFSET = 1;
+function addDays(date: string, n: number): string {
+  const d = new Date(date + "T12:00:00Z");
+  d.setUTCDate(d.getUTCDate() + n);
+  return d.toISOString().split("T")[0];
+}
+
 async function scanDate(date: string): Promise<ScanResult> {
-  console.log("[horse-racing] scanning:", date);
+  const queryDate = addDays(date, FORMFAV_DAY_OFFSET);
+  console.log("[horse-racing] scanning:", date, "(FormFav query date:", queryDate + ")");
 
   const meetings: ScanResult["meetings"] = [];
   let shapeSample: ScanResult["shapeSample"];
 
-  const summaries = await fetchMeetings(date);
+  const summaries = await fetchMeetings(queryDate);
   if (summaries.length === 0) {
     return { date, meetings, meetingCount: 0, source: "formfav-meetings", shapeSample };
   }
@@ -103,7 +114,7 @@ async function scanDate(date: string): Promise<ScanResult> {
   const BURST_RETRIES = 4;
 
   async function fetchForm(slug: string, race: number): Promise<{ race: number; data: unknown } | null> {
-    const url = `${FORMFAV_BASE}/form?date=${date}&track=${slug}&race=${race}&country=us`;
+    const url = `${FORMFAV_BASE}/form?date=${queryDate}&track=${slug}&race=${race}&country=us`;
     for (let attempt = 0; attempt <= BURST_RETRIES; attempt++) {
       try {
         const res = await fetch(url, { headers, signal: AbortSignal.timeout(8000) });
@@ -183,7 +194,7 @@ async function scanDate(date: string): Promise<ScanResult> {
     if (dropped > 0) {
       const got = (races[0]?.data as Record<string, unknown>)?.date;
       wrongDateTracks.push({ track: m.slug, returned: String(got ?? "unknown"), dropped });
-      console.log(`[horse-racing] ${m.slug}: dropped ${dropped}/${races.length} races — asked ${date}, FormFav returned ${got}`);
+      console.log(`[horse-racing] ${m.slug}: dropped ${dropped}/${races.length} races — wanted ${date} (queried ${queryDate}), FormFav returned ${got}`);
     }
     if (trackRaces.length === 0) continue;
     trackRaces.sort((a, b) => a.race - b.race);
@@ -206,6 +217,11 @@ async function scanDate(date: string): Promise<ScanResult> {
   console.log("[horse-racing] tracks with races:", meetings.map((m) => m.track));
 
   const cardsNotReady = meetings.length === 0 && wrongDateTracks.length > 0;
+  if (wrongDateTracks.length > 0) {
+    console.warn(`[horse-racing][offset] WARNING: FormFav ${FORMFAV_DAY_OFFSET}-day offset did not hold for ${wrongDateTracks.length}/${summaries.length} tracks (queried ${queryDate}, wanted ${date}, got ${[...new Set(wrongDateTracks.map((w) => w.returned))].join("/")}) — races withheld`);
+  } else if (meetings.length > 0) {
+    console.log(`[horse-racing][offset] ok: queried ${queryDate}, all races dated ${date}`);
+  }
   if (wrongDateTracks.length > 0) {
     console.log(`[horse-racing] wrong-date summary: ${wrongDateTracks.length}/${summaries.length} tracks stale, cardsNotReady=${cardsNotReady}`);
   }
