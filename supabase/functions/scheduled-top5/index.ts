@@ -41,7 +41,7 @@ function addDaysKey(key: string, n: number) {
 }
 
 // ---- Odds mapping (mirrors src/lib/oddsApi.ts fetchFullOdds, non-outright) -
-const valid = (o: unknown): o is number => typeof o === "number" && Number.isFinite(o) && o !== 0 && Math.abs(o) >= 100 && Math.abs(o) <= 10000;
+const valid = (o: unknown): o is number => typeof o === "number" && Number.isFinite(o) && o !== 0 && Math.abs(o) <= 10000;
 const san = (o: unknown) => (valid(o) ? o : 0);
 const imp = (o: number) => (o > 0 ? 100 / (o + 100) : -o / (-o + 100));
 const devig = (h: number, a: number) => { const t = h + a; return t ? { home: h / t, away: a / t } : { home: 0, away: 0 }; };
