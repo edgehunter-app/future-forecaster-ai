@@ -13,7 +13,12 @@ const CORS_HEADERS = {
 import { createClient } from "npm:@supabase/supabase-js@2";
 
 const db = createClient(Deno.env.get("SUPABASE_URL")!, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!, { auth: { persistSession: false } });
-const CRON_SECRET = Deno.env.get("CRON_SECRET") ?? "";
+async function isCronRequest(req: Request): Promise<boolean> {
+  const h = req.headers.get("x-cron-secret");
+  if (!h) return false;
+  const { data } = await db.from("internal_cron_secrets").select("value").eq("name", "horse_racing_refresh").maybeSingle();
+  return !!data?.value && data.value === h;
+}
 const CACHE_FRESH_MS = 30 * 60 * 1000;
 
 async function readCache(date: string) {
@@ -418,8 +423,8 @@ Deno.serve(async (req) => {
     console.log("[horse-racing] date ET:", easternToday, "UTC:", utcToday);
     const primaryDate = requested ?? easternToday;
 
-    const isCron = CRON_SECRET.length > 0 && req.headers.get("x-cron-secret") === CRON_SECRET;
-    console.log(`[horse-racing] run mode=${isCron ? "cron" : "visitor"} headerPresent=${req.headers.has("x-cron-secret")}`);
+    const isCron = await isCronRequest(req);
+    console.log(`[horse-racing] run mode=${isCron ? "cron" : "visitor"}`);
     const cached = await readCache(primaryDate);
     const cacheAge = cached ? Date.now() - new Date(cached.fetched_at).getTime() : Infinity;
     if (!isCron && cached && cacheAge < CACHE_FRESH_MS) {
