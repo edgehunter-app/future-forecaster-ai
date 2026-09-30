@@ -90,6 +90,18 @@ export function useBestBet() {
     return "none";
   }, [fullGames]);
 
+  // True when games were loaded but none left today (ET) that haven't started.
+  const slateWrapped = useMemo(() => {
+    if (!fullGames || fullGames.length === 0) return false;
+    const fmt = new Intl.DateTimeFormat("en-CA", { timeZone: "America/New_York", year: "numeric", month: "2-digit", day: "2-digit" });
+    const today = fmt.format(new Date());
+    const now = Date.now();
+    return !fullGames.some((g) => {
+      const t = new Date(g.commenceTime).getTime();
+      return Number.isFinite(t) && t > now - 30 * 60000 && fmt.format(new Date(t)) === today;
+    });
+  }, [fullGames]);
+
   const findBestBet = useCallback(async () => {
     if (!fullGames || fullGames.length === 0) {
       setError("No games loaded. Hit Refresh first.");
@@ -258,7 +270,7 @@ export function useBestBet() {
     setLastBestBet(null);
   }, [setLastBestBet]);
 
-  return { findBestBet, loading, scannedSoFar, scanProgress, result, error, clear, availability };
+  return { findBestBet, loading, scannedSoFar, scanProgress, result, error, clear, availability, slateWrapped };
 }
 
 // ============================================================================

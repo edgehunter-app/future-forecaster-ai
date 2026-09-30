@@ -57,7 +57,7 @@ export default function HeroBestEdgeCard({
         <div className="flex-1 flex flex-col items-center justify-center text-center gap-3 py-6">
           <div className="text-[48px] leading-none opacity-40" aria-hidden>🌙</div>
           <div className="text-[17px] font-semibold text-foreground/80">
-            No live edges right now
+            {emptyTitle ?? "No live edges right now"}
           </div>
           <p className="text-[13px] text-muted-foreground max-w-xs">
             {emptyMessage ?? "Check back when today's slate opens. We scan the board every few minutes."}
