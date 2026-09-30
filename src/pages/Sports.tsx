@@ -15,6 +15,7 @@ import { cn } from "@/lib/utils";
 import { usePageTitle } from "@/hooks/usePageTitle";
 import { useIsAdmin } from "@/hooks/useIsAdmin";
 import SportTop5Card from "@/components/sports/SportTop5Card";
+import { SCHEDULED_TOP5_SPORTS } from "@/hooks/useSportTop5";
 import UsagePanel from "@/components/sports/UsagePanel";
 import { useCfbRankings } from "@/hooks/useCfbRankings";
 
@@ -572,7 +573,7 @@ export default function Sports() {
         </div>
       )}
 
-      {activeSport && activeSport !== "all" && (
+      {activeSport && SCHEDULED_TOP5_SPORTS.has(activeSport) && (
         <SportTop5Card
           key={activeSport}
           sportKey={activeSport}

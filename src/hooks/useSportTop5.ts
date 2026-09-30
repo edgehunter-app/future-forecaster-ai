@@ -32,7 +32,7 @@ function localDateKey(d = new Date()) {
 const WEEK_SPORTS = new Set(["americanfootball_ncaaf", "americanfootball_nfl"]);
 export const isWeekSport = (k: string) => WEEK_SPORTS.has(k);
 /** Sports the morning job pre-populates. */
-export const SCHEDULED_TOP5_SPORTS = new Set(["baseball_mlb", "basketball_nba", ...WEEK_SPORTS]);
+export const SCHEDULED_TOP5_SPORTS = new Set(["baseball_mlb", "basketball_nba", "icehockey_nhl", "soccer_epl", "soccer_usa_mls", "mma_mixed_martial_arts", ...WEEK_SPORTS]);
 
 /** Thursday that starts the current Thu–Mon football week (Tue/Wed → upcoming Thu). */
 function weekStartKey(now = new Date()) {
