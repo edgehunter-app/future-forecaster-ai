@@ -324,47 +324,6 @@ export default function Sports() {
         </div>
       </div>
 
-      {bestBetLoading && scanProgress.total > 0 && (
-        <div className="space-y-1">
-          <div className="h-2 w-full overflow-hidden rounded-full bg-secondary">
-            <div
-              className="h-full bg-purple transition-all duration-300"
-              style={{ width: `${(scanProgress.current / scanProgress.total) * 100}%` }}
-            />
-          </div>
-          <div className="text-[10px] font-mono text-muted-foreground text-right">
-            {scanProgress.current} of {scanProgress.total} analyzed
-            {scanProgress.stage && scanProgress.stage !== "idle" && (
-              <span className="ml-2 opacity-70">
-                · {scanProgress.stage === "sports" && "sports"}
-                {scanProgress.stage === "prediction_markets" && "prediction markets"}
-                {scanProgress.stage === "wallet_signals" && "wallet signals"}
-                {scanProgress.stage === "ranking" && "ranking"}
-              </span>
-            )}
-          </div>
-        </div>
-      )}
-
-      {bestBetError && (
-        <div className="rounded-lg border border-destructive/40 bg-destructive/10 px-4 py-3 text-sm text-destructive">
-          {bestBetError}
-        </div>
-      )}
-
-      {pendingBestBetScan && (
-        <div className="rounded-lg border border-purple/40 bg-purple/10 px-4 py-3 text-sm text-foreground flex items-center gap-2">
-          <Loader2 className="h-4 w-4 animate-spin text-purple" />
-          {(fullGames?.length ?? 0) === 0
-            ? "Loading games for Best Bet scan..."
-            : "Running Best Bet analysis..."}
-        </div>
-      )}
-
-      {bestBetResult && (
-        <BestBetCard result={bestBetResult} onClear={clearBestBet} onRescan={handleBestBet} />
-      )}
-
       {isAdmin && <UsagePanel />}
 
       {/* Sport selector */}
