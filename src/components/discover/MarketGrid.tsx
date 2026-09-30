@@ -31,22 +31,22 @@ const Golf = (p: P) => (
 const Tennis = (p: P) => (
   <svg {...base} {...p}><circle cx="16" cy="16" r="12" /><path d="M6.5 8.5c5 3 5 12 0 15M25.5 8.5c-5 3-5 12 0 15" /></svg>
 );
-/** Galloping horse with jockey, side view. */
-const Racing = (p: P) => (
-  <svg {...base} {...p}>
-    <path d="M5 18c1-4 4-6 9-6h5l3-3 3 1-1 3 2 2-2 2-3-1-2 2" />
-    <path d="M14 12c-1 4 0 6 3 7M9 16l-5 4M12 18l-2 6M19 19l1 5M22 18l4 3" />
-    <circle cx="17" cy="6.5" r="1.6" fill="currentColor" />
-    <path d="M16 8.5l-1.5 3.5h3" />
+/** Galloping horse with jockey, side view (filled silhouette). */
+const Racing = ({ className }: P) => (
+  <svg viewBox="0 0 32 32" className={className} fill="currentColor" aria-hidden>
+    <path d="M6 15.5c1.5-2.5 4.5-3.5 8-3.5h6.5l3-3.2 1.2-2.3.8 2.4 2.5 2.1-.8 1.8-2.4-.4-2.3 2.6.3 3-1.8 1.2-3.6-.8-3.6.6-2.8 1.2C8 21 6.3 19.3 6 15.5z" />
+    <path d="M9.6 19.4L4 23.5l-.9-1.3 4.6-4zM12 20.2l-2.4 6.1-1.5-.5 2-6.2zM19.6 20.6l1.3 5.8-1.5.3-1.6-5.6zM22 19.2l5 2.8-.7 1.4-5.2-2.4z" />
+    <circle cx="16.5" cy="6.2" r="1.9" />
+    <path d="M15 8.4h3l1 3.8h-5z" />
   </svg>
 );
 /** Yes/No split — green YES half, red NO half. */
 const PredictionMarkets = ({ className }: P) => (
   <svg viewBox="0 0 32 32" className={className} aria-hidden>
-    <rect x="3" y="6" width="13" height="20" rx="4" className="fill-success/25 stroke-success" strokeWidth="2" />
-    <rect x="16" y="6" width="13" height="20" rx="4" className="fill-destructive/25 stroke-destructive" strokeWidth="2" />
-    <text x="9.5" y="19" textAnchor="middle" fontSize="6.5" fontWeight="800" className="fill-success">YES</text>
-    <text x="22.5" y="19" textAnchor="middle" fontSize="6.5" fontWeight="800" className="fill-destructive">NO</text>
+    <path d="M6 5h10v22H6a4 4 0 01-4-4V9a4 4 0 014-4z" className="fill-success" />
+    <path d="M16 5h10a4 4 0 014 4v14a4 4 0 01-4 4H16z" className="fill-destructive" />
+    <text x="9" y="18.6" textAnchor="middle" fontSize="7.5" fontWeight="900" className="fill-background">Y</text>
+    <text x="23" y="18.6" textAnchor="middle" fontSize="7.5" fontWeight="900" className="fill-background">N</text>
   </svg>
 );
 
