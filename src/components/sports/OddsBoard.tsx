@@ -1352,7 +1352,7 @@ function SpreadsTab({ games }: { games: FullGame[] }) {
       {withSpreads.map((g) => (
         <div key={g.id} className="rounded-lg border border-border bg-card p-4">
           <div className="text-sm font-semibold text-foreground">{g.awayTeam} @ {g.homeTeam}</div>
-          <div className="text-[11px] font-mono text-muted-foreground">{formatGameTime(g.commenceTime)}</div>
+          <div className="text-[11px] text-muted-foreground">{formatGameTime(g.commenceTime)}</div>
           <div className="mt-2 text-sm font-mono">
             <div>{g.awayTeam}: {formatSpread(g.spread!.awaySpread)} ({formatOdds(g.spread!.awayOdds)})</div>
             <div>{g.homeTeam}: {formatSpread(g.spread!.homeSpread)} ({formatOdds(g.spread!.homeOdds)})</div>
@@ -1382,7 +1382,7 @@ function TotalsTab({ games }: { games: FullGame[] }) {
               {high && <span className="rounded-full border border-border bg-muted/50 px-2 py-0.5 text-[10px] font-semibold uppercase text-muted-foreground">HIGH SCORING</span>}
               {low && <span className="rounded-full border border-border bg-muted/50 px-2 py-0.5 text-[10px] font-semibold uppercase text-muted-foreground">LOW SCORING</span>}
             </div>
-            <div className="text-[11px] font-mono text-muted-foreground">{formatGameTime(g.commenceTime)}</div>
+            <div className="text-[11px] text-muted-foreground">{formatGameTime(g.commenceTime)}</div>
             <div className="mt-2 text-sm font-mono">
               <div>Over {t.line} ({formatOdds(t.overOdds)})</div>
               <div>Under {t.line} ({formatOdds(t.underOdds)})</div>
@@ -1460,7 +1460,7 @@ function PropsTab({ games }: { games: FullGame[] }) {
               )}
             >
               <div>{g.awayTeam} @ {g.homeTeam}</div>
-              <div className="text-[9px] font-mono opacity-80">
+              <div className="text-[9px] opacity-80">
                 {g.league}{cachedFlag ? " · cached" : ""}
               </div>
             </button>
@@ -1565,10 +1565,10 @@ function GolfCardHeader({
 
   return (
     <div className="flex items-center justify-between gap-2 flex-wrap">
-      <div className="text-xs font-bold uppercase text-amber-300">⛳ Golf</div>
+      <div className="text-xs font-bold uppercase text-muted-foreground">⛳ Golf</div>
       <div className="flex items-center gap-2">
         {(ago || minsUntil > 0) && (
-          <div className="text-[10px] text-muted-foreground font-mono">
+          <div className="text-[10px] text-muted-foreground">
             {ago && <>Updated {ago}</>}
             {ago && minsUntil > 0 && <span className="opacity-50"> · </span>}
             {minsUntil > 0 && <>Next update in {minsUntil} min</>}
