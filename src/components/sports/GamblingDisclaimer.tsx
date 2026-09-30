@@ -22,7 +22,7 @@ export function GamblingDisclaimer({ variant = "full", className }: Props) {
   if (variant === "inline") {
     return (
       <div className={cn(
-        "mt-3 flex items-start gap-2 rounded-md border border-warning/30 bg-warning/10 px-2.5 py-1.5 text-[11px] text-warning/90",
+        "mt-3 flex items-start gap-2 px-1 text-[11px] text-muted-foreground",
         className,
       )}>
         <ShieldAlert className="h-3 w-3 mt-0.5 shrink-0" />
