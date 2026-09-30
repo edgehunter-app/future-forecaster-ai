@@ -70,7 +70,7 @@ export default function RiskAIPanel({ data }: Props) {
           <span className="text-[11px] font-mono font-bold text-foreground">{score}/10</span>
         </div>
         <div className="h-1.5 w-full rounded-full bg-muted overflow-hidden">
-          <div className={cn("h-full transition-all", tone.bar)} style={{ width: `${score * 10}%` }} />
+          <div className={cn("h-full transition-all", tone.dot)} style={{ width: `${score * 10}%` }} />
         </div>
       </div>
 
