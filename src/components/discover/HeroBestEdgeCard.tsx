@@ -19,6 +19,7 @@ interface Props {
   onOpen: () => void;
   onHunt: () => void;
   emptyMessage?: string;
+  emptyTitle?: string;
 }
 
 export default function HeroBestEdgeCard({
@@ -29,6 +30,7 @@ export default function HeroBestEdgeCard({
   onOpen,
   onHunt,
   emptyMessage,
+  emptyTitle,
 }: Props) {
   // Skeleton / loading
   if (loading && !result) {
