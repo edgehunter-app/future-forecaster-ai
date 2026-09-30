@@ -28,24 +28,29 @@ interface Props {
   golfTournamentName?: string;
 }
 
-export default function SportTop5Card({ sportKey, sportLabel, games, golfTournamentName }: Props) {
-  const t = useSportTop5(sportKey, games, golfTournamentName);
+function updatedLabel(d: Date) {
+  const sameDay = d.toDateString() === new Date().toDateString();
+  const time = d.toLocaleTimeString([], { hour: "numeric", minute: "2-digit" });
+  if (sameDay) return d.getHours() < 12 ? `Updated this morning, ${time}` : `Updated today, ${time}`;
+  return `Updated ${d.toLocaleDateString([], { weekday: "short" })} ${time}`;
+}
+
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
+export default function SportTop5Card({ sportKey, sportLabel, games, golfTournamentName: _g }: Props) {
+  const t = useSportTop5(sportKey, games);
   const isGolf = sportKey === "golf";
   const when = isWeekSport(sportKey) ? "this week's" : "today's";
   const whenTitle = isWeekSport(sportKey) ? "This Week" : "Today";
 
   let body: React.ReactNode;
-  if (t.loading) {
+  if (!t.hasResult && t.hasGamesToday) {
     body = (
-      <div className="flex items-center gap-2 py-3 text-xs text-muted-foreground">
-        <Loader2 className="h-3.5 w-3.5 animate-spin" />
-        Scoring {when} {sportLabel} games… {t.progress.total ? `${t.progress.done}/${t.progress.total}` : ""}
+      <div className="py-3 text-xs text-muted-foreground">
+        {t.isScheduled
+          ? `${sportLabel} Top 5 is posted each morning around 7 AM ET${isWeekSport(sportKey) ? " on game days" : ""}.`
+          : `Top 5 isn't available for ${sportLabel} yet.`}
       </div>
     );
-  } else if (t.error) {
-    body = <div className="py-3 text-xs text-destructive">Couldn't build today's Top 5. Try again later.</div>;
-  } else if (!t.hasResult && t.hasGamesToday) {
-    body = <div className="py-3 text-xs text-muted-foreground">Tap "Scan for Top 5" to score {when} {sportLabel} games.</div>;
   } else if (!t.hasResult && !t.hasGamesToday) {
     body = isGolf
       ? <div className="py-3 text-xs text-muted-foreground">No golf odds available right now. Golf major odds return ahead of the Masters in April.</div>
