@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { ChevronDown, ChevronUp, Brain, Loader2, AlertCircle, TrendingUp, Clock, RotateCw } from "lucide-react";
+import { ChevronDown, ChevronUp, ChevronRight, Brain, Loader2, AlertCircle, TrendingUp, Clock, RotateCw } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAppStore } from "@/store/useAppStore";
 import GolfAnalysisPanel, { type GolfAnalysisResult } from "./GolfAnalysisPanel";
@@ -345,7 +345,7 @@ function GameCard({ game, mispricings }: { game: FullGame; mispricings: SportsMi
   };
 
   return (
-    <div className="space-y-2 rounded-lg border border-border/80 bg-card p-3 shadow-sm ring-1 ring-foreground/5">
+    <div className="space-y-2 rounded-xl border border-border/80 bg-card p-3 shadow-sm ring-1 ring-foreground/5">
       {/* Top row */}
       <div className="flex items-center justify-between gap-2 border-b border-border/40 pb-2">
         <span className="rounded bg-muted/60 px-1.5 py-0.5 text-[9px] font-bold uppercase text-muted-foreground">
@@ -433,14 +433,14 @@ function GameCard({ game, mispricings }: { game: FullGame; mispricings: SportsMi
 
       {/* Markets row */}
       {game.isTennis ? (
-        <div className="grid grid-cols-1 gap-px overflow-hidden rounded-md bg-background/40 text-[11px]">
+        <div className="grid grid-cols-1 border-y border-border/60 text-[11px] [&>div:first-child]:border-l-0">
           <Market label="Match Winner">
             <div className={oddsClass(awayOdds)}>{displayTeamName(game, "away")} {formatOdds(awayOdds)}</div>
             <div className={oddsClass(homeOdds)}>{displayTeamName(game, "home")} {formatOdds(homeOdds)}</div>
           </Market>
         </div>
       ) : (
-        <div className="grid grid-cols-3 gap-px overflow-hidden rounded-md bg-border/30 text-[11px]">
+        <div className="grid grid-cols-3 border-y border-border/60 text-[11px] [&>div:first-child]:border-l-0">
           <Market label="Moneyline">
             <div className={oddsClass(awayOdds)}>A {formatOdds(awayOdds)}</div>
             <div className={oddsClass(homeOdds)}>H {formatOdds(homeOdds)}</div>
@@ -502,7 +502,7 @@ function GameCard({ game, mispricings }: { game: FullGame; mispricings: SportsMi
           )}
         </div>
       ) : (
-      <div className="overflow-hidden rounded-md bg-background/35">
+      <div className="border-b border-border/40">
         <button
           onClick={handleCompareToggle}
           className="flex w-full items-center justify-between gap-2 px-3 py-1.5 text-[11px] font-semibold text-muted-foreground hover:text-foreground"
@@ -561,29 +561,32 @@ function GameCard({ game, mispricings }: { game: FullGame; mispricings: SportsMi
             onClick={handleAnalyze}
             disabled={analyzing || oddsLoading}
             className={cn(
-              "flex w-full items-center justify-center gap-2 rounded-md bg-purple px-3 text-white font-semibold transition-colors hover:bg-purple/90 disabled:opacity-60",
-               "h-11",
+              "flex w-full items-center justify-between gap-2 rounded-md border border-purple/40 border-l-[3px] border-l-purple bg-purple/10 px-3 text-left transition-colors hover:bg-purple/15 disabled:opacity-60",
+              "h-11 text-purple",
             )}
           >
             {analyzing || oddsLoading ? (
               <>
-                <Loader2 className="h-4 w-4 animate-spin" />
-                <span className="text-sm">{oddsLoading ? "Loading lines…" : "Analyzing…"}</span>
+                <div className="flex items-center gap-2.5">
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                  <span className="text-[13px] font-semibold">{oddsLoading ? "Loading lines…" : "Analyzing…"}</span>
+                </div>
               </>
             ) : (
-              <div className="flex items-center gap-2 text-left">
-                <Brain className="h-4 w-4" />
-                <div>
-                  <div className="text-sm leading-tight">
-                    Find the Edge
-                  </div>
-                  <div className="text-[10px] opacity-80 leading-tight">
-                    {vegasBookCount < 2
-                      ? "Fetches full sportsbook lines on demand"
-                      : "AI-powered edge detection"}
+              <>
+                <div className="flex items-center gap-2.5 min-w-0">
+                  <Brain className="h-4 w-4 shrink-0" />
+                  <div className="min-w-0">
+                    <div className="text-[13px] font-semibold leading-tight">Find the Edge</div>
+                    <div className="text-[10px] leading-tight text-purple/70">
+                      {vegasBookCount < 2
+                        ? "Fetches full sportsbook lines on demand"
+                        : "AI-powered edge detection"}
+                    </div>
                   </div>
                 </div>
-              </div>
+                <ChevronRight className="h-4 w-4 shrink-0 text-purple/70" />
+              </>
             )}
           </button>
           {error && (
@@ -604,7 +607,7 @@ function GameCard({ game, mispricings }: { game: FullGame; mispricings: SportsMi
       )}
 
       {/* Player Props toggle */}
-      <div className="rounded-md bg-info/5">
+      <div className="border-b border-border/40">
         <button
           onClick={() => setShowProps((v) => !v)}
           className={cn(
@@ -625,7 +628,7 @@ function GameCard({ game, mispricings }: { game: FullGame; mispricings: SportsMi
 
 function Market({ label, children }: { label: string; children: React.ReactNode }) {
   return (
-    <div className="bg-background/60 p-2">
+    <div className="border-l border-border/40 p-2.5">
       <div className="mb-1 text-[9px] font-semibold uppercase text-muted-foreground/70">{label}</div>
       <div className="font-mono space-y-0.5">{children}</div>
     </div>
