@@ -47,7 +47,9 @@ export default function SportTop5Card({ sportKey, sportLabel, games, golfTournam
   } else if (!t.hasResult && t.hasGamesToday) {
     body = <div className="py-3 text-xs text-muted-foreground">Tap "Scan for Top 5" to score {when} {sportLabel} games.</div>;
   } else if (!t.hasResult && !t.hasGamesToday) {
-    body = <div className="py-3 text-xs text-muted-foreground">No {sportLabel} games {whenTitle === "Today" ? "today" : "this week"}.</div>;
+    body = isGolf
+      ? <div className="py-3 text-xs text-muted-foreground">No golf odds available right now. Golf major odds return ahead of the Masters in April.</div>
+      : <div className="py-3 text-xs text-muted-foreground">No {sportLabel} games {whenTitle === "Today" ? "today" : "this week"}.</div>;
   } else if (isGolf && t.golf) {
     body = (
       <ol className="divide-y divide-border/60">
