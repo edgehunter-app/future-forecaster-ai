@@ -47,6 +47,7 @@ interface FetchResponse {
   meetings: Meeting[];
   meetingCount: number;
   cardsNotReady?: boolean;
+  wrongDateTracks?: Array<{ track: string; returned: string; dropped: number }>;
 }
 
 const STALE_RETRY_MS = 45 * 60 * 1000;
@@ -461,7 +462,7 @@ function BestRaceTodayPanel({ date }: { date: string }) {
           <div className="text-xs font-semibold uppercase tracking-wider text-purple-300">Best Race Today</div>
           <h2 className="mt-1 text-xl font-bold text-foreground">FormFav + Claude Race Finder</h2>
           <p className="mt-1 text-xs text-muted-foreground">
-            Claude scans today's US meetings via FormFav MCP and returns the most bettable race.
+            Claude reviews today's US race cards from FormFav and picks the most bettable race.
           </p>
         </div>
         <button
@@ -796,14 +797,16 @@ export default function HorseRacing() {
             </button>
           </section>
 
-          <section className="rounded-2xl border border-info/30 bg-info/5 p-4 text-sm">
-            <div className="flex items-center gap-2 font-semibold text-info">
-              <span aria-hidden>🏇</span> Saratoga — Card posts day-of
-            </div>
-            <p className="mt-1 text-foreground/90">
-              Saratoga's full card typically becomes available 2–3 hours before first post. Check back closer to race time.
-            </p>
-          </section>
+          {scheduleTracks.some((t) => /saratoga/i.test(t)) && (
+            <section className="rounded-2xl border border-info/30 bg-info/5 p-4 text-sm">
+              <div className="flex items-center gap-2 font-semibold text-info">
+                <span aria-hidden>🏇</span> Saratoga — Card posts day-of
+              </div>
+              <p className="mt-1 text-foreground/90">
+                Saratoga's full card typically becomes available 2–3 hours before first post. Check back closer to race time.
+              </p>
+            </section>
+          )}
 
           <section className="rounded-2xl border border-border bg-muted/30 p-4 text-sm">
             <div className="flex items-center gap-2 font-semibold text-foreground">
@@ -814,8 +817,9 @@ export default function HorseRacing() {
               currently available in our data feed. We're working to add more track coverage.
             </p>
             <p className="mt-2 text-muted-foreground">
-              Currently showing: Saratoga, Churchill Downs, Belmont Park, Santa Anita, Gulfstream Park,
-              Keeneland, and other major US tracks when cards are available.
+              {scheduleTracks.length > 0
+                ? <>Tracks on FormFav's schedule for this date: {scheduleTracks.join(", ")}.</>
+                : "FormFav hasn't listed any US tracks for this date yet."}
             </p>
           </section>
         </div>
