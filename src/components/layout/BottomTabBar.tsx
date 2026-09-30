@@ -10,14 +10,13 @@ import { cn } from "@/lib/utils";
 import { useIsAdmin } from "@/hooks/useIsAdmin";
 import { useLineMonitor } from "@/hooks/useLineMonitor";
 import { useSubscription } from "@/hooks/useSubscription";
-
 import { FootballIcon, RacingIcon, PredictionMarketsIcon } from "@/components/icons/marketIcons";
 
 const MORE_ITEMS = [
   { to: "/suggestions", label: "Signals", icon: Zap },
   { to: "/wallets", label: "Wallets", icon: Users },
-  { to: "/markets", label: "Markets", icon: TrendingUp },
-  { to: "/horse-racing", label: "Racing", icon: HorseEmojiIcon },
+  { to: "/markets", label: "Markets", icon: PredictionMarketsIcon },
+  { to: "/horse-racing", label: "Racing", icon: RacingIcon },
   { to: "/cross-market", label: "Cross-Market", icon: ArrowLeftRight },
   { to: "/history", label: "History", icon: Clock },
   { to: "/install", label: "Get the App", icon: Smartphone },
@@ -51,7 +50,7 @@ export default function BottomTabBar() {
   const tabs = [
     { to: "/", label: "Discover", icon: House, end: true, badge: 0 },
     { to: "/search", label: "Search", icon: Search, end: false, badge: 0 },
-    { to: "/sports", label: "Sports", icon: Trophy, end: false, badge: strongMispricings, badgeColor: "success" as const },
+    { to: "/sports", label: "Sports", icon: FootballIcon, end: false, badge: strongMispricings, badgeColor: "success" as const },
     { to: "/tracker", label: "Tracker", icon: BarChart2Icon, end: false, badge: 0 },
     { to: "/settings", label: "Profile", icon: UserIcon, end: false, badge: 0 },
   ];
