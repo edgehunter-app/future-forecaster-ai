@@ -156,6 +156,11 @@ async function scanDate(date: string): Promise<ScanResult> {
       const d = (data as Record<string, unknown>)?.date;
       return typeof d !== "string" || d === date;
     });
+    const dropped = races.length - trackRaces.length;
+    if (dropped > 0) {
+      const got = (races[0]?.data as Record<string, unknown>)?.date;
+      console.log(`[horse-racing] ${m.slug}: dropped ${dropped}/${races.length} races — asked ${date}, FormFav returned ${got}`);
+    }
     if (trackRaces.length === 0) continue;
     trackRaces.sort((a, b) => a.race - b.race);
     if (!shapeSample) {
@@ -196,6 +201,22 @@ Deno.serve(async (req) => {
     const probeUK = url.searchParams.get("probeUK") === "1";
     const probeAuth = url.searchParams.get("probeAuth") === "1";
     const probeSlugs = url.searchParams.get("probeSlugs") === "1";
+
+    // TEMP: raw single-race probe
+    if (url.searchParams.get("probeRace") === "1") {
+      const d = url.searchParams.get("date") ?? new Date().toLocaleDateString("en-CA", { timeZone: "America/New_York" });
+      const u = `${FORMFAV_BASE}/form?date=${d}&track=fairmount-park&race=1&country=us`;
+      const t0 = Date.now();
+      try {
+        const r = await fetch(u, { headers, signal: AbortSignal.timeout(20000) });
+        const body = await r.text();
+        const out = { url: u.replace(FORMFAV_BASE, ""), status: r.status, ms: Date.now() - t0, headers: Object.fromEntries(r.headers), body };
+        console.log("[probeRace]", JSON.stringify(out));
+        return new Response(JSON.stringify(out, null, 2), { headers: CORS_HEADERS });
+      } catch (e) {
+        return new Response(JSON.stringify({ error: String(e), ms: Date.now() - t0 }), { headers: CORS_HEADERS });
+      }
+    }
 
     if (probeSlugs) {
       const testDate = url.searchParams.get("date") ?? "2026-07-17";
