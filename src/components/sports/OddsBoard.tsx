@@ -840,7 +840,7 @@ export function GolfLeaderboardCard({
   };
 
   return (
-    <div className="rounded-lg border border-amber-400/40 bg-gradient-to-br from-amber-500/5 to-card p-4 space-y-3 md:col-span-2">
+    <div className="rounded-xl border border-border/80 bg-card p-4 space-y-3 md:col-span-2 shadow-sm ring-1 ring-foreground/5">
       <GolfCardHeader
         loading={loading}
         fetchedAt={golf?.fetchedAt ?? null}
@@ -850,9 +850,9 @@ export function GolfLeaderboardCard({
 
       {/* ===== Section 1: Live Leaderboard (Live Golf Data API) ===== */}
       {!tournament && golf?.error && (
-        <div className="rounded-md border border-warning/40 bg-warning/10 p-3 text-[11px] text-warning">
+        <div className="rounded-md border-l-[3px] border-l-destructive bg-destructive/5 p-3 text-[11px] text-destructive">
           <div className="font-bold uppercase mb-1">⚠️ Live leaderboard unavailable</div>
-          <div className="text-warning/90">
+          <div className="opacity-90">
             {/quota|429/i.test(golf.error)
               ? "RapidAPI Live Golf Data monthly quota exhausted — upgrade the plan or wait for the monthly reset to see live tournament rows."
               : golf.error}
@@ -868,31 +868,25 @@ export function GolfLeaderboardCard({
                   📊 {showLive ? "Live Leaderboard" : "Next Tournament"}
                 </span>
                 {showLive ? (
-                  <span className="inline-flex items-center gap-1 rounded-full bg-success/20 px-1.5 py-px text-[9px] font-bold uppercase text-success">
-                    <span className="h-1 w-1 rounded-full bg-success animate-pulse" />
+                  <StatusBadge tone="success" dot className="animate-pulse">
                     Live · R{leaderboard?.roundId || "?"}
-                  </span>
+                  </StatusBadge>
                 ) : status ? (
-                  <span
-                    className={cn(
-                      "inline-flex items-center gap-1 rounded-full px-1.5 py-px text-[9px] font-bold uppercase",
-                      status.color === "green" && "bg-success/20 text-success",
-                      status.color === "blue" && "bg-info/20 text-info",
-                      status.color === "gray" && "bg-muted text-muted-foreground",
-                      status.pulse && "animate-pulse",
-                    )}
+                  <StatusBadge
+                    tone={status.color === "green" ? "success" : status.color === "blue" ? "info" : "neutral"}
+                    className={cn(status.pulse && "animate-pulse")}
                   >
                     {status.label}
-                  </span>
+                  </StatusBadge>
                 ) : null}
               </div>
 
               <div className="text-base font-extrabold text-foreground">{tournament.name}</div>
               {liveRange && (
-                <div className="text-[10px] font-mono text-muted-foreground">{liveRange}</div>
+                <div className="text-[10px] text-muted-foreground">{liveRange}</div>
               )}
             </div>
-            <div className="text-[9px] font-mono uppercase text-muted-foreground text-right">
+            <div className="text-[9px] uppercase text-muted-foreground text-right">
               Live Golf Data<br />Updates ~15 min
             </div>
           </header>
@@ -1022,10 +1016,10 @@ export function GolfLeaderboardCard({
               </div>
               <div className="text-base font-extrabold text-foreground">{oddsName}</div>
               {oddsSubtitle && (
-                <div className="text-[10px] font-mono text-muted-foreground">{oddsSubtitle}</div>
+                <div className="text-[10px] text-muted-foreground">{oddsSubtitle}</div>
               )}
             </div>
-            <div className="text-[9px] font-mono uppercase text-muted-foreground text-right">
+            <div className="text-[9px] uppercase text-muted-foreground text-right">
               The Odds API<br />Futures market
             </div>
           </header>
@@ -1385,8 +1379,8 @@ function TotalsTab({ games }: { games: FullGame[] }) {
           <div key={g.id} className="rounded-lg border border-border bg-card p-4">
             <div className="flex items-center justify-between gap-2">
               <div className="text-sm font-semibold text-foreground">{g.awayTeam} @ {g.homeTeam}</div>
-              {high && <span className="rounded-full bg-warning/20 px-2 py-0.5 text-[10px] font-bold text-warning">HIGH SCORING</span>}
-              {low && <span className="rounded-full bg-info/20 px-2 py-0.5 text-[10px] font-bold text-info">LOW SCORING</span>}
+              {high && <span className="rounded-full border border-border bg-muted/50 px-2 py-0.5 text-[10px] font-semibold uppercase text-muted-foreground">HIGH SCORING</span>}
+              {low && <span className="rounded-full border border-border bg-muted/50 px-2 py-0.5 text-[10px] font-semibold uppercase text-muted-foreground">LOW SCORING</span>}
             </div>
             <div className="text-[11px] font-mono text-muted-foreground">{formatGameTime(g.commenceTime)}</div>
             <div className="mt-2 text-sm font-mono">
