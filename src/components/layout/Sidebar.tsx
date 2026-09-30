@@ -1,7 +1,7 @@
 import { NavLink } from "react-router-dom";
 import {
-  House, Zap, Users, TrendingUp, Clock, Settings,
-  ChevronLeft, ChevronRight, Moon, Sun, ArrowLeftRight, Download, Trophy, ShieldCheck, BarChart2, Star,
+  House, Zap, Users, Clock, Settings,
+  ChevronLeft, ChevronRight, Moon, Sun, ArrowLeftRight, Download, ShieldCheck, BarChart2, Star,
 } from "lucide-react";
 import { useAppStore } from "@/store/useAppStore";
 import { usePWA } from "@/hooks/usePWA";
