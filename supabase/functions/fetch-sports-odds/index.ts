@@ -204,7 +204,30 @@ async function oddsApiFetch(pathAndQuery: string): Promise<{ res: Response | nul
 // quota), but we still cache the result 6h per warm instance to reduce
 // HTTP volume — active tournament lineups turn over on a weekly cadence.
 let activeGolfCache: { expires: number; keys: string[] } | null = null;
+// Golf majors are paused (off-season futures only) until Masters week.
+const GOLF_MAJORS_RESUME = "2027-04-01";
+// Tennis Grand Slam feeds are only called in each slam's window (MM-DD, inclusive).
+const TENNIS_WINDOWS: Record<string, [string, string]> = {
+  aus_open: ["01-05", "02-02"],
+  french_open: ["05-18", "06-10"],
+  wimbledon: ["06-23", "07-15"],
+  us_open: ["08-18", "09-10"],
+};
+function activeTennisSports(): string[] {
+  const md = new Date().toISOString().slice(5, 10);
+  return ODDS_API_TENNIS_SPORTS.filter((k) => {
+    const slam = Object.keys(TENNIS_WINDOWS).find((s) => k.endsWith(s));
+    if (!slam) return false;
+    const [a, b] = TENNIS_WINDOWS[slam];
+    return md >= a && md <= b;
+  });
+}
+
 async function getActiveGolfSports(forceRefresh = false): Promise<string[]> {
+  if (new Date().toISOString().slice(0, 10) < GOLF_MAJORS_RESUME) {
+    console.log(`[odds-api] golf majors paused until ${GOLF_MAJORS_RESUME}; no golf calls`);
+    return [];
+  }
   const now = Date.now();
   if (!forceRefresh && activeGolfCache && activeGolfCache.expires > now) return activeGolfCache.keys;
   if (oddsApiKeys().length === 0) return [];
@@ -1046,7 +1069,7 @@ async function fetchOddsApiAll(
     ...ODDS_API_SOCCER_SPORTS.map((s) => () => fetchOddsApiSport(client, s, "h2h,spreads,totals", forceRefresh)),
     ...activeGolfKeys.map((s) => () => fetchOddsApiSport(client, s, "outrights", forceRefresh)),
     ...ODDS_API_MMA_SPORTS.map((s) => () => fetchOddsApiSport(client, s, "h2h", forceRefresh)),
-    ...ODDS_API_TENNIS_SPORTS.map((s) => () => fetchOddsApiSport(client, s, "h2h", forceRefresh)),
+    ...activeTennisSports().map((s) => () => fetchOddsApiSport(client, s, "h2h", forceRefresh)),
     ...ODDS_API_GAME_SPORTS.map(({ sport, markets }) => () => fetchOddsApiSport(client, sport, markets, forceRefresh)),
     ...(onDemand ? [() => fetchOddsApiSport(client, onDemand.sport, onDemand.markets, forceRefresh)] : []),
   ];
