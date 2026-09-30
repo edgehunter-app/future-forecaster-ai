@@ -12,7 +12,7 @@ const db = createClient(SUPABASE_URL, SERVICE_KEY, { auth: { persistSession: fal
 
 const MAX_ANALYZED = 10;
 const CONCURRENCY = 5;
-const DAILY = new Set(["baseball_mlb", "basketball_nba"]);
+const DAILY = new Set(["baseball_mlb", "basketball_nba", "icehockey_nhl", "soccer_epl", "soccer_usa_mls", "mma_mixed_martial_arts"]);
 const WEEK = new Set(["americanfootball_nfl", "americanfootball_ncaaf"]);
 const ALLOWED = new Set([...DAILY, ...WEEK]);
 
