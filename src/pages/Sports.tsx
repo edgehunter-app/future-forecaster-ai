@@ -8,8 +8,6 @@ import GamblingDisclaimer from "@/components/sports/GamblingDisclaimer";
 import OddsBoard from "@/components/sports/OddsBoard";
 import { GolfLeaderboardCard } from "@/components/sports/OddsBoard";
 import { useGolfData } from "@/hooks/useGolfData";
-import BestBetCard from "@/components/sports/BestBetCard";
-import { useBestBet } from "@/hooks/useBestBet";
 import { SPORTS } from "@/lib/oddsApi";
 import { cn } from "@/lib/utils";
 import { usePageTitle } from "@/hooks/usePageTitle";
@@ -81,10 +79,6 @@ export default function Sports() {
   usePageTitle("Sports Odds Board");
   const { isAdmin } = useIsAdmin();
   const markets = useAppStore((s) => s.markets);
-  const triggerBestBetOnSports = useAppStore((s) => s.triggerBestBetOnSports);
-  const setTriggerBestBetOnSports = useAppStore((s) => s.setTriggerBestBetOnSports);
-  const pendingBestBetScan = useAppStore((s) => s.pendingBestBetScan);
-  const setPendingBestBetScan = useAppStore((s) => s.setPendingBestBetScan);
   const navigate = useNavigate();
   const {
     mispricings,
