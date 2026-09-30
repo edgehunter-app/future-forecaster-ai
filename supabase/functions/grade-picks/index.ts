@@ -198,6 +198,10 @@ Deno.serve(async (req) => {
   // Auth: cron secret header, or an admin user's JWT.
   const cronHeader = req.headers.get("x-cron-secret") ?? "";
   let authorized = CRON_SECRET.length > 0 && cronHeader === CRON_SECRET;
+  if (!authorized && cronHeader) {
+    const { data: row } = await admin.from("internal_cron_secrets").select("value").eq("name", "grade_picks").maybeSingle();
+    authorized = !!row?.value && row.value === cronHeader;
+  }
   if (!authorized) {
     const token = (req.headers.get("Authorization") ?? "").replace("Bearer ", "");
     if (token) {
