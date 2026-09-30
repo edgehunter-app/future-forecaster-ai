@@ -469,13 +469,16 @@ function GameCard({ game, mispricings }: { game: FullGame; mispricings: SportsMi
         </div>
       )}
 
-      {/* Polymarket row */}
+      {/* Polymarket gap row — same amber accent-rail treatment as the Gap badge */}
       {game.polymarketMatch && game.polymarketImplied !== null && game.mispricingGap !== null && (
-        <div className="rounded-md border border-warning/40 bg-warning/10 px-3 py-2 text-[11px] text-warning">
-          <div className="font-semibold">
-            Polymarket: {(game.polymarketImplied * 100).toFixed(0)}% YES · Gap: {(game.mispricingGap * 100).toFixed(1)}%
+        <div className="rounded-md border-l-[3px] border-l-warning bg-warning/5 px-3 py-2">
+          <div className="flex items-center justify-between gap-2 text-[11px]">
+            <span className="font-semibold text-warning">Polymarket vs Vegas</span>
+            <span className="font-mono font-semibold text-foreground">
+              {(game.polymarketImplied * 100).toFixed(0)}% · gap {(game.mispricingGap * 100).toFixed(1)}%
+            </span>
           </div>
-          <div className="opacity-80">Potential edge vs Vegas consensus</div>
+          <div className="mt-0.5 text-[10px] text-muted-foreground">Potential edge vs Vegas consensus</div>
         </div>
       )}
 
@@ -499,9 +502,9 @@ function GameCard({ game, mispricings }: { game: FullGame; mispricings: SportsMi
                   {" · "}
                   {displayTeamName(game, "home")} {formatOdds(kalshiBook.homeMoneyline)}
                 </span>
-                <span className="rounded-sm border border-info/40 bg-info/10 px-1 py-px text-[8px] font-bold text-info whitespace-nowrap">
+                <StatusBadge tone="info" size="xs" className="whitespace-nowrap">
                   Prediction market only
-                </span>
+                </StatusBadge>
               </div>
             </div>
           )}
@@ -670,7 +673,7 @@ export function GolfLeaderboardCard({
   // Show a prompt so the user can trigger the (quota-protected) fetch.
   if (!game && !hasAnyData) {
     return (
-      <div className="rounded-lg border border-amber-400/40 bg-gradient-to-br from-amber-500/5 to-card p-4 space-y-3 md:col-span-2">
+      <div className="rounded-lg border border-border/80 bg-card p-4 space-y-3 md:col-span-2">
         <GolfCardHeader
           loading={loading}
           fetchedAt={golf?.fetchedAt ?? null}
@@ -685,7 +688,7 @@ export function GolfLeaderboardCard({
           <button
             onClick={() => golf?.onRefresh?.(true)}
             disabled={loading}
-            className="inline-flex items-center gap-1.5 rounded-md bg-amber-500 px-4 py-2 text-xs font-bold text-amber-950 hover:bg-amber-400 disabled:opacity-50"
+            className="inline-flex items-center gap-1.5 rounded-md bg-info px-4 py-2 text-xs font-bold text-white hover:bg-info/90 disabled:opacity-50"
           >
             <RotateCw className={cn("h-3.5 w-3.5", loading && "animate-spin")} />
             Refresh Golf Data
@@ -694,7 +697,7 @@ export function GolfLeaderboardCard({
             Updates on demand to preserve API quota during beta
           </div>
           {golf?.error && (
-            <div className="text-[10px] text-warning">{golf.error}</div>
+            <div className="text-[10px] text-destructive">{golf.error}</div>
           )}
         </div>
       </div>
@@ -1179,14 +1182,14 @@ function BookTable({
           <div className="flex items-center gap-1.5">
             <span>{b.name}</span>
             {b.key === "kalshi" && (
-              <span className="rounded-sm border border-info/40 bg-info/10 px-1 py-px text-[8px] font-bold text-info">CFTC</span>
+              <StatusBadge tone="info" size="xs">CFTC</StatusBadge>
             )}
             {b.key === "polymarket" && (
-              <span className="rounded-sm border border-warning/40 bg-warning/10 px-1 py-px text-[8px] font-bold text-warning">Offshore</span>
+              <StatusBadge tone="neutral" size="xs">Offshore</StatusBadge>
             )}
             {(b.key === "betonlineag" ||
               b.name.toLowerCase().includes("betonline")) && (
-              <span className="rounded-sm border border-warning/40 bg-warning/10 px-1 py-px text-[8px] font-bold text-warning">Offshore</span>
+              <StatusBadge tone="neutral" size="xs">Offshore</StatusBadge>
             )}
           </div>
         </td>
