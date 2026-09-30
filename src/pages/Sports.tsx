@@ -8,8 +8,6 @@ import GamblingDisclaimer from "@/components/sports/GamblingDisclaimer";
 import OddsBoard from "@/components/sports/OddsBoard";
 import { GolfLeaderboardCard } from "@/components/sports/OddsBoard";
 import { useGolfData } from "@/hooks/useGolfData";
-import BestBetCard from "@/components/sports/BestBetCard";
-import { useBestBet } from "@/hooks/useBestBet";
 import { SPORTS } from "@/lib/oddsApi";
 import { cn } from "@/lib/utils";
 import { usePageTitle } from "@/hooks/usePageTitle";
@@ -81,10 +79,6 @@ export default function Sports() {
   usePageTitle("Sports Odds Board");
   const { isAdmin } = useIsAdmin();
   const markets = useAppStore((s) => s.markets);
-  const triggerBestBetOnSports = useAppStore((s) => s.triggerBestBetOnSports);
-  const setTriggerBestBetOnSports = useAppStore((s) => s.setTriggerBestBetOnSports);
-  const pendingBestBetScan = useAppStore((s) => s.pendingBestBetScan);
-  const setPendingBestBetScan = useAppStore((s) => s.setPendingBestBetScan);
   const navigate = useNavigate();
   const {
     mispricings,
@@ -149,59 +143,6 @@ export default function Sports() {
     void loadGamesForSport("golf", true);
   };
 
-
-  const {
-    findBestBet,
-    loading: bestBetLoading,
-    scannedSoFar,
-    scanProgress,
-    result: bestBetLocalResult,
-    error: bestBetError,
-    clear: clearBestBet,
-    availability: bestBetAvailability,
-  } = useBestBet();
-  // Prefer the shared store copy so Sports mirrors whatever Discover
-  // most recently produced (and vice-versa) — one canonical pick.
-  const bestBetResult = useAppStore((s) => s.lastBestBet) ?? bestBetLocalResult;
-
-  const handleBestBet = async () => {
-    await findBestBet();
-    setTimeout(() => {
-      document
-        .getElementById("best-bet-card")
-        ?.scrollIntoView({ behavior: "smooth", block: "start" });
-    }, 100);
-  };
-
-  useEffect(() => {
-    if (triggerBestBetOnSports) {
-      setTriggerBestBetOnSports(false);
-      void handleBestBet();
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [triggerBestBetOnSports]);
-
-  // If a Best Bet scan is pending and games are not loaded, trigger a refresh first.
-  useEffect(() => {
-    if (pendingBestBetScan && (fullGames?.length ?? 0) === 0 && !loading) {
-      void scan("manual");
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [pendingBestBetScan]);
-
-  // Once games are loaded, run the pending Best Bet scan.
-  useEffect(() => {
-    if (
-      pendingBestBetScan &&
-      (fullGames?.length ?? 0) > 0 &&
-      !bestBetLoading &&
-      !loading
-    ) {
-      setPendingBestBetScan(false);
-      void handleBestBet();
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [pendingBestBetScan, fullGames?.length, bestBetLoading, loading]);
 
   const filteredGames = useMemo(() => {
     const list = fullGames ?? [];
@@ -367,55 +308,6 @@ export default function Sports() {
               return `Updated ${minutesAgo}m ago${refreshing}`;
             })()}
           </span>
-          <button
-            onClick={handleBestBet}
-            disabled={
-              bestBetLoading ||
-              (fullGames?.length ?? 0) === 0 ||
-              bestBetAvailability === "none"
-            }
-            className={cn(
-              "inline-flex items-center gap-2 rounded-xl px-4 text-sm font-bold text-white shadow-md transition-opacity disabled:opacity-60",
-              "bg-gradient-to-r from-purple to-purple/70 hover:opacity-90",
-            )}
-            style={{ minHeight: 44 }}
-          >
-            {bestBetLoading ? (
-              <>
-                <Loader2 className="h-4 w-4 animate-spin" />
-                <span className="flex flex-col items-start leading-tight">
-                  <span>
-                    {scanProgress.stage === "sports" && "Scanning sports lines… (1/3)"}
-                    {scanProgress.stage === "prediction_markets" && "Scanning prediction markets… (2/3)"}
-                    {scanProgress.stage === "wallet_signals" && "Scanning wallet signals… (3/3)"}
-                    {scanProgress.stage === "ranking" && "Finding best opportunity…"}
-                    {(scanProgress.stage === "idle" || !scanProgress.stage) && "Analyzing…"}
-                  </span>
-                  <span className="text-[10px] font-normal opacity-80">
-                    {scanProgress.total > 0
-                      ? `${scanProgress.current} of ${scanProgress.total} analyzed`
-                      : "AI multi-source scan"}
-                  </span>
-                </span>
-              </>
-            ) : (
-              <>
-                <Zap className="h-4 w-4" />
-                <span className="flex flex-col items-start leading-tight">
-                  <span>
-                    {bestBetAvailability === "within_12h" && "Best Bet Today"}
-                    {bestBetAvailability === "within_24h" && "Best Bet Tonight"}
-                    {bestBetAvailability === "none" && "No Games Today"}
-                  </span>
-                  <span className="text-[10px] font-normal opacity-80">
-                    {bestBetAvailability === "none"
-                      ? "Check back later"
-                      : "AI scans next 24h"}
-                  </span>
-                </span>
-              </>
-            )}
-          </button>
           <div className="flex flex-col items-end gap-0.5">
             <button
               onClick={() => void scan("manual")}
@@ -431,47 +323,6 @@ export default function Sports() {
           </div>
         </div>
       </div>
-
-      {bestBetLoading && scanProgress.total > 0 && (
-        <div className="space-y-1">
-          <div className="h-2 w-full overflow-hidden rounded-full bg-secondary">
-            <div
-              className="h-full bg-purple transition-all duration-300"
-              style={{ width: `${(scanProgress.current / scanProgress.total) * 100}%` }}
-            />
-          </div>
-          <div className="text-[10px] font-mono text-muted-foreground text-right">
-            {scanProgress.current} of {scanProgress.total} analyzed
-            {scanProgress.stage && scanProgress.stage !== "idle" && (
-              <span className="ml-2 opacity-70">
-                · {scanProgress.stage === "sports" && "sports"}
-                {scanProgress.stage === "prediction_markets" && "prediction markets"}
-                {scanProgress.stage === "wallet_signals" && "wallet signals"}
-                {scanProgress.stage === "ranking" && "ranking"}
-              </span>
-            )}
-          </div>
-        </div>
-      )}
-
-      {bestBetError && (
-        <div className="rounded-lg border border-destructive/40 bg-destructive/10 px-4 py-3 text-sm text-destructive">
-          {bestBetError}
-        </div>
-      )}
-
-      {pendingBestBetScan && (
-        <div className="rounded-lg border border-purple/40 bg-purple/10 px-4 py-3 text-sm text-foreground flex items-center gap-2">
-          <Loader2 className="h-4 w-4 animate-spin text-purple" />
-          {(fullGames?.length ?? 0) === 0
-            ? "Loading games for Best Bet scan..."
-            : "Running Best Bet analysis..."}
-        </div>
-      )}
-
-      {bestBetResult && (
-        <BestBetCard result={bestBetResult} onClear={clearBestBet} onRescan={handleBestBet} />
-      )}
 
       {isAdmin && <UsagePanel />}
 

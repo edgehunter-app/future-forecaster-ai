@@ -1,13 +1,13 @@
 import { NavLink } from "react-router-dom";
 import {
-  House, Zap, Users, TrendingUp, Clock, Settings,
-  ChevronLeft, ChevronRight, Moon, Sun, ArrowLeftRight, Download, Trophy, ShieldCheck, BarChart2, Star,
+  House, Zap, Users, Clock, Settings,
+  ChevronLeft, ChevronRight, Moon, Sun, ArrowLeftRight, Download, ShieldCheck, BarChart2, Star,
 } from "lucide-react";
 import { useAppStore } from "@/store/useAppStore";
 import { usePWA } from "@/hooks/usePWA";
 import { cn } from "@/lib/utils";
 import { EdgeHunterLogo } from "@/components/brand/EdgeHunterLogo";
-import HorseIcon from "@/components/icons/HorseIcon";
+import { FootballIcon, RacingIcon, PredictionMarketsIcon } from "@/components/icons/marketIcons";
 import { useIsAdmin } from "@/hooks/useIsAdmin";
 import { useSubscription } from "@/hooks/useSubscription";
 
@@ -28,10 +28,10 @@ export function Sidebar({ mobileOpen = false, onMobileClose }: { mobileOpen?: bo
     { to: "/suggestions", label: "Suggestions", icon: Zap, badge: suggestionsCount, badgeColor: "info" as const },
     { to: "/tracker", label: "Bet Tracker", icon: BarChart2 },
     { to: "/wallets", label: "Wallets", icon: Users },
-    { to: "/markets", label: "Markets", icon: TrendingUp },
+    { to: "/markets", label: "Markets", icon: PredictionMarketsIcon },
     { to: "/cross-market", label: "Cross-Market", icon: ArrowLeftRight, badge: xmCount || undefined, badgeColor: "warning" as const },
-    { to: "/sports", label: "Sports", icon: Trophy, badge: undefined, badgeColor: "info" as const } as const,
-    { to: "/horse-racing", label: "Horse Racing", icon: HorseIcon },
+    { to: "/sports", label: "Sports", icon: FootballIcon, badge: undefined, badgeColor: "info" as const } as const,
+    { to: "/horse-racing", label: "Horse Racing", icon: RacingIcon },
     { to: "/history", label: "History", icon: Clock },
     { to: "/settings", label: "Settings", icon: Settings },
   ];
