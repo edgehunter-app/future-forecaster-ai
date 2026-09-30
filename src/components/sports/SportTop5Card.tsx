@@ -1,17 +1,10 @@
-import { Flame, Loader2, Search } from "lucide-react";
+import { Flame } from "lucide-react";
 import type { FullGame } from "@/lib/oddsApi";
 import { useSportTop5, isWeekSport } from "@/hooks/useSportTop5";
 
 function fmtOdds(n?: number | null) {
   if (n == null || !Number.isFinite(n) || n === 0) return "N/A";
   return n > 0 ? `+${n}` : `${n}`;
-}
-function ago(d: Date) {
-  const m = Math.max(0, Math.round((Date.now() - d.getTime()) / 60000));
-  if (m < 1) return "just now";
-  if (m < 60) return `${m}m ago`;
-  const h = Math.round(m / 60);
-  return `${h}h ago`;
 }
 function fmtTime(iso: string) {
   try {
@@ -28,24 +21,28 @@ interface Props {
   golfTournamentName?: string;
 }
 
-export default function SportTop5Card({ sportKey, sportLabel, games, golfTournamentName }: Props) {
-  const t = useSportTop5(sportKey, games, golfTournamentName);
+function updatedLabel(d: Date) {
+  const sameDay = d.toDateString() === new Date().toDateString();
+  const time = d.toLocaleTimeString([], { hour: "numeric", minute: "2-digit" });
+  if (sameDay) return d.getHours() < 12 ? `Updated this morning, ${time}` : `Updated today, ${time}`;
+  return `Updated ${d.toLocaleDateString([], { weekday: "short" })} ${time}`;
+}
+
+export default function SportTop5Card({ sportKey, sportLabel, games, golfTournamentName: _g }: Props) {
+  const t = useSportTop5(sportKey, games);
   const isGolf = sportKey === "golf";
   const when = isWeekSport(sportKey) ? "this week's" : "today's";
   const whenTitle = isWeekSport(sportKey) ? "This Week" : "Today";
 
   let body: React.ReactNode;
-  if (t.loading) {
+  if (!t.hasResult && t.hasGamesToday) {
     body = (
-      <div className="flex items-center gap-2 py-3 text-xs text-muted-foreground">
-        <Loader2 className="h-3.5 w-3.5 animate-spin" />
-        Scoring {when} {sportLabel} games… {t.progress.total ? `${t.progress.done}/${t.progress.total}` : ""}
+      <div className="py-3 text-xs text-muted-foreground">
+        {t.isScheduled
+          ? `${sportLabel} Top 5 is posted each morning around 7 AM ET${isWeekSport(sportKey) ? " on game days" : ""}.`
+          : `Top 5 isn't available for ${sportLabel} yet.`}
       </div>
     );
-  } else if (t.error) {
-    body = <div className="py-3 text-xs text-destructive">Couldn't build today's Top 5. Try again later.</div>;
-  } else if (!t.hasResult && t.hasGamesToday) {
-    body = <div className="py-3 text-xs text-muted-foreground">Tap "Scan for Top 5" to score {when} {sportLabel} games.</div>;
   } else if (!t.hasResult && !t.hasGamesToday) {
     body = isGolf
       ? <div className="py-3 text-xs text-muted-foreground">No golf odds available right now. Golf major odds return ahead of the Masters in April.</div>
@@ -113,21 +110,12 @@ export default function SportTop5Card({ sportKey, sportLabel, games, golfTournam
         <h2 className="flex items-center gap-1.5 text-sm font-extrabold uppercase tracking-wide text-foreground">
           <Flame className="h-4 w-4 text-warning" /> Top 5 {sportLabel} Bets {whenTitle}
         </h2>
-        <div className="flex items-center gap-2">
-          {t.lastScannedAt && (
-            <span className="text-[11px] text-muted-foreground">Last scanned: {ago(t.lastScannedAt)}</span>
-          )}
-          <button
-            onClick={t.scan}
-            disabled={t.loading || !t.hasGamesToday}
-            className="inline-flex items-center gap-1 rounded-md border border-warning/50 bg-warning/15 px-2.5 py-1 text-[11px] font-bold text-warning hover:bg-warning/25 disabled:opacity-50"
-          >
-            {t.loading ? <Loader2 className="h-3 w-3 animate-spin" /> : <Search className="h-3 w-3" />}
-            Scan for Top 5
-          </button>
-        </div>
+        {t.lastScannedAt && (
+          <span className="text-[11px] text-muted-foreground">{updatedLabel(t.lastScannedAt)}</span>
+        )}
       </div>
       {body}
+      <p className="mt-2 border-t border-border/60 pt-2 text-[11px] text-muted-foreground">For live updates on a specific game, use Find the Edge.</p>
     </section>
   );
 }
