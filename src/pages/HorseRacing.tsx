@@ -46,7 +46,10 @@ interface FetchResponse {
   date: string;
   meetings: Meeting[];
   meetingCount: number;
+  cardsNotReady?: boolean;
 }
+
+const STALE_RETRY_MS = 45 * 60 * 1000;
 
 interface RaceAnalysis {
   track?: string;
@@ -618,10 +621,14 @@ export default function HorseRacing() {
       let resp = first.data as FetchResponse;
       console.log("[horse-racing] hook received:", resp);
       console.log("[horse-racing] meetings:", resp?.meetings?.length, "meetingCount:", resp?.meetingCount);
+      const todayNotReady = !!resp?.cardsNotReady;
       if (!resp || resp.meetingCount === 0) {
         console.log("[horse-racing] today empty, trying tomorrow:", tomorrow);
         const second = await supabase.functions.invoke("fetch-horse-racing", { body: { date: tomorrow } });
-        if (!second.error && second.data) resp = second.data as FetchResponse;
+        const t = second.data as FetchResponse | null;
+        // Only switch to tomorrow if it actually has cards; keep today's "not ready" state otherwise.
+        if (!second.error && t && t.meetingCount > 0) resp = t;
+        else if (todayNotReady) resp = { ...resp, date: today, cardsNotReady: true };
       }
       setData({ ...resp, date: resp.date ?? today });
       setLastChecked(new Date());
@@ -633,6 +640,17 @@ export default function HorseRacing() {
   useEffect(() => {
     load();
   }, []);
+
+  // FormFav sometimes serves the previous day's card; retry automatically while that persists.
+  const [nextRetryAt, setNextRetryAt] = useState<Date | null>(null);
+  useEffect(() => {
+    if (!data?.cardsNotReady) { setNextRetryAt(null); return; }
+    const at = new Date(Date.now() + STALE_RETRY_MS);
+    setNextRetryAt(at);
+    console.log("[horse-racing] cards not ready (wrong-date from provider); auto-retry at", at.toISOString());
+    const id = window.setTimeout(() => { load(); }, STALE_RETRY_MS);
+    return () => window.clearTimeout(id);
+  }, [data, lastChecked]);
 
   const { cards, coverage } = useMemo(() => {
     if (!data) return { cards: [] as RaceCardData[], coverage: [] as CoverageEntry[] };
@@ -750,10 +768,19 @@ export default function HorseRacing() {
         <div className="space-y-4">
           <section className="flex flex-col items-center justify-center rounded-2xl border border-border bg-card p-10 text-center">
             <div className="text-[64px] leading-none" aria-hidden>🐎</div>
-            <h2 className="mt-5 text-lg font-semibold text-foreground">No races posted yet for today</h2>
+            <h2 className="mt-5 text-lg font-semibold text-foreground">
+              {data?.cardsNotReady ? "Today's race cards aren't available yet" : "No races posted yet for today"}
+            </h2>
             <p className="mt-2 max-w-xs text-sm text-muted-foreground">
-              Race cards are typically posted 2–3 hours before first post.
+              {data?.cardsNotReady
+                ? "Our data provider hasn't published today's cards yet — check back soon. We'll keep trying automatically."
+                : "Race cards are typically posted 2–3 hours before first post."}
             </p>
+            {data?.cardsNotReady && nextRetryAt && (
+              <p className="mt-2 text-xs text-muted-foreground">
+                Next automatic check {nextRetryAt.toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" })}
+              </p>
+            )}
             {lastChecked && (
               <p className="mt-3 text-xs text-muted-foreground">
                 Last checked {lastChecked.toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" })}
