@@ -419,6 +419,7 @@ Deno.serve(async (req) => {
     const primaryDate = requested ?? easternToday;
 
     const isCron = CRON_SECRET.length > 0 && req.headers.get("x-cron-secret") === CRON_SECRET;
+    console.log(`[horse-racing] run mode=${isCron ? "cron" : "visitor"} headerPresent=${req.headers.has("x-cron-secret")}`);
     const cached = await readCache(primaryDate);
     const cacheAge = cached ? Date.now() - new Date(cached.fetched_at).getTime() : Infinity;
     if (!isCron && cached && cacheAge < CACHE_FRESH_MS) {
