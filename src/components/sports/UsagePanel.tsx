@@ -359,7 +359,7 @@ export default function UsagePanel() {
       <div className="space-y-1.5 md:col-span-2">
         <div className="flex items-center justify-between">
           <span className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
-            The Odds API · FIFA World Cup + Golf majors
+            The Odds API · all sports
           </span>
           <span className="text-[11px] font-mono text-muted-foreground">
             {oddsApiUsedToday.toLocaleString()} calls today
