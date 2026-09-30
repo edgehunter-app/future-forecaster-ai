@@ -91,9 +91,14 @@ export default function DevilsAdvocatePanel({ data }: Props) {
           <div className="mb-1.5 text-[10px] uppercase font-semibold text-muted-foreground">
             Key Risks
           </div>
-          <div className="flex flex-wrap gap-1.5">
+          <div className="space-y-1.5">
             {risks.map((r, i) => (
-              <StatusBadge key={i} tone="destructive" size="sm">
+              <StatusBadge
+                key={i}
+                tone="destructive"
+                size="sm"
+                className="w-full justify-start rounded-md whitespace-normal text-left leading-snug py-1"
+              >
                 {r}
               </StatusBadge>
             ))}
