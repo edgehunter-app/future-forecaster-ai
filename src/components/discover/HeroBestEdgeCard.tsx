@@ -187,7 +187,7 @@ export default function HeroBestEdgeCard({
       <div className="grid grid-cols-3 gap-3 mb-5">
         <Stat label="Edge" value={`${edge >= 0 ? "+" : ""}${edge.toFixed(1)}%`} tone="text-success" />
         <Stat label="Best Odds" value={oddsDisplay} tone="text-foreground" />
-        <Stat label="Confidence" value={`${confidence}%`} tone="text-warning" />
+        <Stat label="Confidence" value={`${confidence}%`} tone="text-info" />
       </div>
 
       {/* Confidence bar */}

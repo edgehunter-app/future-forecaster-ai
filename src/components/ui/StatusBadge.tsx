@@ -11,11 +11,11 @@ export type BadgeTone =
 export type BadgeSize = "xs" | "sm" | "md";
 
 const TONES: Record<BadgeTone, string> = {
-  success: "border-success/40 bg-success/10 text-success",
-  warning: "border-warning/40 bg-warning/10 text-warning",
-  destructive: "border-destructive/40 bg-destructive/10 text-destructive",
-  info: "border-info/40 bg-info/10 text-info",
-  purple: "border-purple/40 bg-purple/10 text-purple",
+  success: "border-success/30 bg-success/15 text-success",
+  warning: "border-warning/30 bg-warning/15 text-warning",
+  destructive: "border-destructive/30 bg-destructive/15 text-destructive",
+  info: "border-info/30 bg-info/15 text-info",
+  purple: "border-purple/30 bg-purple/15 text-purple",
   neutral: "border-border bg-muted/50 text-muted-foreground",
 };
 
