@@ -144,59 +144,6 @@ export default function Sports() {
   };
 
 
-  const {
-    findBestBet,
-    loading: bestBetLoading,
-    scannedSoFar,
-    scanProgress,
-    result: bestBetLocalResult,
-    error: bestBetError,
-    clear: clearBestBet,
-    availability: bestBetAvailability,
-  } = useBestBet();
-  // Prefer the shared store copy so Sports mirrors whatever Discover
-  // most recently produced (and vice-versa) — one canonical pick.
-  const bestBetResult = useAppStore((s) => s.lastBestBet) ?? bestBetLocalResult;
-
-  const handleBestBet = async () => {
-    await findBestBet();
-    setTimeout(() => {
-      document
-        .getElementById("best-bet-card")
-        ?.scrollIntoView({ behavior: "smooth", block: "start" });
-    }, 100);
-  };
-
-  useEffect(() => {
-    if (triggerBestBetOnSports) {
-      setTriggerBestBetOnSports(false);
-      void handleBestBet();
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [triggerBestBetOnSports]);
-
-  // If a Best Bet scan is pending and games are not loaded, trigger a refresh first.
-  useEffect(() => {
-    if (pendingBestBetScan && (fullGames?.length ?? 0) === 0 && !loading) {
-      void scan("manual");
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [pendingBestBetScan]);
-
-  // Once games are loaded, run the pending Best Bet scan.
-  useEffect(() => {
-    if (
-      pendingBestBetScan &&
-      (fullGames?.length ?? 0) > 0 &&
-      !bestBetLoading &&
-      !loading
-    ) {
-      setPendingBestBetScan(false);
-      void handleBestBet();
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [pendingBestBetScan, fullGames?.length, bestBetLoading, loading]);
-
   const filteredGames = useMemo(() => {
     const list = fullGames ?? [];
     // Time-window filtering is handled upstream by useSportsOdds.filterRelevantGames
