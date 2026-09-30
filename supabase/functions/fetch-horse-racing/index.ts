@@ -197,6 +197,22 @@ Deno.serve(async (req) => {
     const probeAuth = url.searchParams.get("probeAuth") === "1";
     const probeSlugs = url.searchParams.get("probeSlugs") === "1";
 
+    // TEMP: raw single-race probe
+    if (url.searchParams.get("probeRace") === "1") {
+      const d = url.searchParams.get("date") ?? new Date().toLocaleDateString("en-CA", { timeZone: "America/New_York" });
+      const u = `${FORMFAV_BASE}/form?date=${d}&track=fairmount-park&race=1&country=us`;
+      const t0 = Date.now();
+      try {
+        const r = await fetch(u, { headers, signal: AbortSignal.timeout(20000) });
+        const body = await r.text();
+        const out = { url: u.replace(FORMFAV_BASE, ""), status: r.status, ms: Date.now() - t0, headers: Object.fromEntries(r.headers), body };
+        console.log("[probeRace]", JSON.stringify(out));
+        return new Response(JSON.stringify(out, null, 2), { headers: CORS_HEADERS });
+      } catch (e) {
+        return new Response(JSON.stringify({ error: String(e), ms: Date.now() - t0 }), { headers: CORS_HEADERS });
+      }
+    }
+
     if (probeSlugs) {
       const testDate = url.searchParams.get("date") ?? "2026-07-17";
       const out: Record<string, unknown> = { testDate };
