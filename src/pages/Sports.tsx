@@ -308,55 +308,6 @@ export default function Sports() {
               return `Updated ${minutesAgo}m ago${refreshing}`;
             })()}
           </span>
-          <button
-            onClick={handleBestBet}
-            disabled={
-              bestBetLoading ||
-              (fullGames?.length ?? 0) === 0 ||
-              bestBetAvailability === "none"
-            }
-            className={cn(
-              "inline-flex items-center gap-2 rounded-xl px-4 text-sm font-bold text-white shadow-md transition-opacity disabled:opacity-60",
-              "bg-gradient-to-r from-purple to-purple/70 hover:opacity-90",
-            )}
-            style={{ minHeight: 44 }}
-          >
-            {bestBetLoading ? (
-              <>
-                <Loader2 className="h-4 w-4 animate-spin" />
-                <span className="flex flex-col items-start leading-tight">
-                  <span>
-                    {scanProgress.stage === "sports" && "Scanning sports lines… (1/3)"}
-                    {scanProgress.stage === "prediction_markets" && "Scanning prediction markets… (2/3)"}
-                    {scanProgress.stage === "wallet_signals" && "Scanning wallet signals… (3/3)"}
-                    {scanProgress.stage === "ranking" && "Finding best opportunity…"}
-                    {(scanProgress.stage === "idle" || !scanProgress.stage) && "Analyzing…"}
-                  </span>
-                  <span className="text-[10px] font-normal opacity-80">
-                    {scanProgress.total > 0
-                      ? `${scanProgress.current} of ${scanProgress.total} analyzed`
-                      : "AI multi-source scan"}
-                  </span>
-                </span>
-              </>
-            ) : (
-              <>
-                <Zap className="h-4 w-4" />
-                <span className="flex flex-col items-start leading-tight">
-                  <span>
-                    {bestBetAvailability === "within_12h" && "Best Bet Today"}
-                    {bestBetAvailability === "within_24h" && "Best Bet Tonight"}
-                    {bestBetAvailability === "none" && "No Games Today"}
-                  </span>
-                  <span className="text-[10px] font-normal opacity-80">
-                    {bestBetAvailability === "none"
-                      ? "Check back later"
-                      : "AI scans next 24h"}
-                  </span>
-                </span>
-              </>
-            )}
-          </button>
           <div className="flex flex-col items-end gap-0.5">
             <button
               onClick={() => void scan("manual")}
