@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { Trophy, RotateCw, AlertTriangle, Zap, Loader2, Bell, BellRing } from "lucide-react";
 import { useAppStore } from "@/store/useAppStore";
 import { useSportsOdds } from "@/hooks/useSportsOdds";
@@ -126,6 +126,17 @@ export default function Sports() {
   }
 
   const [activeSport, setActiveSport] = useState<string>("all");
+  // Deep link from the Discover market grid: /sports?sport=<key>
+  const [searchParams] = useSearchParams();
+  useEffect(() => {
+    const key = searchParams.get("sport");
+    if (!key || !SPORTS.some((s) => s.key === key)) return;
+    setActiveSport(key);
+    if (!selectedSports.includes(key)) setSelectedSports([...selectedSports, key]);
+    setCurrentSport(key);
+    void loadGamesForSport(key, key === "americanfootball_ncaaf");
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [searchParams]);
   
 
   const handleClearGolfAndReload = () => {
