@@ -223,6 +223,63 @@ async function runSport(sport: string, force: boolean) {
   return { sport, periodKey, analyzed: candidates.length, aiCalls, top: entries.length };
 }
 
+// Today's Best Edge (Discover) / Best Bet Today (Sports): same selection as the
+// app's findBestBet sports leg — games starting in the next 12h (else 24h),
+// in-4h first, then most books, then soonest; top 5 analyzed; best score wins.
+async function runBestBet() {
+  const today = etKey(new Date());
+  const resp = await callFn("fetch-sports-odds", { regions: "us", markets: "h2h,spreads,totals", oddsFormat: "american", trigger: "scheduled-best-bet" });
+  // deno-lint-ignore no-explicit-any
+  const all: Game[] = (Array.isArray(resp?.data) ? resp.data : []).filter((g: any) => !g.isOutright).map(mapGame);
+  const now = Date.now();
+  const within = (g: Game, h: number) => { const t = new Date(g.commenceTime).getTime(); const d = (t - now) / 3600000; return Number.isFinite(t) && d <= h && d >= -0.5; };
+  let pool = all.filter((g) => within(g, 12));
+  if (!pool.length) pool = all.filter((g) => within(g, 24));
+  if (!pool.length) return { sport: "best_bet", skipped: "no games in next 24h" };
+  const t = (g: Game) => new Date(g.commenceTime).getTime();
+  const candidates = [...pool].sort((a, b) => {
+    const a4 = t(a) < now + 4 * 3600000, b4 = t(b) < now + 4 * 3600000;
+    if (a4 !== b4) return a4 ? -1 : 1;
+    const bd = b.bookmakers.length - a.bookmakers.length;
+    return bd || t(a) - t(b);
+  }).slice(0, 5);
+  // deno-lint-ignore no-explicit-any
+  const scored: any[] = [];
+  await Promise.all(candidates.map(async (game) => {
+    try {
+      const a = await callFn("analyze-market", analyzeBody(game));
+      if (!a || a.code || typeof a.recommendation !== "string" || a.recommendation === "NO_EDGE") return;
+      const confidence = Math.max(0, Math.min(100, Math.round(a.confidence ?? 0)));
+      const edge = a.edge ?? 0;
+      const base = confidence * 0.6 + edge * 100 * 0.4;
+      scored.push({ score: (a.odds ?? 0) < -350 ? base * 0.6 : base, game, analysis: { ...a, confidence, keyFactors: Array.isArray(a.keyFactors) ? a.keyFactors : [], warningFlags: Array.isArray(a.warningFlags) ? a.warningFlags : [] } });
+    } catch (e) { console.warn("[best-bet] analyze failed:", (e as Error).message); }
+  }));
+  const at = new Date().toISOString();
+  const best = scored.sort((a, b) => b.score - a.score)[0] ?? null;
+  const payload = { result: best ? { source: "sports", game: best.game, analysis: best.analysis, scannedCount: candidates.length, generatedAt: at } : null, analyzed: candidates.length, at, scheduled: true };
+  const { error } = await db.from("top5_cache").upsert({ sport_key: "best_bet", period_key: today, payload, scanned_at: at, scanned_by: null });
+  if (error) throw new Error(`cache save failed: ${error.message}`);
+  if (best) {
+    const a = best.analysis, g = best.game as Game, side = String(a.recommendation).toUpperCase(), odds = Number(a.odds);
+    const { error: le } = await db.from("pick_log").insert({
+      user_id: null, origin: "best_bet_of_day", event_key: String(g.id), sport_key: g.sport, league: g.league,
+      event_name: `${g.awayTeam} @ ${g.homeTeam}`, home_team: g.homeTeam, away_team: g.awayTeam, commence_time: g.commenceTime || null,
+      bet_type: a.betType ?? "moneyline",
+      selection: side === "HOME" ? g.homeTeam : side === "AWAY" ? g.awayTeam : side === "OVER" ? "Over" : side === "UNDER" ? "Under" : side,
+      selection_side: side,
+      line: a.betType === "spread" ? (a.spreadLine ?? null) : a.betType === "total" ? (g.total?.line ?? null) : null,
+      odds_at_pick: Number.isFinite(odds) ? Math.round(odds) : null,
+      implied_at_pick: Number.isFinite(odds) && odds !== 0 ? Number(imp(odds).toFixed(6)) : null,
+      book_at_pick: a.bestBook ?? "", confidence: a.confidence, confidence_tier: a.confidence >= 70 ? "high" : a.confidence >= 55 ? "medium" : "low",
+      edge: a.edge ?? null, model: "claude",
+    });
+    if (le) console.warn("[best-bet] pick_log insert failed:", le.message);
+  }
+  console.log(`[best-bet] ok analyzed=${candidates.length} best=${best ? `${best.game.awayTeam} @ ${best.game.homeTeam}` : "none"}`);
+  return { sport: "best_bet", periodKey: today, analyzed: candidates.length, best: best ? `${best.game.awayTeam} @ ${best.game.homeTeam} (${best.analysis.betType} ${best.analysis.recommendation})` : null };
+}
+
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
   if (!(await isCron(req))) {
@@ -233,6 +290,9 @@ Deno.serve(async (req) => {
   let body: any = {};
   try { body = await req.json(); } catch { /* empty */ }
   const sport = String(body?.sport ?? "");
+  if (sport === "best_bet") {
+    try { return json(await runBestBet()); } catch (e) { console.error("[best-bet] failed:", (e as Error).message); return json({ error: (e as Error).message }, 500); }
+  }
   if (!ALLOWED.has(sport)) return json({ error: "sport must be one of " + [...ALLOWED].join(", ") }, 400);
   try {
     return json(await runSport(sport, body?.force === true));

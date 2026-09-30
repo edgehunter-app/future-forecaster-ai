@@ -1,4 +1,4 @@
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAppStore } from "@/store/useAppStore";
 import type { FullGame } from "@/lib/oddsApi";
@@ -49,6 +49,29 @@ export function useBestBet() {
   const cachedMarkets = useAppStore((s) => s.cachedMarkets ?? []);
   const crossMarketOpps = useAppStore((s) => s.crossMarketOpps ?? []);
   const setLastBestBet = useAppStore((s) => s.setLastBestBet);
+
+  // Morning pre-populated result (scheduled-top5 job, sport_key "best_bet").
+  // Only fills the card when nothing is showing; Rescan replaces it.
+  useEffect(() => {
+    if (useAppStore.getState().lastBestBet) return;
+    const etToday = new Intl.DateTimeFormat("en-CA", { timeZone: "America/New_York", year: "numeric", month: "2-digit", day: "2-digit" }).format(new Date());
+    let alive = true;
+    void supabase
+      .from("top5_cache")
+      .select("payload, scanned_at")
+      .eq("sport_key", "best_bet")
+      .eq("period_key", etToday)
+      .maybeSingle()
+      .then(({ data: row }) => {
+        const r = (row?.payload as { result?: BestBetResult | null } | undefined)?.result;
+        if (!alive || !r || useAppStore.getState().lastBestBet) return;
+        // Drop it once the game is more than 3h old.
+        const t = r.game?.commenceTime ? new Date(r.game.commenceTime).getTime() : NaN;
+        if (Number.isFinite(t) && Date.now() - t > 3 * 3600000) return;
+        setLastBestBet({ ...r, generatedAt: new Date(row!.scanned_at) });
+      });
+    return () => { alive = false; };
+  }, [setLastBestBet]);
 
   const availability: BestBetAvailability = useMemo(() => {
     const now = Date.now();
