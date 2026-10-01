@@ -579,6 +579,7 @@ function HorseRacingBody({ cards }: { cards: RaceCardData[] }) {
             card={card}
             state={analyses[card.id] ?? { status: "pending" }}
             onAnalyze={() => analyze(card)}
+            showLogBet={card.id === cards.find((c) => !c.pending)?.id}
           />
         ),
       )}
