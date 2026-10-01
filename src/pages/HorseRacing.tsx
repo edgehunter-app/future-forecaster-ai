@@ -232,7 +232,7 @@ function AnalysisPanel({ a }: { a: RaceAnalysis }) {
       <div className="flex items-center justify-between gap-2">
         <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wide text-info">
           <Sparkles className="h-3.5 w-3.5" />
-          FormFav-Powered Edge Analysis
+          AI Edge Analysis
         </div>
         <div className={cn("flex items-center gap-2 rounded-full border px-2.5 py-1 text-[11px] font-semibold", style.chip)}>
           <TrafficLight rating={a.trafficLight} />
@@ -460,9 +460,9 @@ function BestRaceTodayPanel({ date }: { date: string }) {
       <div className="flex items-center justify-between gap-3">
         <div>
           <div className="text-xs font-semibold uppercase tracking-wider text-purple-300">Best Race Today</div>
-          <h2 className="mt-1 text-xl font-bold text-foreground">FormFav + Claude Race Finder</h2>
+          <h2 className="mt-1 text-xl font-bold text-foreground">AI Race Finder</h2>
           <p className="mt-1 text-xs text-muted-foreground">
-            Claude reviews today's US race cards from FormFav and picks the most bettable race.
+            Our AI reviews today's US race cards and picks the most bettable race.
           </p>
         </div>
         <button
@@ -837,8 +837,8 @@ export default function HorseRacing() {
             </p>
             <p className="mt-2 text-muted-foreground">
               {scheduleTracks.length > 0
-                ? <>Tracks on FormFav's schedule for this date: {scheduleTracks.join(", ")}.</>
-                : "FormFav hasn't listed any US tracks for this date yet."}
+                ? <>Tracks racing on this date: {scheduleTracks.join(", ")}.</>
+                : "No US tracks are listed for this date yet."}
             </p>
           </section>
         </div>
@@ -847,7 +847,7 @@ export default function HorseRacing() {
       {cards.length > 0 && <HorseRacingBody cards={cards} />}
 
       <p className="text-center text-[11px] text-muted-foreground">
-        Race data via FormFav. AI analysis powered by Claude via EdgeHunter.
+        AI analysis by EdgeHunter.
       </p>
     </div>
   );
