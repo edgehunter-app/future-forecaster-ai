@@ -143,7 +143,10 @@ export default function LogBetModal({ open, onClose, onSubmit, initial, racing }
           <Label htmlFor="bet-pick">{racing ? "Horse(s)" : "Your pick"}</Label>
           {racing && (
             <Select
-              value=""
+              value={(() => {
+                const m = pick.match(/^#(\d+)\s/);
+                return m && !pick.includes(" / ") && racing.runners.some((r) => String(r.number) === m[1]) ? m[1] : "";
+              })()}
               onValueChange={(v) => {
                 const r = racing.runners.find((x) => String(x.number) === v);
                 if (!r) return;
