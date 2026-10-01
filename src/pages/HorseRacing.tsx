@@ -348,6 +348,26 @@ function RaceCard({ card, state, onAnalyze, showLogBet }: { card: RaceCardData; 
         : "EdgeHunter signal at logging: not analyzed",
     ].join("\n"),
   }), [trackName, race.raceNumber, race.startTime, postTime, analysis]);
+  // Stable object so the open form isn't reset on every re-render.
+  const logRacing = useMemo(() => {
+    const runners = liveRunners.map((r) => ({ number: Number(r.number), name: r.name }));
+    const tp = analysis?.topPick;
+    let defaultRunner: number | undefined;
+    if (tp) {
+      const n = Number(tp.number);
+      if (Number.isFinite(n) && runners.some((r) => r.number === n)) defaultRunner = n;
+      else if (tp.horse) {
+        const key = String(tp.horse).trim().toLowerCase();
+        defaultRunner = runners.find((r) => r.name.trim().toLowerCase() === key)?.number;
+      }
+    }
+    return {
+      runners,
+      context: `${trackName} · Race ${race.raceNumber} · Post ${postTime}${analysis ? ` · Signal ${analysis.trafficLight}` : " · Not analyzed"}`,
+      defaultRunner,
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [race, trackName, postTime, analysis]);
 
   return (
     <article className={cn("rounded-2xl border bg-card p-4 sm:p-5", analysis ? style.ring : "border-border")}>
@@ -401,11 +421,7 @@ function RaceCard({ card, state, onAnalyze, showLogBet }: { card: RaceCardData; 
             return r;
           }}
           initial={logInitial}
-          racing={{
-            runners: liveRunners.map((r) => ({ number: r.number, name: r.name })),
-            context: `${trackName} · Race ${race.raceNumber} · Post ${postTime}${analysis ? ` · Signal ${analysis.trafficLight}` : " · Not analyzed"}`,
-            defaultRunner: analysis?.topPick?.number,
-          }}
+          racing={logRacing}
         />
       )}
 
@@ -579,7 +595,7 @@ function HorseRacingBody({ cards }: { cards: RaceCardData[] }) {
             card={card}
             state={analyses[card.id] ?? { status: "pending" }}
             onAnalyze={() => analyze(card)}
-            showLogBet={card.id === cards.find((c) => !c.pending)?.id}
+            showLogBet={!card.pending}
           />
         ),
       )}
