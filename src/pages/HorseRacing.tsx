@@ -1,7 +1,10 @@
 import { useEffect, useMemo, useState } from "react";
-import { Sparkles, Trophy, AlertTriangle, Clock, MapPin, Loader2, RefreshCw, Zap } from "lucide-react";
+import { Sparkles, Trophy, AlertTriangle, Clock, MapPin, Loader2, RefreshCw, Zap, NotebookPen } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { supabase } from "@/integrations/supabase/client";
+import LogBetModal from "@/components/tracker/LogBetModal";
+import { useBetTracker } from "@/hooks/useBetTracker";
+import { toast } from "@/hooks/use-toast";
 
 // deno-lint-ignore no-explicit-any
 type Any = any;
@@ -323,7 +326,7 @@ function AnalysisPanel({ a }: { a: RaceAnalysis }) {
   );
 }
 
-function RaceCard({ card, state, onAnalyze }: { card: RaceCardData; state: AnalysisState; onAnalyze: () => void }) {
+function RaceCard({ card, state, onAnalyze, showLogBet }: { card: RaceCardData; state: AnalysisState; onAnalyze: () => void; showLogBet?: boolean }) {
   const { race, trackName } = card;
   const analysis = state.data ?? null;
   const loading = state.status === "loading";
@@ -331,12 +334,20 @@ function RaceCard({ card, state, onAnalyze }: { card: RaceCardData; state: Analy
   const style = analysis ? (RATING_STYLES[analysis.trafficLight] ?? RATING_STYLES.YELLOW) : RATING_STYLES.YELLOW;
   const liveRunners = race.runners.filter((r) => r.scratched !== true);
   const scratches = race.runners.filter((r) => r.scratched === true);
-  if (trackName?.toLowerCase().includes("delta")) {
-    console.log("[horse-racing][delta] race", race.raceNumber, "total=", race.runners.length,
-      "live=", liveRunners.length, "scratched=", scratches.length,
-      "names=", race.runners.map((r) => `${r.name}(${r.scratched})`));
-  }
   const surface = surfaceFromCondition(race.condition);
+  const { logBet } = useBetTracker();
+  const [logOpen, setLogOpen] = useState(false);
+  const postTime = formatPostTime(race.startTime, race.timezone);
+  const logInitial = useMemo(() => ({
+    title: `${trackName} R${race.raceNumber}`,
+    game_date: race.startTime ? new Date(race.startTime).toISOString() : null,
+    notes: [
+      `${trackName} · Race ${race.raceNumber} · Post ${postTime}`,
+      analysis
+        ? `EdgeHunter signal at logging: ${analysis.trafficLight}${analysis.topPick?.horse ? ` (top pick #${analysis.topPick.number} ${analysis.topPick.horse})` : ""}`
+        : "EdgeHunter signal at logging: not analyzed",
+    ].join("\n"),
+  }), [trackName, race.raceNumber, race.startTime, postTime, analysis]);
 
   return (
     <article className={cn("rounded-2xl border bg-card p-4 sm:p-5", analysis ? style.ring : "border-border")}>
@@ -358,17 +369,45 @@ function RaceCard({ card, state, onAnalyze }: { card: RaceCardData; state: Analy
             {race.raceName ?? "Race"} · {race.condition ?? "?"} · {liveRunners.length} runners
           </p>
         </div>
-        <button
-          onClick={onAnalyze}
-          disabled={loading}
-          className="flex items-center gap-1.5 rounded-lg border border-info/40 bg-info/10 px-3 py-1.5 text-xs font-semibold text-info hover:bg-info/15 disabled:opacity-50"
-        >
-          {loading ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Sparkles className="h-3.5 w-3.5" />}
-          {loading ? "Analyzing…" : analysis ? "Re-analyze" : "Analyze This Race"}
-        </button>
+        <div className="flex items-center gap-2">
+          {showLogBet && (
+            <button
+              onClick={() => setLogOpen(true)}
+              className="flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-semibold text-muted-foreground hover:bg-muted hover:text-foreground"
+            >
+              <NotebookPen className="h-3.5 w-3.5" /> Log Bet
+            </button>
+          )}
+          <button
+            onClick={onAnalyze}
+            disabled={loading}
+            className="flex items-center gap-1.5 rounded-lg border border-info/40 bg-info/10 px-3 py-1.5 text-xs font-semibold text-info hover:bg-info/15 disabled:opacity-50"
+          >
+            {loading ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Sparkles className="h-3.5 w-3.5" />}
+            {loading ? "Analyzing…" : analysis ? "Re-analyze" : "Analyze This Race"}
+          </button>
+        </div>
       </header>
 
       {analysis && <AnalysisPanel a={analysis} />}
+
+      {showLogBet && (
+        <LogBetModal
+          open={logOpen}
+          onClose={() => setLogOpen(false)}
+          onSubmit={async (b) => {
+            const r = await logBet(b);
+            if (r) toast({ title: "Bet logged", description: "Find it under Pending in your Bet Tracker." });
+            return r;
+          }}
+          initial={logInitial}
+          racing={{
+            runners: liveRunners.map((r) => ({ number: r.number, name: r.name })),
+            context: `${trackName} · Race ${race.raceNumber} · Post ${postTime}${analysis ? ` · Signal ${analysis.trafficLight}` : " · Not analyzed"}`,
+            defaultRunner: analysis?.topPick?.number,
+          }}
+        />
+      )}
 
       {error && !analysis && (
         <p className="mt-3 text-xs text-destructive">Analysis unavailable: {error}</p>
