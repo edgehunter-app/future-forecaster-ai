@@ -348,6 +348,11 @@ function PendingBetCard({ bet, onResolve }: { bet: Bet; onResolve: (id: string, 
           <div className="text-[10px] text-muted-foreground">to win {fmtUSD(payout - Number(bet.amount))}</div>
         </div>
       </div>
+      {bet.sport === "Horse Racing" && (
+        <p className="text-[11px] text-muted-foreground">
+          Settle manually — we don't have a live results feed for horse racing yet.
+        </p>
+      )}
       <div className="flex items-center gap-2">
         <button
           onClick={() => void onResolve(bet.id, "won")}
