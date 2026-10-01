@@ -22,10 +22,10 @@ export function GamblingDisclaimer({ variant = "full", className }: Props) {
   if (variant === "inline") {
     return (
       <div className={cn(
-        "mt-3 flex items-start gap-2 px-1 text-[11px] text-muted-foreground",
+        "mt-2 flex items-center gap-1.5 px-1 text-[10px] leading-tight text-muted-foreground",
         className,
       )}>
-        <ShieldAlert className="h-3 w-3 mt-0.5 shrink-0" />
+        <ShieldAlert className="h-3 w-3 shrink-0" />
         <span>Odds comparison only. Must be 18+ to use sportsbooks.</span>
       </div>
     );

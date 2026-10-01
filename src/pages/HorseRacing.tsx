@@ -786,9 +786,9 @@ export default function HorseRacing() {
 
       {!loading && cards.length === 0 && !error && (
         <div className="space-y-4">
-          <section className="flex flex-col items-center justify-center rounded-2xl border border-border bg-card p-10 text-center">
-            <div className="text-[64px] leading-none" aria-hidden>🐎</div>
-            <h2 className="mt-5 text-lg font-semibold text-foreground">
+          <section className="flex flex-col items-center justify-center rounded-xl border border-dashed border-border bg-card/40 px-6 py-6 text-center">
+            <div className="text-3xl leading-none" aria-hidden>🐎</div>
+            <h2 className="mt-2 text-base font-semibold text-foreground">
               {data?.cardsNotReady ? "Today's race cards aren't available yet" : "No races posted yet for today"}
             </h2>
             <p className="mt-2 max-w-xs text-sm text-muted-foreground">
