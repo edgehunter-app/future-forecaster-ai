@@ -93,7 +93,7 @@ export default function PlayerPropsPanel({ game, sportKey }: Props) {
         </span>
         {isAdmin && (
           <span className="text-[10px] text-muted-foreground">
-            Cached · refreshes in {refreshIn}m
+            Updated · refreshes in {refreshIn}m
           </span>
         )}
       </div>

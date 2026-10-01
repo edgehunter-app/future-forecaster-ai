@@ -127,6 +127,7 @@ interface Props {
   /** Optional grouped layout for the Games tab (e.g. CFB Top 25 / by day). */
   sections?: { title: string; subtitle?: string; games: FullGame[] }[];
   emptyTitle?: string;
+  onViewAll?: () => void;
   emptyHint?: string;
 }
 
@@ -145,7 +146,7 @@ function oddsClass(odds: number): string {
   return odds > 0 ? "text-success" : "text-destructive";
 }
 
-export default function OddsBoard({ games, loading, mispricings = [], onRefresh, golfData, sections, emptyTitle, emptyHint }: Props) {
+export default function OddsBoard({ games, loading, mispricings = [], onRefresh, golfData, sections, emptyTitle, emptyHint, onViewAll }: Props) {
   const [tab, setTab] = useState<Tab>("games");
 
   if (loading && games.length === 0) {
@@ -163,17 +164,27 @@ export default function OddsBoard({ games, loading, mispricings = [], onRefresh,
       <div className="rounded-lg border border-dashed border-border bg-card/40 p-8 text-center space-y-3">
         <p className="text-sm font-semibold text-foreground">{emptyTitle ?? "No games today"}</p>
         <p className="text-sm text-muted-foreground">
-          {emptyHint ?? "Try the MMA tab — those slates run up to 7 days out. Otherwise check back later today for tonight's odds."}
+          {emptyHint ?? "Nothing is scheduled here right now. See what else is on today, or check back later."}
         </p>
-        {onRefresh && (
-          <button
-            onClick={onRefresh}
-            className="inline-flex items-center gap-1.5 rounded-md bg-info px-3 py-1.5 text-xs font-semibold text-white hover:bg-info/90"
-          >
-            <RotateCw className="h-3.5 w-3.5" />
-            Refresh
-          </button>
-        )}
+        <div className="flex flex-wrap items-center justify-center gap-2">
+          {onViewAll && (
+            <button
+              onClick={onViewAll}
+              className="inline-flex items-center gap-1.5 rounded-md bg-primary px-3 py-1.5 text-xs font-semibold text-primary-foreground hover:bg-primary/90"
+            >
+              View All Sports
+            </button>
+          )}
+          {onRefresh && (
+            <button
+              onClick={onRefresh}
+              className="inline-flex items-center gap-1.5 rounded-md border border-border px-3 py-1.5 text-xs font-semibold text-foreground hover:bg-secondary"
+            >
+              <RotateCw className="h-3.5 w-3.5" />
+              Check again
+            </button>
+          )}
+        </div>
       </div>
     );
   }
@@ -484,15 +495,15 @@ function GameCard({ game, mispricings }: { game: FullGame; mispricings: SportsMi
 
       {/* Compare books — hidden entirely while lines are pending */}
       {linesPending ? (
-        <div className="space-y-1 rounded-md bg-background/35 px-3 py-2">
-          <div className="flex items-center gap-1.5 text-[11px] font-semibold text-muted-foreground">
+        <div className="space-y-0.5 px-1 py-1">
+          <div className="flex items-center gap-1.5 text-[11px] font-medium text-muted-foreground">
             <Clock className="h-3 w-3" />
-            <span>{vegasQuotaOut ? "Vegas odds temporarily unavailable" : "Lines posting soon"}</span>
+            <span>{vegasQuotaOut ? "Sportsbook odds temporarily unavailable" : "Sportsbook lines coming soon"}</span>
           </div>
           <p className="text-[10px] text-muted-foreground/70 leading-snug">
             {vegasQuotaOut
-              ? "Our odds provider hit its quota. We're on it — refresh later or check other sports."
-              : "Vegas books typically post 24–36h before first pitch."}
+              ? "We're having trouble loading odds. Check back shortly or try another sport."
+              : "Sportsbooks usually post lines a day or two before the game."}
           </p>
           {kalshiBook && (isValidOdds(kalshiBook.homeMoneyline) || isValidOdds(kalshiBook.awayMoneyline)) && (
             <div className="mt-1.5 space-y-0.5 rounded-md bg-info/5 px-2 py-1.5">
@@ -588,7 +599,7 @@ function GameCard({ game, mispricings }: { game: FullGame; mispricings: SportsMi
                     <div className="text-[13px] font-semibold leading-tight">Find the Edge</div>
                     <div className="text-[10px] leading-tight text-purple/70">
                       {vegasBookCount < 2
-                        ? "Fetches full sportsbook lines on demand"
+                        ? "Compare sportsbooks + AI analysis"
                         : "AI-powered edge detection"}
                     </div>
                   </div>
@@ -1461,7 +1472,7 @@ function PropsTab({ games }: { games: FullGame[] }) {
             >
               <div>{g.awayTeam} @ {g.homeTeam}</div>
               <div className="text-[9px] opacity-80">
-                {g.league}{cachedFlag ? " · cached" : ""}
+                {g.league}{cachedFlag ? " · loaded" : ""}
               </div>
             </button>
           );

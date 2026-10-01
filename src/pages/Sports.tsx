@@ -408,7 +408,7 @@ export default function Sports() {
                     ? active ? "bg-white/20 text-white" : "bg-success/15 text-success"
                     : active ? "bg-white/20 text-white" : "bg-warning/15 text-warning",
                 )}>
-                  {s.key === "golf" && isLoaded ? "Live" : isLoaded ? "Cached" : "1 req"}
+                  {s.key === "golf" && isLoaded ? "Live" : isLoaded ? "Ready" : "Tap to load"}
                 </span>
               )}
             </button>
@@ -477,6 +477,7 @@ export default function Sports() {
             loading={loading}
             mispricings={mispricings}
             onRefresh={() => void scan("manual")}
+            onViewAll={activeSport !== "all" ? () => setActiveSport("all") : undefined}
             golfData={golfData}
           />
         </>

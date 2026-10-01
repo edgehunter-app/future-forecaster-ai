@@ -393,13 +393,13 @@ export default function UsagePanel() {
         </div>
         <div className="text-[11px] text-muted-foreground">
           {golfLbRemaining !== null
-            ? <>API remaining: <span className="text-foreground font-semibold">{golfLbRemaining.toLocaleString()}</span> · Resets {golfResetLabel}</>
+            ? <>Updates left: <span className="text-foreground font-semibold">{golfLbRemaining.toLocaleString()}</span> · Resets {golfResetLabel}</>
             : <>Remaining updates after first refresh · Resets {golfResetLabel}</>}
         </div>
       </div>
       <div className="text-right space-y-0.5">
         <div className={cn("text-sm font-bold", golfText)}>{golfPct}% used</div>
-        <div className="text-[11px] text-muted-foreground">30-min cache</div>
+        <div className="text-[11px] text-muted-foreground">Updates every 30 min</div>
       </div>
     </div>
     </div>
